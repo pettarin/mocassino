@@ -1,0 +1,61 @@
+"""The state of the application: what the view draws and the controller changes.
+
+:copyright: Copyright (C) 2026 Alberto Pettarin
+:license: GNU General Public License v3.0 (see the LICENSE file for details)
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import StrEnum
+
+from mocassino.model.menu import Menu
+from mocassino.model.moc import MocStatus
+
+
+@dataclass
+class AppState:
+    """The state of the application.
+
+    The menus are a stack: the last one is the menu being shown,
+    and the application is in playback mode when the stack is empty.
+    """
+
+    menus: list[Menu] = field(default_factory=list)
+    status: MocStatus = field(default_factory=MocStatus)
+    volume: int = 50
+
+    def change_volume(self, delta: int) -> int:
+        """Change the volume by the given amount, within 0 and 100, and return it."""
+        self.volume = max(0, min(100, self.volume + delta))
+        return self.volume
+
+    def close_menus(self) -> None:
+        """Close all the menus, going back to playback mode."""
+        self.menus.clear()
+
+    @property
+    def current_menu(self) -> Menu | None:
+        """The menu being shown, or None in playback mode."""
+        return self.menus[-1] if self.menus else None
+
+    @property
+    def mode(self) -> Mode:
+        """The mode of the application."""
+        return Mode.MENU if self.menus else Mode.PLAYBACK
+
+    def open_menu(self, menu: Menu) -> None:
+        """Show the given menu, on top of the current one, if any."""
+        self.menus.append(menu)
+
+    def pop_menu(self) -> None:
+        """Go back one level, to the previous menu or to playback mode."""
+        if self.menus:
+            self.menus.pop()
+
+
+class Mode(StrEnum):
+    """The mode of the application."""
+
+    MENU = "menu"
+    PLAYBACK = "playback"
