@@ -28,10 +28,12 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "click>=8.1.0",
     "gpiod>=2.6.0",
     "gpiodevice>=0.1.0",
     "gpiozero>=2.0.1.post3",
     "pillow>=13.0.0",
+    "PyYAML>=6.0",
     "spidev>=3.8",
     "st7789>=1.0.1",
 ]
