@@ -9,6 +9,13 @@ All notable changes to this project will be documented in this file.
 > [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.2] - To Be Released
+
+### Added
+
+- First actual implementation of the service
+
+
 ## [0.0.1] - 2026-11-18
 
 ### Added
