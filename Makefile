@@ -69,6 +69,10 @@ reinstall-e-this-dev: \
 	uninstall-this \
 	install-e-this-dev
 
+reinstall-e-this-dev-test: \
+	reinstall-e-this-dev \
+	test
+
 test: \
 	test-all
 

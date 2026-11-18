@@ -109,7 +109,7 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.mypy]
 python_version = "3.13"
-plugins = ["pydantic.mypy"]
+plugins = []
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
