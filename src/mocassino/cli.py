@@ -10,7 +10,7 @@ import shutil
 import signal
 import sys
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from logging.handlers import SysLogHandler
 from pathlib import Path
 from types import FrameType
@@ -28,6 +28,7 @@ from mocassino.configuration import (
     ConfigurationError,
     load_configuration,
 )
+from mocassino.model.settings import ORIENTATIONS
 from mocassino.simulator.tk import TkSimulator
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -124,7 +125,12 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 @click.option(
     "--default",
     is_flag=True,
-    help="Print the default values, ignoring the configuration file and the other options.",
+    help="Print the default values, ignoring the configuration file and the global options.",
+)
+@click.option(
+    "--orientation",
+    type=click.Choice([str(orientation) for orientation in ORIENTATIONS]),
+    help="Set the orientation of the display (display.orientation), in degrees clockwise.",
 )
 @click.option(
     "-o",
@@ -145,11 +151,17 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 def configuration(
     options: GlobalOptions,
     default: bool,
+    orientation: str | None,
     output_file_path: Path | None,
     yes: bool,
 ) -> None:
     """Print the effective configuration, in YAML format, or write it to a file."""
     effective = Configuration() if default else _load_configuration(options)
+    if orientation is not None:
+        effective = replace(
+            effective,
+            display=replace(effective.display, orientation=int(orientation)),
+        )
     content = yaml.safe_dump(effective.to_dict(), sort_keys=True)
     if output_file_path is None:
         click.echo(content, nl=False)

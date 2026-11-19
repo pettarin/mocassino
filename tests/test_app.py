@@ -73,9 +73,7 @@ def state():
 @pytest.fixture
 def app(mocker, tmp_path, state, moc, display, button_source):
     host = mocker.create_autospec(Host, instance=True)
-    controller = Controller(
-        state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP, seek_step=10, volume_step=5
-    )
+    controller = Controller(state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP)
     return App(state, controller, moc, Renderer(), display, button_source, tick=TICK)
 
 
@@ -90,9 +88,7 @@ def state_file(mocker):
 def saving_app(mocker, tmp_path, state, moc, display, button_source, state_file):
     """An application with a state file."""
     host = mocker.create_autospec(Host, instance=True)
-    controller = Controller(
-        state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP, seek_step=10, volume_step=5
-    )
+    controller = Controller(state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP)
     return App(
         state, controller, moc, Renderer(), display, button_source, TICK, state_file=state_file
     )
@@ -430,6 +426,37 @@ class TestBuildApp:
         app._controller.handle(app.events.get())
         assert app._state.mode == Mode.MENU
 
+    def test_playback_steps_from_the_configuration(self, mocker):
+        moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
+        app = build_app(self.configuration("none", "none", seek_step=30, volume_step=4))
+        assert app._state.settings.playback_seek_step == 30
+        assert app._state.settings.playback_volume_step == 4
+        app._controller.handle(ButtonEvent(Button.X))
+        moc.set_volume.assert_called_once_with(54)
+        app._controller.handle(ButtonEvent(Button.X, Press.HOLD))
+        moc.seek.assert_called_once_with(30)
+
+    def test_playback_steps_settings_are_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        app = build_app(self.configuration("none", "none"), path)
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        titles = ["Menu", "Settings", "Playback", "Seek step (s)"]
+        assert [menu.title for menu in app._state.menus] == titles
+        assert app._state.settings.playback_seek_step == 30
+        assert load_configuration(path).playback.seek_step == 30
+        assert load_configuration(path).playback.volume_step == 5
+
     def test_renderer_has_the_button_map(self):
         configuration = load_configuration(
             overrides={
@@ -470,6 +497,9 @@ class TestBuildApp:
             "display:\n"
             "  orientation: 0\n"
             "  show_side_icons: false\n"
+            "playback:\n"
+            "  seek_step: 10\n"
+            "  volume_step: 5\n"
         )
         assert load_configuration(path).display.show_side_icons is False
 
@@ -482,6 +512,9 @@ class TestBuildApp:
             "display:\n"
             "  orientation: 0\n"
             "  show_side_icons: false\n"
+            "playback:\n"
+            "  seek_step: 10\n"
+            "  volume_step: 5\n"
             "startup:\n"
             "  fixed_volume: 50\n"
             "  playlist: use_saved\n"
@@ -573,7 +606,7 @@ class TestBuildApp:
             ButtonEvent(Button.A, Press.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.Y),
+            ButtonEvent(Button.X),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
@@ -622,7 +655,7 @@ class TestBuildApp:
             ButtonEvent(Button.A, Press.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.Y),
+            ButtonEvent(Button.X),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
@@ -643,7 +676,7 @@ class TestBuildApp:
             ButtonEvent(Button.A, Press.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.Y),
+            ButtonEvent(Button.X),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),

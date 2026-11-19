@@ -84,6 +84,55 @@ class TestConfigurationCommand:
         assert result.exit_code == 0
         assert yaml.safe_load(result.output) == Configuration().to_dict()
 
+    @pytest.mark.parametrize("orientation", ["0", "90", "180", "270"])
+    def test_orientation(self, runner, orientation):
+        result = runner.invoke(main, ["configuration", "--orientation", orientation])
+        assert result.exit_code == 0
+        output = yaml.safe_load(result.output)
+        assert output["display"]["orientation"] == int(orientation)
+        expected = Configuration().to_dict()
+        expected["display"]["orientation"] = int(orientation)
+        assert output == expected
+
+    @pytest.mark.parametrize("orientation", ["45", "360", "-90", "up"])
+    def test_orientation_not_valid(self, runner, orientation):
+        result = runner.invoke(main, ["configuration", "--orientation", orientation])
+        assert result.exit_code == 2
+        assert "Invalid value for '--orientation'" in result.output
+
+    def test_orientation_overrides_the_configuration_file(self, runner, tmp_path):
+        path = tmp_path / "custom.yaml"
+        path.write_text("display:\n  orientation: 90\n  tick: 0.25\n", encoding="utf-8")
+        result = runner.invoke(main, ["-c", str(path), "configuration"])
+        assert yaml.safe_load(result.output)["display"]["orientation"] == 90
+        result = runner.invoke(main, ["-c", str(path), "configuration", "--orientation", "270"])
+        assert result.exit_code == 0
+        output = yaml.safe_load(result.output)
+        assert output["display"]["orientation"] == 270
+        assert output["display"]["tick"] == 0.25
+
+    def test_orientation_with_default(self, runner, home):
+        directory = home / ".config" / "mocassino"
+        directory.mkdir(parents=True)
+        (directory / "configuration.yaml").write_text(
+            "display:\n  tick: 0.25\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(main, ["configuration", "--default", "--orientation", "180"])
+        assert result.exit_code == 0
+        output = yaml.safe_load(result.output)
+        assert output["display"]["orientation"] == 180
+        assert output["display"]["tick"] == 0.5
+
+    def test_orientation_is_written_to_the_output_file(self, runner, tmp_path):
+        path = tmp_path / "written.yaml"
+        arguments = ["-s", "configuration", "--orientation", "180", "-o", str(path)]
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        written = load_configuration(path)
+        assert written.display.orientation == 180
+        assert written.display.target == "simulator"
+
     def test_output_file(self, runner, tmp_path):
         path = tmp_path / "new" / "written.yaml"
         result = runner.invoke(main, ["-s", "-l", "/srv/music", "configuration", "-o", str(path)])

@@ -12,10 +12,13 @@ from mocassino.controller.events import ButtonEvent
 from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
 from mocassino.model.menu import (
+    Menu,
     MenuCommand,
     build_display_menu,
     build_display_orientation_menu,
     build_library_menu,
+    build_playback_seek_step_menu,
+    build_playback_volume_step_menu,
     build_root_menu,
     build_startup_fixed_volume_menu,
     build_startup_playlist_menu,
@@ -26,6 +29,43 @@ from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
 from mocassino.model.state import AppState
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
+# For each menu command setting a setting to the value of the selected item:
+# the setting, how to get its value from that of the item, and the menu to show again
+SETTERS: dict[
+    MenuCommand,
+    tuple[str, Callable[[str], object], Callable[[Settings], Menu]],
+] = {
+    MenuCommand.SET_DISPLAY_ORIENTATION: (
+        "display_orientation",
+        int,
+        build_display_orientation_menu,
+    ),
+    MenuCommand.SET_PLAYBACK_SEEK_STEP: (
+        "playback_seek_step",
+        int,
+        build_playback_seek_step_menu,
+    ),
+    MenuCommand.SET_PLAYBACK_VOLUME_STEP: (
+        "playback_volume_step",
+        int,
+        build_playback_volume_step_menu,
+    ),
+    MenuCommand.SET_STARTUP_FIXED_VOLUME: (
+        "startup_fixed_volume",
+        int,
+        build_startup_fixed_volume_menu,
+    ),
+    MenuCommand.SET_STARTUP_PLAYLIST: (
+        "startup_playlist",
+        StartupPlaylist,
+        build_startup_playlist_menu,
+    ),
+    MenuCommand.SET_STARTUP_VOLUME: (
+        "startup_volume",
+        StartupVolume,
+        build_startup_volume_menu,
+    ),
+}
 
 
 class Controller:
@@ -38,15 +78,11 @@ class Controller:
         library: Library,
         host: Host,
         button_map: Mapping[str, Mapping[str, str]],
-        seek_step: int,
-        volume_step: int,
         save_settings: Callable[[Settings], None] | None = None,
     ) -> None:
         """Initialize the controller.
 
         :param button_map: the button map, in plain form
-        :param seek_step: the amount of each seek, in seconds
-        :param volume_step: the amount of each volume change
         :param save_settings: called with the settings when one of them is changed
                               from the settings menu, to make the change permanent
         :raises ValueError: if the button map is not valid
@@ -70,9 +106,7 @@ class Controller:
         self._library = library
         self._moc = moc
         self._save_settings = save_settings
-        self._seek_step = seek_step
         self._state = state
-        self._volume_step = volume_step
 
     def _change_volume(self, delta: int) -> None:
         """Change the volume by the given amount."""
@@ -102,28 +136,11 @@ class Controller:
             self._state.close_menus()
             self._moc.play(item.path)
             self._state.played_path = str(item.path)
-        elif item.command is MenuCommand.SET_DISPLAY_ORIENTATION and item.value is not None:
+        elif item.command in SETTERS and item.value is not None:
+            attribute, convert, build_menu = SETTERS[item.command]
             settings = self._state.settings
-            settings.display_orientation = int(item.value)
-            self._state.replace_menu(build_display_orientation_menu(settings))
-            if self._save_settings is not None:
-                self._save_settings(settings)
-        elif item.command is MenuCommand.SET_STARTUP_FIXED_VOLUME and item.value is not None:
-            settings = self._state.settings
-            settings.startup_fixed_volume = int(item.value)
-            self._state.replace_menu(build_startup_fixed_volume_menu(settings))
-            if self._save_settings is not None:
-                self._save_settings(settings)
-        elif item.command is MenuCommand.SET_STARTUP_PLAYLIST and item.value is not None:
-            settings = self._state.settings
-            settings.startup_playlist = StartupPlaylist(item.value)
-            self._state.replace_menu(build_startup_playlist_menu(settings))
-            if self._save_settings is not None:
-                self._save_settings(settings)
-        elif item.command is MenuCommand.SET_STARTUP_VOLUME and item.value is not None:
-            settings = self._state.settings
-            settings.startup_volume = StartupVolume(item.value)
-            self._state.replace_menu(build_startup_volume_menu(settings))
+            setattr(settings, attribute, convert(item.value))
+            self._state.replace_menu(build_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)
         elif item.command is MenuCommand.SHUTDOWN:
@@ -169,19 +186,19 @@ class Controller:
 
     def _seek_backward(self) -> None:
         """Seek backward in the current track."""
-        self._moc.seek(-self._seek_step)
+        self._moc.seek(-self._state.settings.playback_seek_step)
 
     def _seek_forward(self) -> None:
         """Seek forward in the current track."""
-        self._moc.seek(self._seek_step)
+        self._moc.seek(self._state.settings.playback_seek_step)
 
     def _volume_down(self) -> None:
         """Turn the volume down."""
-        self._change_volume(-self._volume_step)
+        self._change_volume(-self._state.settings.playback_volume_step)
 
     def _volume_up(self) -> None:
         """Turn the volume up."""
-        self._change_volume(self._volume_step)
+        self._change_volume(self._state.settings.playback_volume_step)
 
     def choose_folder(self) -> None:
         """Show the menu of the library, on top of the top level menu, to choose what to play."""

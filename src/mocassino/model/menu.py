@@ -21,6 +21,9 @@ from mocassino.model.settings import ORIENTATIONS, Settings, StartupPlaylist, St
 
 # The fixed volumes that can be chosen from the menu
 FIXED_VOLUME_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
+# The seek steps, in seconds, and the volume steps that can be chosen from the menu
+SEEK_STEP_CHOICES: tuple[int, ...] = (1, 2, 5, 10, 30, 60)
+VOLUME_STEP_CHOICES: tuple[int, ...] = (1, 2, 4, 5, 10)
 
 
 @dataclass
@@ -49,6 +52,8 @@ class MenuCommand(StrEnum):
     CLOSE = "close"
     PLAY = "play"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
+    SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
+    SET_PLAYBACK_VOLUME_STEP = "set_playback_volume_step"
     SET_STARTUP_FIXED_VOLUME = "set_startup_fixed_volume"
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SET_STARTUP_VOLUME = "set_startup_volume"
@@ -103,6 +108,32 @@ def _build_choice_menu(
     )
 
 
+def _build_number_menu(
+    title: str,
+    choices: tuple[int, ...],
+    current: int,
+    command: MenuCommand,
+) -> Menu:
+    """Build a menu choosing one of some numbers as the value of a setting.
+
+    The current value is the checked one, if it is one of the choices;
+    the selected item is the choice closest to it.
+    """
+    return Menu(
+        title=title,
+        items=tuple(
+            MenuItem(
+                label=str(choice),
+                checked=choice == current,
+                command=command,
+                value=str(choice),
+            )
+            for choice in choices
+        ),
+        selected_index=min(range(len(choices)), key=lambda index: abs(choices[index] - current)),
+    )
+
+
 def _build_shutdown_menu() -> Menu:
     """Build the menu asking to confirm the shutdown; the default choice is to cancel."""
     return Menu(
@@ -138,22 +169,13 @@ def build_display_menu(settings: Settings) -> Menu:
 def build_display_orientation_menu(settings: Settings) -> Menu:
     """Build the menu choosing by how many degrees what is shown on the display is rotated.
 
-    The current choice is the checked one, and it is the selected item too.
     It has to be built again when the choice changes.
     """
-    current = settings.display_orientation
-    return Menu(
-        title="Orientation",
-        items=tuple(
-            MenuItem(
-                label=str(orientation),
-                checked=orientation == current,
-                command=MenuCommand.SET_DISPLAY_ORIENTATION,
-                value=str(orientation),
-            )
-            for orientation in ORIENTATIONS
-        ),
-        selected_index=ORIENTATIONS.index(current) if current in ORIENTATIONS else 0,
+    return _build_number_menu(
+        "Orientation",
+        ORIENTATIONS,
+        settings.display_orientation,
+        MenuCommand.SET_DISPLAY_ORIENTATION,
     )
 
 
@@ -193,6 +215,49 @@ def build_library_menu(library: Library, directory_path: Path | None = None) -> 
     return Menu(title="Library" if is_root else directory_path.name, items=tuple(items))
 
 
+def build_playback_menu(settings: Settings) -> Menu:
+    """Build the menu leading to the settings of the playback: the seek and volume steps."""
+    return Menu(
+        title="Playback",
+        items=(
+            MenuItem(
+                label="Seek step (s)",
+                submenu=partial(build_playback_seek_step_menu, settings),
+            ),
+            MenuItem(
+                label="Volume step (%)",
+                submenu=partial(build_playback_volume_step_menu, settings),
+            ),
+        ),
+    )
+
+
+def build_playback_seek_step_menu(settings: Settings) -> Menu:
+    """Build the menu choosing the amount of each seek, in seconds.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_number_menu(
+        "Seek step (s)",
+        SEEK_STEP_CHOICES,
+        settings.playback_seek_step,
+        MenuCommand.SET_PLAYBACK_SEEK_STEP,
+    )
+
+
+def build_playback_volume_step_menu(settings: Settings) -> Menu:
+    """Build the menu choosing the amount of each volume change.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_number_menu(
+        "Volume step (%)",
+        VOLUME_STEP_CHOICES,
+        settings.playback_volume_step,
+        MenuCommand.SET_PLAYBACK_VOLUME_STEP,
+    )
+
+
 def build_root_menu(library: Library, host: Host, settings: Settings) -> Menu:
     """Build the top level menu."""
     return Menu(
@@ -212,6 +277,7 @@ def build_settings_menu(settings: Settings) -> Menu:
         title="Settings",
         items=(
             MenuItem(label="Display", submenu=partial(build_display_menu, settings)),
+            MenuItem(label="Playback", submenu=partial(build_playback_menu, settings)),
             MenuItem(label="Startup", submenu=partial(build_startup_menu, settings)),
         ),
     )
@@ -220,27 +286,13 @@ def build_settings_menu(settings: Settings) -> Menu:
 def build_startup_fixed_volume_menu(settings: Settings) -> Menu:
     """Build the menu choosing the fixed volume the service can set when it starts.
 
-    The choices are the volumes from 0 to 100, in steps.
-    The current volume is the checked one, if it is one of the choices;
-    the selected item is the choice closest to it.
     It has to be built again when the volume changes.
     """
-    current = settings.startup_fixed_volume
-    return Menu(
-        title="Fixed volume",
-        items=tuple(
-            MenuItem(
-                label=str(volume),
-                checked=volume == current,
-                command=MenuCommand.SET_STARTUP_FIXED_VOLUME,
-                value=str(volume),
-            )
-            for volume in FIXED_VOLUME_CHOICES
-        ),
-        selected_index=min(
-            range(len(FIXED_VOLUME_CHOICES)),
-            key=lambda index: abs(FIXED_VOLUME_CHOICES[index] - current),
-        ),
+    return _build_number_menu(
+        "Fixed volume (%)",
+        FIXED_VOLUME_CHOICES,
+        settings.startup_fixed_volume,
+        MenuCommand.SET_STARTUP_FIXED_VOLUME,
     )
 
 
@@ -250,7 +302,7 @@ def build_startup_menu(settings: Settings) -> Menu:
         title="Startup",
         items=(
             MenuItem(
-                label="Fixed volume",
+                label="Fixed volume (%)",
                 submenu=partial(build_startup_fixed_volume_menu, settings),
             ),
             MenuItem(label="Playlist", submenu=partial(build_startup_playlist_menu, settings)),

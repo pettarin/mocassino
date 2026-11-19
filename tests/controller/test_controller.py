@@ -65,7 +65,7 @@ def state():
 
 @pytest.fixture
 def controller(state, moc, library, host):
-    return Controller(state, moc, library, host, DEFAULT_BUTTON_MAP, seek_step=10, volume_step=5)
+    return Controller(state, moc, library, host, DEFAULT_BUTTON_MAP)
 
 
 def open_single_item_menu(state, item) -> None:
@@ -79,7 +79,7 @@ class TestController:
 
     def test_custom_button_map(self, state, moc, library, host):
         button_map = {"playback": {"X_long": "next"}}
-        controller = Controller(state, moc, library, host, button_map, seek_step=10, volume_step=5)
+        controller = Controller(state, moc, library, host, button_map)
         controller.handle(X_LONG)
         moc.next.assert_called_once_with()
         controller.handle(A)
@@ -94,13 +94,11 @@ class TestController:
 
     def test_invalid_button_map(self, state, moc, library, host):
         with pytest.raises(ValueError, match="is not a valid"):
-            Controller(
-                state, moc, library, host, {"menu": {"A": "rewind"}}, seek_step=10, volume_step=5
-            )
+            Controller(state, moc, library, host, {"menu": {"A": "rewind"}})
 
     def test_menu_actions_without_menu(self, state, moc, library, host):
         button_map = {"playback": {"A": "menu_select", "B": "menu_back", "X": "menu_up"}}
-        controller = Controller(state, moc, library, host, button_map, seek_step=10, volume_step=5)
+        controller = Controller(state, moc, library, host, button_map)
         for event in (A, B, X):
             controller.handle(event)
         assert state.mode == Mode.PLAYBACK
@@ -240,8 +238,6 @@ class TestController:
             library,
             host,
             DEFAULT_BUTTON_MAP,
-            seek_step=10,
-            volume_step=5,
             save_settings=save_settings,
         )
         for event in (A_LONG, Y, B, B, B):
@@ -302,6 +298,55 @@ class TestController:
         controller.handle(ButtonEvent(play_pause))
         assert state.mode == Mode.PLAYBACK
 
+    def test_menu_select_playback_steps(self, mocker, state, moc, library, host):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            host,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, Y, B):
+            controller.handle(event)
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Playback"]
+        assert [item.label for item in state.current_menu.items] == [
+            "Seek step (s)",
+            "Volume step (%)",
+        ]
+        controller.handle(B)
+        assert state.current_menu.title == "Seek step (s)"
+        assert state.current_menu.selected.label == "10"
+        controller.handle(X)
+        controller.handle(B)
+        assert state.settings.playback_seek_step == 5
+        assert [item.label for item in state.current_menu.items if item.checked] == ["5"]
+        save_settings.assert_called_once_with(state.settings)
+        for event in (A, Y, B):
+            controller.handle(event)
+        assert state.current_menu.title == "Volume step (%)"
+        assert state.current_menu.selected.label == "5"
+        controller.handle(Y)
+        controller.handle(B)
+        assert state.settings.playback_volume_step == 10
+        assert [item.label for item in state.current_menu.items if item.checked] == ["10"]
+        assert save_settings.call_count == 2
+
+    def test_playback_steps_take_effect_at_once(self, controller, state, moc):
+        state.settings.playback_seek_step = 30
+        state.settings.playback_volume_step = 2
+        controller.handle(X_HOLD)
+        moc.seek.assert_called_once_with(30)
+        controller.handle(Y_HOLD)
+        moc.seek.assert_called_with(-30)
+        controller.handle(X)
+        moc.set_volume.assert_called_with(52)
+        controller.handle(Y)
+        controller.handle(Y)
+        moc.set_volume.assert_called_with(48)
+        assert state.volume == 48
+
     def test_menu_select_startup_fixed_volume(self, mocker, state, moc, library, host):
         save_settings = mocker.Mock()
         controller = Controller(
@@ -310,13 +355,11 @@ class TestController:
             library,
             host,
             DEFAULT_BUTTON_MAP,
-            seek_step=10,
-            volume_step=5,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, B, B):
+        for event in (A_LONG, Y, B, X, B, B):
             controller.handle(event)
-        titles = ["Menu", "Settings", "Startup", "Fixed volume"]
+        titles = ["Menu", "Settings", "Startup", "Fixed volume (%)"]
         assert [menu.title for menu in state.menus] == titles
         menu = state.current_menu
         assert len(menu.items) == 21
@@ -335,7 +378,7 @@ class TestController:
         moc.set_volume.assert_not_called()
 
     def test_menu_select_startup_fixed_volume_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, Y, B, B, X, B):
+        for event in (A_LONG, Y, B, X, B, B, X, B):
             controller.handle(event)
         assert state.settings.startup_fixed_volume == 45
 
@@ -354,11 +397,9 @@ class TestController:
             library,
             host,
             DEFAULT_BUTTON_MAP,
-            seek_step=10,
-            volume_step=5,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, B, Y, Y, B):
+        for event in (A_LONG, Y, B, X, B, Y, Y, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Volume"]
         menu = state.current_menu
@@ -381,7 +422,7 @@ class TestController:
         assert [item.checked for item in state.current_menu.items] == [False, True]
 
     def test_menu_select_startup_volume_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, Y, B, Y, Y, B, X, B):
+        for event in (A_LONG, Y, B, X, B, Y, Y, B, X, B):
             controller.handle(event)
         assert state.settings.startup_volume is StartupVolume.USE_FIXED
 
@@ -400,11 +441,9 @@ class TestController:
             library,
             host,
             DEFAULT_BUTTON_MAP,
-            seek_step=10,
-            volume_step=5,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, B, Y, B):
+        for event in (A_LONG, Y, B, X, B, Y, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Playlist"]
         menu = state.current_menu
@@ -432,7 +471,7 @@ class TestController:
         assert save_settings.call_count == 2
 
     def test_menu_select_startup_playlist_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, Y, B, Y, B, Y, B):
+        for event in (A_LONG, Y, B, X, B, Y, B, Y, B):
             controller.handle(event)
         assert state.settings.startup_playlist is StartupPlaylist.SELECT_FROM_LIBRARY
 
@@ -461,8 +500,6 @@ class TestController:
             library,
             host,
             DEFAULT_BUTTON_MAP,
-            seek_step=10,
-            volume_step=5,
             save_settings=save_settings,
         )
         for event in (A_LONG, Y, B, B, Y):
@@ -501,7 +538,7 @@ class TestController:
 
     def test_open_menu_replaces_the_open_menus(self, state, moc, library, host):
         button_map = resolve_button_map({"menu": {"A_long": "open_menu"}})
-        controller = Controller(state, moc, library, host, button_map, seek_step=10, volume_step=5)
+        controller = Controller(state, moc, library, host, button_map)
         controller.handle(A_LONG)
         controller.handle(B)
         controller.handle(A_LONG)

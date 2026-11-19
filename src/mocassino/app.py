@@ -265,6 +265,10 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
             "orientation": settings.display_orientation,
             "show_side_icons": settings.show_side_icons,
         },
+        "playback": {
+            "seek_step": settings.playback_seek_step,
+            "volume_step": settings.playback_volume_step,
+        },
         "startup": {
             "fixed_volume": settings.startup_fixed_volume,
             "playlist": settings.startup_playlist.value,
@@ -314,6 +318,8 @@ def build_app(
     state = AppState(
         settings=Settings(
             display_orientation=configuration.display.orientation,
+            playback_seek_step=configuration.playback.seek_step,
+            playback_volume_step=configuration.playback.volume_step,
             show_side_icons=configuration.display.show_side_icons,
             startup_fixed_volume=configuration.startup.fixed_volume,
             startup_playlist=StartupPlaylist(configuration.startup.playlist),
@@ -327,8 +333,6 @@ def build_app(
         library,
         host,
         button_map=configuration.buttons.button_map,
-        seek_step=configuration.playback.seek_step,
-        volume_step=configuration.playback.volume_step,
         save_settings=partial(_save_settings, configuration_file_path),
     )
     return App(

@@ -155,14 +155,16 @@ Usage: mocassino configuration [OPTIONS]
   Print the effective configuration, in YAML format.
 
 Options:
-  --default                    Print the default values, ignoring the
-                               configuration file and the other options.
-  -o, --output-file-path FILE  Write the configuration to this file instead of
-                               printing it; without a value, to the default
-                               configuration file.
-  -y, --yes                    Write the output file even if it already
-                               exists.
-  --help                       Show this message and exit.
+  --default                     Print the default values, ignoring the
+                                configuration file and the global options.
+  --orientation [0|90|180|270]  Set the orientation of the display
+                                (display.orientation), in degrees clockwise.
+  -o, --output-file-path FILE   Write the configuration to this file instead
+                                of printing it; without a value, to the
+                                default configuration file.
+  -y, --yes                     Write the output file even if it already
+                                exists.
+  --help                        Show this message and exit.
 ```
 
 With `-o / --output-file-path`, the configuration is written to a file instead of being printed.
@@ -178,6 +180,15 @@ Configuration written to '/path/to/configuration.yaml'
 
 $ # write the default values to the default configuration file, replacing it
 $ mocassino configuration --default -o -y
+```
+
+With `--orientation`, the configuration printed or written has that `display.orientation`,
+whatever the configuration file says; it also applies with `--default`.
+Together with `-o`, it sets the orientation of the display for the next runs:
+
+```bash
+$ # turn what is shown on the display upside down, keeping the rest of the configuration
+$ mocassino configuration --orientation 180 -o -y
 ```
 
 With `--default`, it prints the default values instead,
@@ -259,8 +270,8 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
-| `playback.seek_step` | `10` | The amount of each seek, in seconds |
-| `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100 |
+| `playback.seek_step` | `10` | The amount of each seek, in seconds; it can be changed from the `Settings` menu |
+| `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100; it can be changed from the `Settings` menu |
 | `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
 | `startup.fixed_volume` | `50` | The volume set when the service starts, between 0 and 100, if `startup.volume` is `use_fixed`, or if there is no saved volume; it can be changed from the `Settings` menu |
 | `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `select_from_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
@@ -488,9 +499,15 @@ The top level menu has the following items:
       The change is immediate (see below).
     - `Show side icons` (`display.show_side_icons`):
       whether the icons of the buttons are shown in playback mode.
+  - `Playback`: the amounts of each seek and of each volume change.
+    They take effect immediately.
+    - `Seek step (s)` (`playback.seek_step`): a menu with the choices
+      `1`, `2`, `5`, `10`, `30`, and `60` seconds.
+    - `Volume step (%)` (`playback.volume_step`): a menu with the choices
+      `1`, `2`, `4`, `5`, and `10`.
   - `Startup`: the settings of what the service does when it starts.
     They take effect the next time the service starts.
-    - `Fixed volume` (`startup.fixed_volume`): a menu with the volumes from `0` to `100`,
+    - `Fixed volume (%)` (`startup.fixed_volume`): a menu with the volumes from `0` to `100`,
       in steps of 5; the current one has the solid square.
     - `Playlist` (`startup.playlist`): a menu with the three choices
       `Select from library`, `Use mocp state`, and `Use saved`; the current one has the solid square.
