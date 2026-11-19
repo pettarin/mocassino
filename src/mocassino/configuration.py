@@ -1,7 +1,7 @@
 """Configuration of the service: defaults, YAML file, and overrides.
 
 The settings are grouped in sections, one per concern:
-buttons, display, library, playback, and system.
+buttons, display, library, playback, startup, and system.
 
 :copyright: Copyright (C) 2026 Alberto Pettarin
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
@@ -61,9 +61,16 @@ class LibraryConfiguration:
 class PlaybackConfiguration:
     """The settings of the playback."""
 
-    fallback_initial_volume: int = 50
     seek_step: int = 10
     volume_step: int = 5
+
+
+@dataclass(frozen=True)
+class StartupConfiguration:
+    """The settings of what the service does when it starts."""
+
+    fallback_volume: int = 50
+    use_saved_volume: bool = True
 
 
 @dataclass(frozen=True)
@@ -85,6 +92,7 @@ class Configuration:
     display: DisplayConfiguration = field(default_factory=DisplayConfiguration)
     library: LibraryConfiguration = field(default_factory=LibraryConfiguration)
     playback: PlaybackConfiguration = field(default_factory=PlaybackConfiguration)
+    startup: StartupConfiguration = field(default_factory=StartupConfiguration)
     system: SystemConfiguration = field(default_factory=SystemConfiguration)
 
     def to_dict(self) -> dict[str, dict[str, Any]]:
@@ -120,10 +128,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         },
         "library": {"directory_path": _to_path},
         "playback": {
-            "fallback_initial_volume": _to_int,
             "seek_step": _to_int,
             "volume_step": _to_int,
         },
+        "startup": {"fallback_volume": _to_int, "use_saved_volume": _to_bool},
         "system": {"mocp_file_path": _to_str, "shutdown_command": _to_command},
     }
     merged: dict[str, dict[str, Any]] = {section: {} for section in coercers}
@@ -155,6 +163,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         display=DisplayConfiguration(**merged["display"]),
         library=LibraryConfiguration(**merged["library"]),
         playback=PlaybackConfiguration(**merged["playback"]),
+        startup=StartupConfiguration(**merged["startup"]),
         system=SystemConfiguration(**merged["system"]),
     )
     checks: dict[str, tuple[object, bool]] = {
@@ -175,10 +184,6 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             configuration.display.target in DISPLAY_TARGETS,
         ),
         "display.tick": (configuration.display.tick, configuration.display.tick > 0),
-        "playback.fallback_initial_volume": (
-            configuration.playback.fallback_initial_volume,
-            0 <= configuration.playback.fallback_initial_volume <= 100,
-        ),
         "playback.seek_step": (
             configuration.playback.seek_step,
             configuration.playback.seek_step >= 1,
@@ -186,6 +191,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "playback.volume_step": (
             configuration.playback.volume_step,
             1 <= configuration.playback.volume_step <= 100,
+        ),
+        "startup.fallback_volume": (
+            configuration.startup.fallback_volume,
+            0 <= configuration.startup.fallback_volume <= 100,
         ),
     }
     for name, (value, valid) in checks.items():

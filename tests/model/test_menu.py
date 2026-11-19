@@ -12,10 +12,12 @@ from mocassino.model.menu import (
     Menu,
     MenuCommand,
     MenuItem,
+    build_display_menu,
     build_host_menu,
     build_library_menu,
     build_root_menu,
     build_settings_menu,
+    build_startup_menu,
 )
 from mocassino.model.settings import Settings
 
@@ -37,6 +39,24 @@ def library(tmp_path):
     (root / "Empty").mkdir()
     (root / "loose.mp3").touch()
     return Library(root)
+
+
+class TestBuildDisplayMenu:
+    """Tests for the build_display_menu function"""
+
+    @pytest.mark.parametrize("show", [True, False])
+    def test_side_icons(self, show):
+        menu = build_display_menu(Settings(show_side_icons=show))
+        assert menu == Menu(
+            title="Display",
+            items=(
+                MenuItem(
+                    label="Show side icons",
+                    checked=show,
+                    command=MenuCommand.TOGGLE_SIDE_ICONS,
+                ),
+            ),
+        )
 
 
 class TestBuildHostMenu:
@@ -129,9 +149,9 @@ class TestBuildRootMenu:
     def test_settings_menu_shows_the_current_values(self, library, host):
         settings = Settings()
         item = build_root_menu(library, host, settings).items[1]
-        assert item.submenu().items[0].checked is True
+        assert item.submenu().items[0].submenu().items[0].checked is True
         settings.show_side_icons = False
-        assert item.submenu().items[0].checked is False
+        assert item.submenu().items[0].submenu().items[0].checked is False
 
     def test_submenus_are_built_when_opened(self, library, host):
         build_root_menu(library, host, Settings())
@@ -141,23 +161,46 @@ class TestBuildRootMenu:
 class TestBuildSettingsMenu:
     """Tests for the build_settings_menu function"""
 
-    @pytest.mark.parametrize("show", [True, False])
-    def test_side_icons(self, show):
-        menu = build_settings_menu(Settings(show_side_icons=show))
-        assert menu == Menu(
-            title="Settings",
-            items=(
-                MenuItem(
-                    label="Side icons",
-                    checked=show,
-                    command=MenuCommand.TOGGLE_SIDE_ICONS,
-                ),
-            ),
-        )
+    def test_items(self):
+        menu = build_settings_menu(Settings())
+        assert menu.title == "Settings"
+        assert [item.label for item in menu.items] == ["Display", "Startup"]
+        assert [item.checked for item in menu.items] == [None, None]
+        assert [item.command for item in menu.items] == [None, None]
+        assert menu.items[0].submenu().title == "Display"
+        assert menu.items[1].submenu().title == "Startup"
+
+    def test_submenus_show_the_current_values(self):
+        settings = Settings()
+        display, startup = build_settings_menu(settings).items
+        assert display.submenu().items[0].checked is True
+        assert startup.submenu().items[0].checked is True
+        settings.show_side_icons = False
+        settings.use_saved_volume = False
+        assert display.submenu().items[0].checked is False
+        assert startup.submenu().items[0].checked is False
 
     def test_other_items_are_not_checkable(self, library, host):
         menu = build_root_menu(library, host, Settings())
         assert [item.checked for item in menu.items] == [None] * 4
+
+
+class TestBuildStartupMenu:
+    """Tests for the build_startup_menu function"""
+
+    @pytest.mark.parametrize("use", [True, False])
+    def test_use_saved_volume(self, use):
+        menu = build_startup_menu(Settings(use_saved_volume=use))
+        assert menu == Menu(
+            title="Startup",
+            items=(
+                MenuItem(
+                    label="Use saved volume",
+                    checked=use,
+                    command=MenuCommand.TOGGLE_USE_SAVED_VOLUME,
+                ),
+            ),
+        )
 
 
 class TestMenu:

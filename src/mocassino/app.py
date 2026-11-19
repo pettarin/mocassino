@@ -6,6 +6,7 @@
 
 import logging
 import threading
+from dataclasses import astuple
 from functools import partial
 from pathlib import Path
 from queue import Empty, Queue
@@ -135,7 +136,7 @@ class App:
         That is: the track, the volume, and the settings changed through the menus.
         """
         state = self._state
-        return (state.status.file_path, state.volume, state.settings.show_side_icons)
+        return (state.status.file_path, state.volume, astuple(state.settings))
 
     def close(self) -> None:
         """Save the state, and release the buttons and the display."""
@@ -238,11 +239,14 @@ def _build_display(configuration: Configuration, simulator: TkSimulator | None) 
 
 
 def _save_settings(configuration_file_path: Path | None, settings: Settings) -> None:
-    """Write the settings changed from the settings menu to the configuration file.
+    """Write the settings changed from the menus to the configuration file.
 
     An error is logged, not raised: the change still applies until the service stops.
     """
-    updates = {"display": {"show_side_icons": settings.show_side_icons}}
+    updates = {
+        "display": {"show_side_icons": settings.show_side_icons},
+        "startup": {"use_saved_volume": settings.use_saved_volume},
+    }
     try:
         path = update_configuration_file(configuration_file_path, updates)
     except ConfigurationError as exc:
@@ -261,8 +265,8 @@ def build_app(
     If the buttons or the display are simulated, the application has a simulator,
     which has to be run in the main thread while the application runs in another one.
 
-    The volume is the one saved in the state file, if any;
-    otherwise, the initial volume of the configuration.
+    The volume is the one saved in the state file, if any and if the configuration says
+    to use it; otherwise, the fallback volume of the configuration.
 
     :param configuration_file_path: the YAML file where the settings changed from
                                     the settings menu are saved; if None, the default one
@@ -279,11 +283,14 @@ def build_app(
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
     state_file = StateFile(state_file_path)
-    volume = state_file.load().volume
+    volume = state_file.load().volume if configuration.startup.use_saved_volume else None
     if volume is None:
-        volume = configuration.playback.fallback_initial_volume
+        volume = configuration.startup.fallback_volume
     state = AppState(
-        settings=Settings(show_side_icons=configuration.display.show_side_icons),
+        settings=Settings(
+            show_side_icons=configuration.display.show_side_icons,
+            use_saved_volume=configuration.startup.use_saved_volume,
+        ),
         volume=volume,
     )
     controller = Controller(

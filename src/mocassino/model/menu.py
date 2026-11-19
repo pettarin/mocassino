@@ -47,6 +47,7 @@ class MenuCommand(StrEnum):
     PLAY = "play"
     SHUTDOWN = "shutdown"
     TOGGLE_SIDE_ICONS = "toggle_side_icons"
+    TOGGLE_USE_SAVED_VOLUME = "toggle_use_saved_volume"
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,23 @@ def _build_shutdown_menu() -> Menu:
         items=(
             MenuItem(label="Cancel", command=MenuCommand.BACK),
             MenuItem(label="Shut down now", command=MenuCommand.SHUTDOWN),
+        ),
+    )
+
+
+def build_display_menu(settings: Settings) -> Menu:
+    """Build the menu showing the settings of the display, and changing them.
+
+    Like the startup menu, it has to be built again when a setting changes.
+    """
+    return Menu(
+        title="Display",
+        items=(
+            MenuItem(
+                label="Show side icons",
+                checked=settings.show_side_icons,
+                command=MenuCommand.TOGGLE_SIDE_ICONS,
+            ),
         ),
     )
 
@@ -128,18 +146,29 @@ def build_root_menu(library: Library, host: Host, settings: Settings) -> Menu:
 
 
 def build_settings_menu(settings: Settings) -> Menu:
-    """Build the menu showing the settings, and changing them.
+    """Build the menu leading to the settings, grouped by what they are about."""
+    return Menu(
+        title="Settings",
+        items=(
+            MenuItem(label="Display", submenu=partial(build_display_menu, settings)),
+            MenuItem(label="Startup", submenu=partial(build_startup_menu, settings)),
+        ),
+    )
+
+
+def build_startup_menu(settings: Settings) -> Menu:
+    """Build the menu showing the settings of what happens at startup, and changing them.
 
     The items show the values at the time the menu is built:
     the menu has to be built again when a setting changes.
     """
     return Menu(
-        title="Settings",
+        title="Startup",
         items=(
             MenuItem(
-                label="Side icons",
-                checked=settings.show_side_icons,
-                command=MenuCommand.TOGGLE_SIDE_ICONS,
+                label="Use saved volume",
+                checked=settings.use_saved_volume,
+                command=MenuCommand.TOGGLE_USE_SAVED_VOLUME,
             ),
         ),
     )

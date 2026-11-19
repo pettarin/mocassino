@@ -212,11 +212,14 @@ class TestController:
         controller.handle(Y)
         controller.handle(B)
         assert state.current_menu.title == "Settings"
-        assert state.current_menu.selected.label == "Side icons"
+        assert state.current_menu.selected.label == "Display"
+        controller.handle(B)
+        assert state.current_menu.title == "Display"
+        assert state.current_menu.selected.label == "Show side icons"
         assert state.current_menu.selected.checked is True
         controller.handle(B)
         assert state.settings.show_side_icons is False
-        assert [menu.title for menu in state.menus] == ["Menu", "Settings"]
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Display"]
         assert state.current_menu.selected.checked is False
         controller.handle(B)
         assert state.settings.show_side_icons is True
@@ -224,6 +227,39 @@ class TestController:
         controller.handle(A)
         controller.handle(B)
         assert state.current_menu.selected.checked is True
+
+    def test_menu_select_toggle_use_saved_volume(self, mocker, state, moc, library, host):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            host,
+            DEFAULT_BUTTON_MAP,
+            seek_step=10,
+            volume_step=5,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, Y, B):
+            controller.handle(event)
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup"]
+        assert state.current_menu.selected.label == "Use saved volume"
+        assert state.current_menu.selected.checked is True
+        save_settings.assert_not_called()
+        controller.handle(B)
+        assert state.settings.use_saved_volume is False
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup"]
+        assert state.current_menu.selected.checked is False
+        save_settings.assert_called_once_with(state.settings)
+        assert state.settings.show_side_icons is True
+        controller.handle(B)
+        assert state.settings.use_saved_volume is True
+        assert state.current_menu.selected.checked is True
+
+    def test_menu_select_toggle_use_saved_volume_without_saving(self, controller, state):
+        for event in (A_LONG, Y, B, Y, B, B):
+            controller.handle(event)
+        assert state.settings.use_saved_volume is False
 
     def test_menu_select_toggle_side_icons_saves_the_settings(
         self, mocker, state, moc, library, host
@@ -239,7 +275,7 @@ class TestController:
             volume_step=5,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B):
+        for event in (A_LONG, Y, B, B):
             controller.handle(event)
         save_settings.assert_not_called()
         controller.handle(B)

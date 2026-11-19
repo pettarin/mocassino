@@ -62,7 +62,7 @@ if not, it prints the error and exits.
 
 When it starts, the service starts the MOC server, if it is not already running,
 and sets the MOC volume to the one saved in the state file or, if there is none,
-to `playback.fallback_initial_volume`.
+to `startup.fallback_volume`.
 
 > [!NOTE]
 > MOC does not report its volume to command line clients,
@@ -207,9 +207,11 @@ display:
 library:
   directory_path: /music
 playback:
-  fallback_initial_volume: 50
   seek_step: 10
   volume_step: 5
+startup:
+  fallback_volume: 50
+  use_saved_volume: true
 system:
   mocp_file_path: mocp
   shutdown_command:
@@ -243,9 +245,10 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
-| `playback.fallback_initial_volume` | `50` | The volume set when the service starts, between 0 and 100, if there is no state file |
 | `playback.seek_step` | `10` | The amount of each seek, in seconds |
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100 |
+| `startup.fallback_volume` | `50` | The volume set when the service starts, between 0 and 100, if there is no saved volume or `startup.use_saved_volume` is `false` |
+| `startup.use_saved_volume` | `true` | Whether, when the service starts, the volume is the one saved in the state file; if `false`, it is `startup.fallback_volume`; it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list |
 
@@ -277,8 +280,8 @@ display:
   font_file_path: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 library:
   directory_path: /home/pi/music
-playback:
-  fallback_initial_volume: 30
+startup:
+  fallback_volume: 30
 ```
 
 ### State File
@@ -313,8 +316,9 @@ The file is only written when its content would change.
 
 When the service starts:
 
-- it restores the volume from the state file, if it has one;
-  otherwise, it applies `playback.fallback_initial_volume` from the configuration file;
+- it restores the volume from the state file, if it has one
+  and `startup.use_saved_volume` is `true`;
+  otherwise, it applies `startup.fallback_volume` from the configuration file;
 - if MOC is not playing anything, and the saved directory and file still exist,
   it resumes the saved playback: it plays the saved directory from its first track
   with the volume at zero, skips to the saved track, goes to the saved position,
@@ -324,8 +328,8 @@ When the service starts:
   it plays nothing, and blanks the directory, the file, and the position in the state file.
 
 > [!NOTE]
-> Once the state file has a volume, `playback.fallback_initial_volume` is no longer used:
-> delete the state file to apply it again.
+> Once the state file has a volume, `startup.fallback_volume` is no longer used,
+> unless `startup.use_saved_volume` is set to `false`.
 
 > [!NOTE]
 > The position is saved at the moments listed above, not continuously:
@@ -426,11 +430,17 @@ The top level menu has the following items:
   Selecting `Play this folder` or an audio file
   replaces the MOC playlist with it, and plays it.
 - `Settings`: change the settings of the running service.
-  For now, it has one item, `Side icons`, with a square on its right:
-  solid when the icons of the buttons are shown in playback mode, empty when they are hidden.
-  Selecting the item shows or hides them.
-  The new value is also saved as `display.show_side_icons` in the configuration file,
+  A setting that is either on or off has a square on the right of its row:
+  solid when it is on, empty when it is off. Selecting the item changes it.
+  The new value is also saved in the configuration file,
   so that it is kept when the service is started again.
+  - `Display`: the settings of the display.
+    - `Show side icons` (`display.show_side_icons`):
+      whether the icons of the buttons are shown in playback mode.
+  - `Startup`: the settings of what the service does when it starts.
+    - `Use saved volume` (`startup.use_saved_volume`):
+      whether the volume is restored from the state file.
+      It takes effect the next time the service starts.
 - `Host`: show the name and the IP address of the host,
   and `Shut down`, which asks for confirmation
   before running `system.shutdown_command`.

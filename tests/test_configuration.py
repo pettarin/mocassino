@@ -15,6 +15,7 @@ from mocassino.configuration import (
     DisplayConfiguration,
     LibraryConfiguration,
     PlaybackConfiguration,
+    StartupConfiguration,
     SystemConfiguration,
     load_configuration,
     update_configuration_file,
@@ -48,8 +49,9 @@ class TestConfiguration:
             font_file_path=None, show_side_icons=True, target="pirateaudio", tick=0.5
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
-        assert configuration.playback == PlaybackConfiguration(
-            fallback_initial_volume=50, seek_step=10, volume_step=5
+        assert configuration.playback == PlaybackConfiguration(seek_step=10, volume_step=5)
+        assert configuration.startup == StartupConfiguration(
+            fallback_volume=50, use_saved_volume=True
         )
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
@@ -71,7 +73,8 @@ class TestConfiguration:
                 "tick": 0.5,
             },
             "library": {"directory_path": "/music"},
-            "playback": {"fallback_initial_volume": 50, "seek_step": 10, "volume_step": 5},
+            "playback": {"seek_step": 10, "volume_step": 5},
+            "startup": {"fallback_volume": 50, "use_saved_volume": True},
             "system": {
                 "mocp_file_path": "mocp",
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
@@ -109,10 +112,10 @@ class TestLoadConfiguration:
         directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
-            "playback:\n  fallback_initial_volume: 30\n",
+            "startup:\n  fallback_volume: 30\n",
             encoding="utf-8",
         )
-        assert load_configuration().playback.fallback_initial_volume == 30
+        assert load_configuration().startup.fallback_volume == 30
 
     def test_empty_file(self, tmp_path):
         assert load_configuration(write_yaml(tmp_path, "")) == Configuration()
@@ -137,9 +140,11 @@ class TestLoadConfiguration:
             "library:\n"
             "  directory_path: /srv/music\n"
             "playback:\n"
-            "  fallback_initial_volume: 70\n"
             "  seek_step: 30\n"
             "  volume_step: 10\n"
+            "startup:\n"
+            "  fallback_volume: 70\n"
+            "  use_saved_volume: false\n"
             "system:\n"
             "  mocp_file_path: /usr/bin/mocp\n"
             "  shutdown_command: [systemctl, poweroff]\n",
@@ -153,9 +158,8 @@ class TestLoadConfiguration:
                 tick=0.25,
             ),
             library=LibraryConfiguration(directory_path=Path("/srv/music")),
-            playback=PlaybackConfiguration(
-                fallback_initial_volume=70, seek_step=30, volume_step=10
-            ),
+            playback=PlaybackConfiguration(seek_step=30, volume_step=10),
+            startup=StartupConfiguration(fallback_volume=70, use_saved_volume=False),
             system=SystemConfiguration(
                 mocp_file_path="/usr/bin/mocp",
                 shutdown_command=("systemctl", "poweroff"),
@@ -184,14 +188,16 @@ class TestLoadConfiguration:
             ("display", "target", "hdmi"),
             ("display", "tick", -0.5),
             ("library", "directory_path", 5),
-            ("playback", "fallback_initial_volume", -1),
-            ("playback", "fallback_initial_volume", 101),
-            ("playback", "fallback_initial_volume", 50.5),
-            ("playback", "fallback_initial_volume", True),
             ("playback", "seek_step", 0),
             ("playback", "seek_step", "far"),
             ("playback", "volume_step", 0),
             ("playback", "volume_step", 101),
+            ("startup", "fallback_volume", -1),
+            ("startup", "fallback_volume", 101),
+            ("startup", "fallback_volume", 50.5),
+            ("startup", "fallback_volume", True),
+            ("startup", "use_saved_volume", "yes"),
+            ("startup", "use_saved_volume", 0),
             ("system", "mocp_file_path", ["mocp"]),
             ("system", "shutdown_command", "'unbalanced"),
             ("system", "shutdown_command", ""),
@@ -223,11 +229,11 @@ class TestLoadConfiguration:
     def test_none_values_are_ignored(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "display:\n  font_file_path: null\nplayback:\n  fallback_initial_volume: 30\n",
+            "display:\n  font_file_path: null\nstartup:\n  fallback_volume: 30\n",
         )
-        overrides = {"display": {"tick": None}, "playback": {"fallback_initial_volume": None}}
+        overrides = {"display": {"tick": None}, "startup": {"fallback_volume": None}}
         assert load_configuration(path, overrides) == Configuration(
-            playback=PlaybackConfiguration(fallback_initial_volume=30),
+            startup=StartupConfiguration(fallback_volume=30),
         )
 
     def test_not_a_mapping(self, tmp_path):
@@ -237,26 +243,22 @@ class TestLoadConfiguration:
     def test_overrides_are_merged_per_section(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "buttons:\n"
-            "  long_press_time: 2\n"
-            "playback:\n"
-            "  fallback_initial_volume: 30\n"
-            "  volume_step: 3\n",
+            "buttons:\n  long_press_time: 2\nplayback:\n  seek_step: 30\n  volume_step: 3\n",
         )
         overrides = {
             "library": {"directory_path": Path("/other")},
-            "playback": {"fallback_initial_volume": 40},
+            "playback": {"seek_step": 40},
         }
         assert load_configuration(path, overrides) == Configuration(
             buttons=ButtonsConfiguration(long_press_time=2.0),
             library=LibraryConfiguration(directory_path=Path("/other")),
-            playback=PlaybackConfiguration(fallback_initial_volume=40, volume_step=3),
+            playback=PlaybackConfiguration(seek_step=40, volume_step=3),
         )
 
     def test_partial_section(self, tmp_path):
-        path = write_yaml(tmp_path, "playback:\n  fallback_initial_volume: 30\n")
+        path = write_yaml(tmp_path, "startup:\n  fallback_volume: 30\n")
         assert load_configuration(path) == Configuration(
-            playback=PlaybackConfiguration(fallback_initial_volume=30)
+            startup=StartupConfiguration(fallback_volume=30)
         )
 
     def test_section_not_a_mapping(self, tmp_path):

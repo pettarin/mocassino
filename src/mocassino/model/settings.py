@@ -15,3 +15,4 @@ class Settings:
     """
 
     show_side_icons: bool = True
+    use_saved_volume: bool = True

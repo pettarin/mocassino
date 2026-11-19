@@ -122,7 +122,7 @@ The MOC server is started automatically, if it is not already running.
 
 > [!NOTE]
 > When it starts, the service sets the MOC volume to the one it saved
-> when it last ran or, the first time, to the `playback.fallback_initial_volume` setting (50 by default).
+> when it last ran or, the first time, to the `startup.fallback_volume` setting (50 by default).
 
 The buttons of the hat are
 `A` (top-left), `B` (bottom-left), `X` (top-right), and `Y` (bottom-right).

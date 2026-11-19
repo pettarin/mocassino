@@ -11,7 +11,12 @@ from mocassino.controller.actions import Action, parse_button_map
 from mocassino.controller.events import ButtonEvent
 from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
-from mocassino.model.menu import MenuCommand, build_root_menu, build_settings_menu
+from mocassino.model.menu import (
+    MenuCommand,
+    build_display_menu,
+    build_root_menu,
+    build_startup_menu,
+)
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
 from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
@@ -100,7 +105,13 @@ class Controller:
         elif item.command is MenuCommand.TOGGLE_SIDE_ICONS:
             settings = self._state.settings
             settings.show_side_icons = not settings.show_side_icons
-            self._state.replace_menu(build_settings_menu(settings))
+            self._state.replace_menu(build_display_menu(settings))
+            if self._save_settings is not None:
+                self._save_settings(settings)
+        elif item.command is MenuCommand.TOGGLE_USE_SAVED_VOLUME:
+            settings = self._state.settings
+            settings.use_saved_volume = not settings.use_saved_volume
+            self._state.replace_menu(build_startup_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)
 

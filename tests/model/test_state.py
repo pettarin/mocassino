@@ -55,7 +55,7 @@ class TestAppState:
     def test_defaults_are_not_shared(self):
         first, second = AppState(), AppState()
         first.settings.show_side_icons = False
-        assert second.settings == Settings(show_side_icons=True)
+        assert second.settings == Settings(show_side_icons=True, use_saved_volume=True)
 
     def test_menu_replaced(self):
         items = (MenuItem(label="a"), MenuItem(label="b"), MenuItem(label="c"))
