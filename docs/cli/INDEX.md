@@ -146,13 +146,18 @@ Usage: mocassino configuration [OPTIONS]
   Print the effective configuration, in YAML format.
 
 Options:
-  --help  Show this message and exit.
+  --default  Print the default values, ignoring the configuration file and the
+             other options.
+  --help     Show this message and exit.
 ```
 
-Without options and without a configuration file, it prints the default values:
+With `--default`, it prints the default values instead,
+whatever the configuration file and the global options say.
+It works even if the configuration file is not valid,
+and its output can be used as a starting point for a configuration file:
 
 ```bash
-$ mocassino configuration
+$ mocassino configuration --default
 buttons:
   button_map:
     menu:

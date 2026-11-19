@@ -38,6 +38,32 @@ def runner():
 class TestConfigurationCommand:
     """Tests for the configuration command"""
 
+    def test_default(self, runner, home):
+        directory = home / ".config" / "mocassino"
+        directory.mkdir(parents=True)
+        (directory / "configuration.yaml").write_text(
+            "playback:\n  fallback_initial_volume: 30\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(main, ["configuration"])
+        assert yaml.safe_load(result.output)["playback"]["fallback_initial_volume"] == 30
+        result = runner.invoke(main, ["configuration", "--default"])
+        assert result.exit_code == 0
+        assert yaml.safe_load(result.output) == Configuration().to_dict()
+
+    def test_default_ignores_a_broken_configuration_file(self, runner, tmp_path):
+        path = tmp_path / "custom.yaml"
+        path.write_text("zoom: 2\n", encoding="utf-8")
+        result = runner.invoke(main, ["-c", str(path), "configuration", "--default"])
+        assert result.exit_code == 0
+        assert yaml.safe_load(result.output) == Configuration().to_dict()
+
+    def test_default_ignores_the_other_options(self, runner):
+        arguments = ["-s", "-l", "/srv/music", "--display-target", "none", "configuration"]
+        result = runner.invoke(main, [*arguments, "--default"])
+        assert result.exit_code == 0
+        assert yaml.safe_load(result.output) == Configuration().to_dict()
+
     def test_configuration_file(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
         path.write_text("playback:\n  fallback_initial_volume: 30\n", encoding="utf-8")

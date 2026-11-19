@@ -120,10 +120,15 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 
 
 @click.command()
+@click.option(
+    "--default",
+    is_flag=True,
+    help="Print the default values, ignoring the configuration file and the other options.",
+)
 @click.pass_obj
-def configuration(options: GlobalOptions) -> None:
+def configuration(options: GlobalOptions, default: bool) -> None:
     """Print the effective configuration, in YAML format."""
-    effective = _load_configuration(options)
+    effective = Configuration() if default else _load_configuration(options)
     click.echo(yaml.safe_dump(effective.to_dict(), sort_keys=True), nl=False)
 
 
