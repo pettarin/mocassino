@@ -6,12 +6,31 @@ for Raspberry Pi Zero 2 devices with Pimoroni Pirate Audio hats
 
 ## Overview
 
-TBW
+`mocassino` is a background service
+turning a Raspberry Pi Zero 2 with a Pimoroni Pirate Audio hat
+into a small standalone audio player.
+
+The service handles the four buttons of the hat,
+pilots its display, and delegates the playback to
+[MOC](https://moc.daper.net/) (music on console),
+which it controls by running `mocp` commands.
 
 
 ## Features
 
-TBW
+- Playback control with the buttons of the hat:
+  play/pause, next track, previous track, volume up, volume down
+- Playback information on the display of the hat:
+  artist, title, and album of the current track,
+  playback progress, and volume
+- Menu to browse the music root directory
+  and play a directory or a single FLAC, MP3, OGG, or WAV file
+- Menu showing the name and the IP address of the host,
+  and shutting it down
+- Settings stored in a YAML configuration file,
+  including the action of each button
+- Simulator window replacing the buttons and the display,
+  to run the service on a PC without the hardware
 
 
 ## Requirements
@@ -46,7 +65,11 @@ $ micromamba activate mocassino_env
 (mocassino_env) $ pip install mocassino
 ```
 
-You should be able to run ... TBW
+You should be able to run the CLI tool `mocassino`:
+
+```bash
+(mocassino_env) $ mocassino --version
+```
 
 To update `mocassino`, use the `-U / --upgrade` option:
 
@@ -74,14 +97,63 @@ $ micromamba activate mocassino_env
 (mocassino_env) $ make install-e-this
 ```
 
-You should be able to run ... TBW
+You should be able to run the CLI tool `mocassino`:
+
+```bash
+(mocassino_env) $ mocassino --version
+```
 
 
 ## Usage
 
 ### Service Usage
 
-TBW
+Run the service with the `mocassino run` command.
+By default it runs in background, detached from the terminal:
+
+```bash
+$ mocassino run --library-directory-path /home/pi/music
+mocassino is running in background (PID 15875)
+```
+
+The MOC server is started automatically, if it is not already running.
+
+> [!NOTE]
+> When it starts, the service sets the MOC volume
+> to the `playback.initial_volume` setting (50 by default).
+
+The buttons of the hat are
+`A` (top-left), `B` (bottom-left), `X` (top-right), and `Y` (bottom-right).
+By default they perform the following actions:
+
+| Button | Playback mode | Menu mode |
+|---|---|---|
+| `A` | Play/pause; hold: open the menu | Back, up one level |
+| `B` | Next track; hold: previous track | Select |
+| `X` | Volume up | Up |
+| `Y` | Volume down | Down |
+
+The permanent settings, including the action of each button,
+can be stored in the `~/.config/mocassino/configuration.yaml` file:
+
+```yaml
+display:
+  font_file_path: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+library:
+  directory_path: /home/pi/music
+```
+
+To stop the service, send it the `SIGTERM` signal (e.g., `kill 15875`).
+
+> [!NOTE]
+> Installing the service as a systemd unit is not available yet.
+
+To try the service on a PC without the hardware,
+run it in foreground with the simulator window:
+
+```bash
+$ mocassino run --foreground --simulator --library-directory-path ~/music
+```
 
 ### CLI Usage
 
@@ -104,7 +176,26 @@ where it is installed:
 > for a comprehensive guide of the CLI tool `mocassino`.
 
 ```bash
-TBW
+$ # print the version
+$ mocassino --version
+
+$ # run the service in background (default)
+$ mocassino run
+
+$ # run the service in foreground, logging debug messages
+$ mocassino --verbose run --foreground
+
+$ # run the service with a given configuration file
+$ mocassino run --configuration-file-path /path/to/configuration.yaml
+
+$ # run the service on a PC, with the simulator window
+$ mocassino run --foreground --simulator --library-directory-path ~/music
+
+$ # run the service with the buttons of the hat, but without drawing on its display
+$ mocassino run --display-target none
+
+$ # print the effective configuration
+$ mocassino configuration
 ```
 
 

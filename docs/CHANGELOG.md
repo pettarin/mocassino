@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - First actual implementation of the service
-
+- A Tk-based simulator that can be used on a PC (with MOC installed)
 
 ## [0.0.1] - 2026-11-18
 
