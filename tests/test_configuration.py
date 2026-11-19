@@ -18,6 +18,7 @@ from mocassino.configuration import (
     SystemConfiguration,
     load_configuration,
 )
+from mocassino.controller.actions import DEFAULT_BUTTON_MAP
 
 
 @pytest.fixture(autouse=True)
@@ -52,7 +53,11 @@ class TestConfiguration:
 
     def test_to_dict(self):
         assert Configuration().to_dict() == {
-            "buttons": {"hold_time": 1.0, "origin": "gpio"},
+            "buttons": {
+                "button_map": DEFAULT_BUTTON_MAP,
+                "hold_time": 1.0,
+                "origin": "gpio",
+            },
             "display": {"font_file_path": None, "target": "st7789", "tick": 0.5},
             "library": {"directory_path": "/music"},
             "playback": {"initial_volume": 50, "volume_step": 5},
@@ -71,6 +76,21 @@ class TestConfiguration:
 
 class TestLoadConfiguration:
     """Tests for the load_configuration function"""
+
+    def test_button_map(self, tmp_path):
+        path = write_yaml(
+            tmp_path,
+            "buttons:\n  button_map:\n    playback:\n      B: previous\n      B_long: null\n",
+        )
+        button_map = load_configuration(path).buttons.button_map
+        assert button_map["menu"] == DEFAULT_BUTTON_MAP["menu"]
+        assert button_map["playback"] == {
+            "A": "play_pause",
+            "A_long": "open_menu",
+            "B": "previous",
+            "X": "volume_up",
+            "Y": "volume_down",
+        }
 
     def test_default_file_is_read(self, home):
         directory = home / ".config" / "mocassino"
@@ -128,6 +148,8 @@ class TestLoadConfiguration:
     @pytest.mark.parametrize(
         ("section", "key", "value"),
         [
+            ("buttons", "button_map", "A"),
+            ("buttons", "button_map", {"menu": {"A": "rewind"}}),
             ("buttons", "hold_time", 0),
             ("buttons", "hold_time", "long"),
             ("buttons", "hold_time", True),

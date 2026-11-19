@@ -151,6 +151,10 @@ class TestSubprocessMocClient:
             ["mocp", "--play"],
         ]
 
+    def test_play_playlist(self, run):
+        SubprocessMocClient().play_playlist()
+        assert commands(run) == [["mocp", "--play"]]
+
     def test_previous(self, run):
         SubprocessMocClient().previous()
         assert commands(run) == [["mocp", "--previous"]]

@@ -15,6 +15,8 @@ from typing import Any
 
 import yaml
 
+from mocassino.controller.actions import resolve_button_map
+
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "simulator")
 DEFAULT_CONFIGURATION_FILE_PATH: Path = Path("~/.config/mocassino/configuration.yaml")
 DISPLAY_TARGETS: tuple[str, ...] = ("none", "simulator", "st7789")
@@ -22,8 +24,12 @@ DISPLAY_TARGETS: tuple[str, ...] = ("none", "simulator", "st7789")
 
 @dataclass(frozen=True)
 class ButtonsConfiguration:
-    """The settings of the buttons."""
+    """The settings of the buttons.
 
+    The button map is in plain form: see the actions module of the controller.
+    """
+
+    button_map: dict[str, dict[str, str]] = field(default_factory=lambda: resolve_button_map({}))
     hold_time: float = 1.0
     origin: str = "gpio"
 
@@ -96,7 +102,11 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
     values set to None are ignored, and missing keys take their defaults.
     """
     coercers: dict[str, dict[str, Callable[[Any], Any]]] = {
-        "buttons": {"hold_time": _to_float, "origin": _to_str},
+        "buttons": {
+            "button_map": resolve_button_map,
+            "hold_time": _to_float,
+            "origin": _to_str,
+        },
         "display": {"font_file_path": _to_path, "target": _to_str, "tick": _to_float},
         "library": {"directory_path": _to_path},
         "playback": {"initial_volume": _to_int, "volume_step": _to_int},

@@ -30,6 +30,9 @@ class MocClient(Protocol):
     def play(self, path: Path) -> None:
         """Replace the playlist with the given file or directory, and play it."""
 
+    def play_playlist(self) -> None:
+        """Play the playlist, from its first track."""
+
     def previous(self) -> None:
         """Play the previous track of the playlist."""
 
@@ -129,6 +132,10 @@ class SubprocessMocClient:
         """Replace the playlist with the given file or directory, and play it."""
         self._run("--clear")
         self._run("--append", str(path))
+        self._run("--play")
+
+    def play_playlist(self) -> None:
+        """Play the playlist, from its first track."""
         self._run("--play")
 
     def previous(self) -> None:
