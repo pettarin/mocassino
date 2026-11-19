@@ -9,7 +9,6 @@ from collections.abc import Callable, Mapping
 
 from mocassino.controller.actions import Action, parse_button_map
 from mocassino.controller.events import ButtonEvent
-from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
 from mocassino.model.menu import (
     Menu,
@@ -29,6 +28,7 @@ from mocassino.model.menu import (
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
 from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.state import AppState
+from mocassino.model.system import System, SystemShutdownError
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
 # For each menu command setting a setting to the value of the selected item:
@@ -95,14 +95,18 @@ class Controller:
         state: AppState,
         moc: MocClient,
         library: Library,
-        host: Host,
+        system: System,
         button_map: Mapping[str, Mapping[str, str]],
+        reset_settings: Callable[[], Settings] | None = None,
         save_settings: Callable[[Settings], None] | None = None,
         switch_display: Callable[[bool], None] | None = None,
     ) -> None:
         """Initialize the controller.
 
         :param button_map: the button map, in plain form
+        :param reset_settings: called to make the default settings permanent,
+                               returning them; without it, the defaults are the
+                               ones of the Settings class, and they are not permanent
         :param save_settings: called with the settings when one of them is changed
                               from the settings menu, to make the change permanent
         :param switch_display: called to turn the display off (False) before the host
@@ -124,12 +128,13 @@ class Controller:
             Action.VOLUME_DOWN: self._volume_down,
             Action.VOLUME_UP: self._volume_up,
         }
-        self._host = host
         self._library = library
         self._moc = moc
+        self._reset_settings = reset_settings
         self._save_settings = save_settings
-        self._switch_display = switch_display
         self._state = state
+        self._switch_display = switch_display
+        self._system = system
 
     def _change_volume(self, delta: int) -> None:
         """Change the volume by the given amount."""
@@ -164,6 +169,8 @@ class Controller:
             self._state.replace_menu(build_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)
+        elif item.command is MenuCommand.RESET_SETTINGS:
+            self._reset()
         elif item.command is MenuCommand.SHUTDOWN:
             self._shutdown()
         elif item.command in TOGGLES:
@@ -191,7 +198,7 @@ class Controller:
     def _open_menu(self) -> None:
         """Show the top level menu."""
         self._state.close_menus()
-        self._state.open_menu(build_root_menu(self._library, self._host, self._state.settings))
+        self._state.open_menu(build_root_menu(self._library, self._system, self._state.settings))
 
     def _play_pause(self) -> None:
         """Toggle between playing and paused; if stopped, play the playlist."""
@@ -203,6 +210,12 @@ class Controller:
     def _previous(self) -> None:
         """Play the previous track."""
         self._moc.previous()
+
+    def _reset(self) -> None:
+        """Reset the settings to the defaults, at once, and go back from the confirmation."""
+        defaults = Settings() if self._reset_settings is None else self._reset_settings()
+        self._state.settings.update(defaults)
+        self._state.pop_menu()
 
     def _seek_backward(self) -> None:
         """Seek backward in the current track."""
@@ -219,15 +232,15 @@ class Controller:
         If the host cannot be shut down, the display is turned on again,
         and the player carries on.
 
-        :raises HostError: if the host cannot be shut down
+        :raises SystemShutdownError: if the host cannot be shut down
         """
         self._state.close_menus()
         self._state.shutting_down = True
         if self._switch_display is not None:
             self._switch_display(False)
         try:
-            self._host.shutdown()
-        except HostError:
+            self._system.shutdown()
+        except SystemShutdownError:
             self._state.shutting_down = False
             if self._switch_display is not None:
                 self._switch_display(True)
@@ -265,5 +278,5 @@ class Controller:
             except MocServerNotRunningError:
                 LOGGER.warning("The MOC server is not running: starting it")
                 self._moc.start_server()
-        except (HostError, MocError) as exc:
+        except (SystemShutdownError, MocError) as exc:
             LOGGER.error("Cannot perform %s: %s", action, exc)

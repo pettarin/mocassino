@@ -4,7 +4,9 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, fields
 from enum import StrEnum
 
 # By how many degrees, clockwise, the display can be rotated
@@ -62,3 +64,11 @@ class Settings:
     startup_playlist: StartupPlaylist = StartupPlaylist.USE_SAVED
     startup_state: StartupState = StartupState.USE_SAVED
     startup_volume: StartupVolume = StartupVolume.USE_SAVED
+
+    def update(self, other: Settings) -> None:
+        """Copy all the values of the other settings into these.
+
+        The settings are changed in place, as the menus refer to them.
+        """
+        for item in fields(self):
+            setattr(self, item.name, getattr(other, item.name))

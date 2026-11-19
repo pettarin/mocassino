@@ -15,7 +15,6 @@ from enum import StrEnum
 from functools import partial
 from pathlib import Path
 
-from mocassino.model.host import Host
 from mocassino.model.library import Library
 from mocassino.model.settings import (
     ORIENTATIONS,
@@ -24,6 +23,7 @@ from mocassino.model.settings import (
     StartupState,
     StartupVolume,
 )
+from mocassino.model.system import System
 
 # The brightnesses of the display, the seek steps, in seconds, the default volumes,
 # and the volume steps that can be chosen from the menu, all but the seek steps in percent
@@ -57,6 +57,7 @@ class MenuCommand(StrEnum):
 
     BACK = "back"
     PLAY = "play"
+    RESET_SETTINGS = "reset_settings"
     SET_DISPLAY_BRIGHTNESS = "set_display_brightness"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
     SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
@@ -141,6 +142,17 @@ def _build_number_menu(
             for choice in choices
         ),
         selected_index=min(range(len(choices)), key=lambda index: abs(choices[index] - current)),
+    )
+
+
+def _build_reset_settings_menu() -> Menu:
+    """Build the menu asking to confirm the reset of the settings; the default is to cancel."""
+    return Menu(
+        title="Reset settings?",
+        items=(
+            MenuItem(label="Cancel", command=MenuCommand.BACK),
+            MenuItem(label="Reset now", command=MenuCommand.RESET_SETTINGS),
+        ),
     )
 
 
@@ -303,14 +315,14 @@ def build_playback_volume_step_menu(settings: Settings) -> Menu:
     )
 
 
-def build_root_menu(library: Library, host: Host, settings: Settings) -> Menu:
+def build_root_menu(library: Library, system: System, settings: Settings) -> Menu:
     """Build the top level menu."""
     return Menu(
         title="Menu",
         items=(
             MenuItem(label="Library", submenu=partial(build_library_menu, library)),
             MenuItem(label="Settings", submenu=partial(build_settings_menu, settings)),
-            MenuItem(label="System", submenu=partial(build_system_menu, host)),
+            MenuItem(label="System", submenu=partial(build_system_menu, system)),
         ),
     )
 
@@ -378,13 +390,17 @@ def build_startup_volume_menu(settings: Settings) -> Menu:
     )
 
 
-def build_system_menu(host: Host) -> Menu:
-    """Build the menu showing the name and the IP address of the host, and shutting it down."""
+def build_system_menu(system: System) -> Menu:
+    """Build the menu showing the name and the IP address of the host.
+
+    It also resets the settings, and shuts the host down.
+    """
     return Menu(
         title="System",
         items=(
-            MenuItem(label=f"Name: {host.hostname()}"),
-            MenuItem(label=f"IP: {host.ip_address() or 'not available'}"),
+            MenuItem(label=f"Name: {system.hostname()}"),
+            MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
+            MenuItem(label="Reset settings", submenu=_build_reset_settings_menu),
             MenuItem(label="Shut down", submenu=_build_shutdown_menu),
         ),
     )

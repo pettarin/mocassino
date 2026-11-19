@@ -11,7 +11,6 @@ import pytest
 from mocassino.controller.actions import DEFAULT_BUTTON_MAP, resolve_button_map
 from mocassino.controller.controller import Controller
 from mocassino.controller.events import Button, ButtonEvent, Press
-from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
 from mocassino.model.menu import Menu, MenuCommand, MenuItem
 from mocassino.model.moc import (
@@ -21,8 +20,9 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.state import AppState, Mode
+from mocassino.model.system import System, SystemShutdownError
 
 A = ButtonEvent(Button.A)
 A_LONG = ButtonEvent(Button.A, Press.LONG)
@@ -37,11 +37,11 @@ Y_LONG = ButtonEvent(Button.Y, Press.LONG)
 
 
 @pytest.fixture
-def host(mocker):
-    host = mocker.create_autospec(Host, instance=True)
-    host.hostname.return_value = "pirate"
-    host.ip_address.return_value = "192.168.1.20"
-    return host
+def system(mocker):
+    system = mocker.create_autospec(System, instance=True)
+    system.hostname.return_value = "pirate"
+    system.ip_address.return_value = "192.168.1.20"
+    return system
 
 
 @pytest.fixture
@@ -64,8 +64,8 @@ def state():
 
 
 @pytest.fixture
-def controller(state, moc, library, host):
-    return Controller(state, moc, library, host, DEFAULT_BUTTON_MAP)
+def controller(state, moc, library, system):
+    return Controller(state, moc, library, system, DEFAULT_BUTTON_MAP)
 
 
 def open_single_item_menu(state, item) -> None:
@@ -77,29 +77,29 @@ def open_single_item_menu(state, item) -> None:
 class TestController:
     """Tests for the Controller class"""
 
-    def test_custom_button_map(self, state, moc, library, host):
+    def test_custom_button_map(self, state, moc, library, system):
         button_map = {"playback": {"X_long": "next"}}
-        controller = Controller(state, moc, library, host, button_map)
+        controller = Controller(state, moc, library, system, button_map)
         controller.handle(X_LONG)
         moc.next.assert_called_once_with()
         controller.handle(A)
         moc.toggle_pause.assert_not_called()
 
-    def test_host_error_is_logged(self, controller, state, host, caplog):
-        host.shutdown.side_effect = HostError("denied")
+    def test_host_error_is_logged(self, controller, state, system, caplog):
+        system.shutdown.side_effect = SystemShutdownError("denied")
         open_single_item_menu(state, MenuItem(label="Off", command=MenuCommand.SHUTDOWN))
         with caplog.at_level(logging.ERROR):
             controller.handle(B)
         assert "Cannot perform menu_select: denied" in caplog.text
         assert state.shutting_down is False
 
-    def test_invalid_button_map(self, state, moc, library, host):
+    def test_invalid_button_map(self, state, moc, library, system):
         with pytest.raises(ValueError, match="is not a valid"):
-            Controller(state, moc, library, host, {"menu": {"A": "rewind"}})
+            Controller(state, moc, library, system, {"menu": {"A": "rewind"}})
 
-    def test_menu_actions_without_menu(self, state, moc, library, host):
+    def test_menu_actions_without_menu(self, state, moc, library, system):
         button_map = {"playback": {"A": "menu_select", "B": "menu_back", "X": "menu_up"}}
-        controller = Controller(state, moc, library, host, button_map)
+        controller = Controller(state, moc, library, system, button_map)
         for event in (A, B, X):
             controller.handle(event)
         assert state.mode == Mode.PLAYBACK
@@ -140,12 +140,12 @@ class TestController:
         controller.handle(B)
         assert state.current_menu.title == "Empty"
 
-    def test_menu_select_information(self, controller, state, moc, host):
+    def test_menu_select_information(self, controller, state, moc, system):
         open_single_item_menu(state, MenuItem(label="Name: pirate"))
         controller.handle(B)
         assert state.current_menu.title == "Above"
         assert moc.mock_calls == []
-        host.shutdown.assert_not_called()
+        system.shutdown.assert_not_called()
 
     def test_menu_select_play(self, controller, state, moc, library):
         controller.handle(A_LONG)
@@ -178,7 +178,58 @@ class TestController:
         moc.play.assert_not_called()
         assert state.current_menu.title == "Above"
 
-    def test_menu_select_shutdown(self, controller, state, host):
+    def test_menu_select_reset_settings(self, mocker, state, moc, library, system):
+        defaults = Settings(display_brightness=70)
+        reset_settings = mocker.Mock(return_value=defaults)
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            reset_settings=reset_settings,
+            save_settings=save_settings,
+        )
+        settings = state.settings
+        settings.playback_seek_step = 30
+        settings.show_side_icons = False
+        for event in (A_LONG, Y, Y, B, X, X):
+            controller.handle(event)
+        assert state.current_menu.selected.label == "Reset settings"
+        controller.handle(B)
+        assert state.current_menu.title == "Reset settings?"
+        assert state.current_menu.selected.label == "Cancel"
+        reset_settings.assert_not_called()
+        controller.handle(Y)
+        controller.handle(B)
+        reset_settings.assert_called_once_with()
+        save_settings.assert_not_called()
+        assert state.settings is settings
+        assert settings == defaults
+        assert [menu.title for menu in state.menus] == ["Menu", "System"]
+        assert state.current_menu.selected.label == "Reset settings"
+
+    def test_menu_select_reset_settings_without_callback(self, controller, state):
+        state.settings.show_volume_bar = False
+        for event in (A_LONG, Y, Y, B, X, X, B, Y, B):
+            controller.handle(event)
+        assert state.settings == Settings()
+        assert [menu.title for menu in state.menus] == ["Menu", "System"]
+
+    def test_menu_select_reset_settings_cancelled(self, mocker, state, moc, library, system):
+        reset_settings = mocker.Mock(return_value=Settings())
+        controller = Controller(
+            state, moc, library, system, DEFAULT_BUTTON_MAP, reset_settings=reset_settings
+        )
+        state.settings.show_volume_bar = False
+        for event in (A_LONG, Y, Y, B, X, X, B, B):
+            controller.handle(event)
+        reset_settings.assert_not_called()
+        assert state.settings.show_volume_bar is False
+        assert [menu.title for menu in state.menus] == ["Menu", "System"]
+
+    def test_menu_select_shutdown(self, controller, state, system):
         controller.handle(A_LONG)
         controller.handle(Y)
         controller.handle(Y)
@@ -187,32 +238,32 @@ class TestController:
         controller.handle(X)
         controller.handle(B)
         assert state.current_menu.title == "Shut down?"
-        host.shutdown.assert_not_called()
+        system.shutdown.assert_not_called()
         controller.handle(Y)
         controller.handle(B)
-        host.shutdown.assert_called_once_with()
+        system.shutdown.assert_called_once_with()
         assert state.mode == Mode.PLAYBACK
         assert state.shutting_down is True
 
     def test_menu_select_shutdown_turns_the_display_off_first(
-        self, mocker, state, moc, library, host
+        self, mocker, state, moc, library, system
     ):
         calls = mocker.Mock()
-        host.shutdown.side_effect = calls.shutdown
+        system.shutdown.side_effect = calls.shutdown
         controller = Controller(
-            state, moc, library, host, DEFAULT_BUTTON_MAP, switch_display=calls.switch_display
+            state, moc, library, system, DEFAULT_BUTTON_MAP, switch_display=calls.switch_display
         )
         open_single_item_menu(state, MenuItem(label="Off", command=MenuCommand.SHUTDOWN))
         controller.handle(B)
         assert calls.mock_calls == [mocker.call.switch_display(False), mocker.call.shutdown()]
         assert state.shutting_down is True
 
-    def test_menu_select_shutdown_fails(self, mocker, state, moc, library, host, caplog):
+    def test_menu_select_shutdown_fails(self, mocker, state, moc, library, system, caplog):
         calls = mocker.Mock()
-        calls.shutdown.side_effect = HostError("denied")
-        host.shutdown.side_effect = calls.shutdown
+        calls.shutdown.side_effect = SystemShutdownError("denied")
+        system.shutdown.side_effect = calls.shutdown
         controller = Controller(
-            state, moc, library, host, DEFAULT_BUTTON_MAP, switch_display=calls.switch_display
+            state, moc, library, system, DEFAULT_BUTTON_MAP, switch_display=calls.switch_display
         )
         open_single_item_menu(state, MenuItem(label="Off", command=MenuCommand.SHUTDOWN))
         with caplog.at_level(logging.ERROR):
@@ -225,9 +276,9 @@ class TestController:
         assert state.shutting_down is False
         assert "Cannot perform menu_select: denied" in caplog.text
 
-    def test_menu_select_shutdown_is_flagged_before_it_is_asked(self, controller, state, host):
+    def test_menu_select_shutdown_is_flagged_before_it_is_asked(self, controller, state, system):
         flags = []
-        host.shutdown.side_effect = lambda: flags.append(state.shutting_down)
+        system.shutdown.side_effect = lambda: flags.append(state.shutting_down)
         open_single_item_menu(state, MenuItem(label="Off", command=MenuCommand.SHUTDOWN))
         assert state.shutting_down is False
         controller.handle(B)
@@ -270,14 +321,14 @@ class TestController:
         ],
     )
     def test_menu_select_toggles_of_the_display(
-        self, mocker, state, moc, library, host, moves, label, attribute
+        self, mocker, state, moc, library, system, moves, label, attribute
     ):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -297,13 +348,13 @@ class TestController:
         assert getattr(state.settings, attribute) is True
         assert state.current_menu.selected.checked is True
 
-    def test_menu_select_display_brightness(self, mocker, state, moc, library, host):
+    def test_menu_select_display_brightness(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -332,13 +383,13 @@ class TestController:
         assert state.settings.display_brightness == 100
         assert state.current_menu.title == "Above"
 
-    def test_menu_select_display_orientation(self, mocker, state, moc, library, host):
+    def test_menu_select_display_orientation(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -400,13 +451,13 @@ class TestController:
         controller.handle(ButtonEvent(play_pause))
         assert state.mode == Mode.PLAYBACK
 
-    def test_menu_select_playback_steps(self, mocker, state, moc, library, host):
+    def test_menu_select_playback_steps(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -450,13 +501,13 @@ class TestController:
         moc.set_volume.assert_called_with(48)
         assert state.volume == 48
 
-    def test_menu_select_playback_volume_default(self, mocker, state, moc, library, host):
+    def test_menu_select_playback_volume_default(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -492,13 +543,13 @@ class TestController:
         assert state.settings.playback_volume_default == 50
         assert state.current_menu.title == "Above"
 
-    def test_menu_select_startup_state(self, mocker, state, moc, library, host):
+    def test_menu_select_startup_state(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -523,13 +574,13 @@ class TestController:
         moc.stop.assert_not_called()
         moc.pause.assert_not_called()
 
-    def test_menu_select_startup_volume(self, mocker, state, moc, library, host):
+    def test_menu_select_startup_volume(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -567,13 +618,13 @@ class TestController:
         assert state.settings.startup_volume is StartupVolume.USE_SAVED
         assert state.current_menu.title == "Above"
 
-    def test_menu_select_startup_playlist(self, mocker, state, moc, library, host):
+    def test_menu_select_startup_playlist(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -625,14 +676,14 @@ class TestController:
         assert [menu.title for menu in state.menus] == ["Menu"]
 
     def test_menu_select_toggle_side_icons_saves_the_settings(
-        self, mocker, state, moc, library, host
+        self, mocker, state, moc, library, system
     ):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
             moc,
             library,
-            host,
+            system,
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
@@ -670,9 +721,9 @@ class TestController:
         assert state.mode == Mode.MENU
         assert [menu.title for menu in state.menus] == ["Menu"]
 
-    def test_open_menu_replaces_the_open_menus(self, state, moc, library, host):
+    def test_open_menu_replaces_the_open_menus(self, state, moc, library, system):
         button_map = resolve_button_map({"menu": {"A_long": "open_menu"}})
-        controller = Controller(state, moc, library, host, button_map)
+        controller = Controller(state, moc, library, system, button_map)
         controller.handle(A_LONG)
         controller.handle(B)
         controller.handle(A_LONG)

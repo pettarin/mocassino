@@ -20,6 +20,7 @@ from mocassino.configuration import (
     SystemConfiguration,
     load_configuration,
     update_configuration_file,
+    write_configuration_file,
 )
 from mocassino.controller.actions import DEFAULT_BUTTON_MAP
 
@@ -418,3 +419,41 @@ class TestUpdateConfigurationFile:
         with pytest.raises(ConfigurationError, match="Section 'display' must be a mapping"):
             update_configuration_file(path, {"display": {"show_side_icons": False}})
         assert path.read_text(encoding="utf-8") == "display: st7789\n"
+
+
+class TestWriteConfigurationFile:
+    """Tests for the write_configuration_file function"""
+
+    def test_default_file_is_created(self, home):
+        path = write_configuration_file(None, Configuration())
+        assert path == home / ".config" / "mocassino" / "configuration.yaml"
+        assert load_configuration() == Configuration()
+
+    def test_existing_file_is_replaced(self, tmp_path):
+        path = write_yaml(
+            tmp_path,
+            "# my settings\n"
+            "display:\n"
+            "  show_side_icons: false\n"
+            "library:\n"
+            "  directory_path: /srv/musica/Andrè\n",
+        )
+        configuration = Configuration(display=DisplayConfiguration(target="simulator"))
+        assert write_configuration_file(path, configuration) == path
+        content = path.read_text(encoding="utf-8")
+        assert "# my settings" not in content
+        assert "Andrè" not in content
+        assert load_configuration(path) == configuration
+        assert list(tmp_path.iterdir()) == [path]
+
+    def test_keys_are_sorted(self, tmp_path):
+        path = write_configuration_file(tmp_path / "configuration.yaml", Configuration())
+        lines = path.read_text(encoding="utf-8").splitlines()
+        sections = [line for line in lines if not line.startswith(" ")]
+        assert sections == sorted(sections)
+
+    def test_file_cannot_be_written(self, tmp_path):
+        blocker = tmp_path / "blocker"
+        blocker.touch()
+        with pytest.raises(ConfigurationError, match="Cannot write configuration file"):
+            write_configuration_file(blocker / "configuration.yaml", Configuration())

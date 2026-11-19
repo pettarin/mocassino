@@ -6,7 +6,6 @@
 
 import pytest
 
-from mocassino.model.host import Host
 from mocassino.model.library import Library
 from mocassino.model.menu import (
     Menu,
@@ -29,14 +28,15 @@ from mocassino.model.menu import (
     build_system_menu,
 )
 from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.system import System
 
 
 @pytest.fixture
-def host(mocker):
-    host = mocker.create_autospec(Host, instance=True)
-    host.hostname.return_value = "pirate"
-    host.ip_address.return_value = "192.168.1.20"
-    return host
+def system(mocker):
+    system = mocker.create_autospec(System, instance=True)
+    system.hostname.return_value = "pirate"
+    system.ip_address.return_value = "192.168.1.20"
+    return system
 
 
 @pytest.fixture
@@ -191,8 +191,8 @@ class TestBuildLibraryMenu:
 class TestBuildRootMenu:
     """Tests for the build_root_menu function"""
 
-    def test_items(self, library, host):
-        menu = build_root_menu(library, host, Settings())
+    def test_items(self, library, system):
+        menu = build_root_menu(library, system, Settings())
         assert menu.title == "Menu"
         labels = [item.label for item in menu.items]
         assert labels == ["Library", "Settings", "System"]
@@ -200,16 +200,16 @@ class TestBuildRootMenu:
         assert menu.items[1].submenu().title == "Settings"
         assert menu.items[2].submenu().title == "System"
 
-    def test_settings_menu_shows_the_current_values(self, library, host):
+    def test_settings_menu_shows_the_current_values(self, library, system):
         settings = Settings()
-        item = build_root_menu(library, host, settings).items[1]
+        item = build_root_menu(library, system, settings).items[1]
         assert item.submenu().items[0].submenu().items[3].checked is True
         settings.show_side_icons = False
         assert item.submenu().items[0].submenu().items[3].checked is False
 
-    def test_submenus_are_built_when_opened(self, library, host):
-        build_root_menu(library, host, Settings())
-        host.hostname.assert_not_called()
+    def test_submenus_are_built_when_opened(self, library, system):
+        build_root_menu(library, system, Settings())
+        system.hostname.assert_not_called()
 
 
 class TestBuildSettingsMenu:
@@ -238,8 +238,8 @@ class TestBuildSettingsMenu:
         assert display.submenu().items[3].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use default"
 
-    def test_other_items_are_not_checkable(self, library, host):
-        menu = build_root_menu(library, host, Settings())
+    def test_other_items_are_not_checkable(self, library, system):
+        menu = build_root_menu(library, system, Settings())
         assert [item.checked for item in menu.items] == [None] * 3
 
 
@@ -436,23 +436,35 @@ class TestBuildStartupVolumeMenu:
 class TestBuildSystemMenu:
     """Tests for the build_system_menu function"""
 
-    def test_items(self, host):
-        menu = build_system_menu(host)
+    def test_items(self, system):
+        menu = build_system_menu(system)
         assert menu.title == "System"
         assert [item.label for item in menu.items] == [
             "Name: pirate",
             "IP: 192.168.1.20",
+            "Reset settings",
             "Shut down",
         ]
         assert menu.items[0] == MenuItem(label="Name: pirate")
         assert menu.items[1] == MenuItem(label="IP: 192.168.1.20")
 
-    def test_no_ip_address(self, host):
-        host.ip_address.return_value = None
-        assert build_system_menu(host).items[1].label == "IP: not available"
+    def test_no_ip_address(self, system):
+        system.ip_address.return_value = None
+        assert build_system_menu(system).items[1].label == "IP: not available"
 
-    def test_shutdown_is_confirmed(self, host):
-        item = build_system_menu(host).items[2]
+    def test_reset_settings_is_confirmed(self, system):
+        item = build_system_menu(system).items[2]
+        assert item.command is None
+        assert item.submenu() == Menu(
+            title="Reset settings?",
+            items=(
+                MenuItem(label="Cancel", command=MenuCommand.BACK),
+                MenuItem(label="Reset now", command=MenuCommand.RESET_SETTINGS),
+            ),
+        )
+
+    def test_shutdown_is_confirmed(self, system):
+        item = build_system_menu(system).items[3]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Shut down?",
@@ -461,7 +473,7 @@ class TestBuildSystemMenu:
                 MenuItem(label="Shut down now", command=MenuCommand.SHUTDOWN),
             ),
         )
-        host.shutdown.assert_not_called()
+        system.shutdown.assert_not_called()
 
 
 class TestMenu:

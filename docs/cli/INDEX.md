@@ -567,7 +567,15 @@ The top level menu has the following items:
     - `Volume` (`startup.volume`): a menu with the two choices
       `Use default` and `Use saved`; the current one has the solid square.
 - `System`: show the name and the IP address of the host,
-  and `Shut down`, which asks for confirmation
+  `Reset settings`, and `Shut down`.
+  `Reset settings` asks for confirmation, then replaces the configuration file
+  with one holding all the default values, as `mocassino configuration --default` prints them;
+  the defaults of the settings take effect at once, the other values the next time
+  the service starts.
+  All the values are reset, not only those of the `Settings` menu
+  (e.g., `library.directory_path` and `system.shutdown_command` too),
+  except that the simulator is kept for the buttons and for the display, if it is in use.
+  `Shut down` asks for confirmation
   before running `system.shutdown_command`.
   The display is turned off before the command is run,
   and turned on again if the command fails.

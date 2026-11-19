@@ -12,7 +12,7 @@ LOGGER: logging.Logger = logging.getLogger(__name__)
 SHUTDOWN_TIMEOUT: float = 30.0
 
 
-class Host:
+class System:
     """The host running the service."""
 
     def __init__(self, shutdown_command: tuple[str, ...], dry_run: bool = False) -> None:
@@ -44,7 +44,7 @@ class Host:
     def shutdown(self) -> None:
         """Shut down the host; in a dry run, only log the command that would be run.
 
-        :raises HostError: if the shutdown command cannot be run, times out, or fails
+        :raises SystemShutdownError: if the shutdown command cannot be run, times out, or fails
         """
         command = list(self._shutdown_command)
         if self._dry_run:
@@ -60,13 +60,13 @@ class Host:
                 timeout=SHUTDOWN_TIMEOUT,
             )
         except OSError as exc:
-            raise HostError(f"Cannot run {command}: {exc}") from exc
+            raise SystemShutdownError(f"Cannot run {command}: {exc}") from exc
         except subprocess.TimeoutExpired as exc:
-            raise HostError(f"Timeout running {command}") from exc
+            raise SystemShutdownError(f"Timeout running {command}") from exc
         if result.returncode != 0:
             message = result.stderr.strip() or f"exit status {result.returncode}"
-            raise HostError(f"Error running {command}: {message}")
+            raise SystemShutdownError(f"Error running {command}: {message}")
 
 
-class HostError(Exception):
+class SystemShutdownError(Exception):
     """Raised when the host cannot be shut down."""

@@ -15,13 +15,13 @@ from mocassino.configuration import (
     Configuration,
     ConfigurationError,
     update_configuration_file,
+    write_configuration_file,
 )
 from mocassino.controller.buttons.base import ButtonSource
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
 from mocassino.controller.controller import Controller
 from mocassino.controller.events import ButtonEvent
-from mocassino.model.host import Host
 from mocassino.model.library import Library
 from mocassino.model.moc import (
     MocClient,
@@ -40,6 +40,7 @@ from mocassino.model.resume import (
 from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
+from mocassino.model.system import System
 from mocassino.simulator.tk import TkSimulator
 from mocassino.view.display.base import Display
 from mocassino.view.display.null import NullDisplay
@@ -288,6 +289,49 @@ def _build_display(configuration: Configuration, simulator: TkSimulator | None) 
     return NullDisplay()
 
 
+def _build_settings(configuration: Configuration) -> Settings:
+    """Build the settings that can be changed from the menus, from the configuration."""
+    return Settings(
+        display_brightness=round(configuration.display.brightness * 100),
+        display_orientation=configuration.display.orientation,
+        playback_seek_step=configuration.playback.seek_step,
+        playback_volume_default=configuration.playback.volume_default,
+        playback_volume_step=configuration.playback.volume_step,
+        show_progress_bar=configuration.display.show_progress_bar,
+        show_side_icons=configuration.display.show_side_icons,
+        show_volume_bar=configuration.display.show_volume_bar,
+        startup_playlist=StartupPlaylist(configuration.startup.playlist),
+        startup_state=StartupState(configuration.startup.state),
+        startup_volume=StartupVolume(configuration.startup.volume),
+    )
+
+
+def _reset_settings(
+    configuration: Configuration,
+    configuration_file_path: Path | None,
+) -> Settings:
+    """Write the default configuration to the configuration file, and return its settings.
+
+    The simulator is kept for the buttons and for the display, if this run uses it,
+    so that the next runs on the same machine still use it.
+    An error is logged, not raised: the default settings still apply until the service stops.
+
+    :param configuration: the configuration of this run
+    """
+    defaults = Configuration()
+    if configuration.buttons.origin == "simulator":
+        defaults = replace(defaults, buttons=replace(defaults.buttons, origin="simulator"))
+    if configuration.display.target == "simulator":
+        defaults = replace(defaults, display=replace(defaults.display, target="simulator"))
+    try:
+        path = write_configuration_file(configuration_file_path, defaults)
+    except ConfigurationError as exc:
+        LOGGER.error("Cannot reset the settings: %s", exc)
+    else:
+        LOGGER.info("Settings reset to the defaults in '%s'", path)
+    return _build_settings(defaults)
+
+
 def _save_settings(configuration_file_path: Path | None, settings: Settings) -> None:
     """Write the settings changed from the menus to the configuration file.
 
@@ -355,39 +399,26 @@ def build_app(
     # First, as building the display blanks it, hiding what it shows after the boot
     display = _build_display(configuration, simulator)
     # With the simulator, the service runs on a development machine, which must not shut down
-    host = Host(
+    system = System(
         shutdown_command=configuration.system.shutdown_command,
         dry_run=simulator is not None,
     )
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
     state_file = StateFile(state_file_path)
-    startup_volume = StartupVolume(configuration.startup.volume)
-    volume = state_file.load().volume if startup_volume is StartupVolume.USE_SAVED else None
+    settings = _build_settings(configuration)
+    use_saved = settings.startup_volume is StartupVolume.USE_SAVED
+    volume = state_file.load().volume if use_saved else None
     if volume is None:
         volume = configuration.playback.volume_default
-    state = AppState(
-        settings=Settings(
-            display_brightness=round(configuration.display.brightness * 100),
-            display_orientation=configuration.display.orientation,
-            playback_seek_step=configuration.playback.seek_step,
-            playback_volume_default=configuration.playback.volume_default,
-            playback_volume_step=configuration.playback.volume_step,
-            show_progress_bar=configuration.display.show_progress_bar,
-            show_side_icons=configuration.display.show_side_icons,
-            show_volume_bar=configuration.display.show_volume_bar,
-            startup_playlist=StartupPlaylist(configuration.startup.playlist),
-            startup_state=StartupState(configuration.startup.state),
-            startup_volume=startup_volume,
-        ),
-        volume=volume,
-    )
+    state = AppState(settings=settings, volume=volume)
     controller = Controller(
         state,
         moc,
         library,
-        host,
+        system,
         button_map=configuration.buttons.button_map,
+        reset_settings=partial(_reset_settings, configuration, configuration_file_path),
         save_settings=partial(_save_settings, configuration_file_path),
         switch_display=partial(_switch_display, display),
     )

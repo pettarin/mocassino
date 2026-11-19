@@ -10,13 +10,12 @@ from dataclasses import replace
 import pytest
 
 from mocassino.app import App, build_app
-from mocassino.configuration import load_configuration
+from mocassino.configuration import Configuration, load_configuration
 from mocassino.controller.actions import DEFAULT_BUTTON_MAP, Action
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
 from mocassino.controller.controller import Controller
 from mocassino.controller.events import Button, ButtonEvent, Press
-from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
 from mocassino.model.moc import (
     MocError,
@@ -25,9 +24,10 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.state import AppState, Mode
 from mocassino.model.state_file import SavedState, StateFile
+from mocassino.model.system import System, SystemShutdownError
 from mocassino.simulator.tk import TkSimulator
 from mocassino.view.display.null import NullDisplay
 from mocassino.view.display.st7789 import St7789Display
@@ -35,12 +35,24 @@ from mocassino.view.renderer import Renderer
 from tests.model.fake_moc import FakeMoc
 
 PLAYING = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Title")
-# From playback mode: open the menu, go up to Host, open it, go up to Shut down,
+# From playback mode: open the menu, go up to System, open it, go up to Shut down,
 # open it, go down to Shut down now, and select it
 SHUT_DOWN = (
     ButtonEvent(Button.A, Press.LONG),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.Y),
+    ButtonEvent(Button.B),
+)
+# From playback mode: open the menu, go up to System, open it, go up twice to Reset settings,
+# open it, go down to Reset now, and select it
+RESET_SETTINGS = (
+    ButtonEvent(Button.A, Press.LONG),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.X),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
     ButtonEvent(Button.Y),
@@ -85,8 +97,8 @@ def state():
 
 @pytest.fixture
 def app(mocker, tmp_path, state, moc, display, button_source):
-    host = mocker.create_autospec(Host, instance=True)
-    controller = Controller(state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP)
+    system = mocker.create_autospec(System, instance=True)
+    controller = Controller(state, moc, Library(tmp_path), system, DEFAULT_BUTTON_MAP)
     return App(state, controller, moc, Renderer(), display, button_source, tick=TICK)
 
 
@@ -100,8 +112,8 @@ def state_file(mocker):
 @pytest.fixture
 def saving_app(mocker, tmp_path, state, moc, display, button_source, state_file):
     """An application with a state file."""
-    host = mocker.create_autospec(Host, instance=True)
-    controller = Controller(state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP)
+    system = mocker.create_autospec(System, instance=True)
+    controller = Controller(state, moc, Library(tmp_path), system, DEFAULT_BUTTON_MAP)
     return App(
         state, controller, moc, Renderer(), display, button_source, TICK, state_file=state_file
     )
@@ -1027,28 +1039,90 @@ class TestBuildApp:
         assert moc.volume == 70
         assert StateFile(state_file_path).load() == SavedState(volume=70)
 
+    def test_reset_settings(self, mocker, tmp_path):
+        moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
+        moc.status.return_value = PLAYING
+        path = tmp_path / "custom.yaml"
+        path.write_text(
+            "display:\n"
+            "  brightness: 0.4\n"
+            "  show_side_icons: false\n"
+            "library:\n"
+            "  directory_path: /srv/music\n"
+            "playback:\n"
+            "  volume_step: 10\n",
+            encoding="utf-8",
+        )
+        configuration = load_configuration(
+            path,
+            {"buttons": {"origin": "none"}, "display": {"target": "none"}},
+        )
+        app = build_app(configuration, path)
+        settings = app._state.settings
+        assert (settings.display_brightness, settings.show_side_icons) == (40, False)
+        for event in RESET_SETTINGS:
+            app.events.put(event)
+        app.step()
+        assert app._state.settings is settings
+        assert settings == Settings()
+        assert app._display.brightness == 1.0
+        assert [menu.title for menu in app._state.menus] == ["Menu", "System"]
+        assert load_configuration(path) == Configuration()
+
+    @pytest.mark.parametrize(
+        ("origin", "target"),
+        [("simulator", "none"), ("none", "simulator"), ("simulator", "simulator")],
+    )
+    def test_reset_settings_keeps_the_simulator(self, tmp_path, origin, target):
+        path = tmp_path / "custom.yaml"
+        app = build_app(self.configuration(origin, target), path)
+        for event in RESET_SETTINGS:
+            app._controller.handle(event)
+        written = load_configuration(path)
+        assert written.buttons.origin == ("simulator" if origin == "simulator" else "pirateaudio")
+        assert written.display.target == ("simulator" if target == "simulator" else "pirateaudio")
+        assert written.library == Configuration().library
+
+    def test_reset_settings_to_the_default_file(self, tmp_path):
+        app = build_app(self.configuration("none", "none"))
+        for event in RESET_SETTINGS:
+            app._controller.handle(event)
+        path = tmp_path / ".config" / "mocassino" / "configuration.yaml"
+        assert load_configuration(path) == Configuration()
+
+    def test_reset_settings_cannot_be_written(self, tmp_path, caplog):
+        blocker = tmp_path / "blocker"
+        blocker.touch()
+        app = build_app(self.configuration("none", "none"), blocker / "configuration.yaml")
+        app._state.settings.show_volume_bar = False
+        with caplog.at_level(logging.ERROR):
+            for event in RESET_SETTINGS:
+                app._controller.handle(event)
+        assert "Cannot reset the settings: Cannot write configuration file" in caplog.text
+        assert app._state.settings == Settings()
+
     def test_shutdown_turns_the_display_off(self, mocker):
-        host = mocker.patch("mocassino.app.Host", autospec=True).return_value
-        host.hostname.return_value = "pirate"
-        host.ip_address.return_value = None
+        system = mocker.patch("mocassino.app.System", autospec=True).return_value
+        system.hostname.return_value = "pirate"
+        system.ip_address.return_value = None
         app = build_app(self.configuration("none", "none"))
         display = app._display
-        host.shutdown.side_effect = lambda: mocker.sentinel.done if not display.is_on else 1 / 0
+        system.shutdown.side_effect = lambda: mocker.sentinel.done if not display.is_on else 1 / 0
         for event in SHUT_DOWN:
             app._controller.handle(event)
-        host.shutdown.assert_called_once_with()
+        system.shutdown.assert_called_once_with()
         assert display.is_on is False
         assert app._state.shutting_down is True
 
     def test_shutdown_that_fails_turns_the_display_on_again(self, mocker):
-        host = mocker.patch("mocassino.app.Host", autospec=True).return_value
-        host.hostname.return_value = "pirate"
-        host.ip_address.return_value = None
-        host.shutdown.side_effect = HostError("denied")
+        system = mocker.patch("mocassino.app.System", autospec=True).return_value
+        system.hostname.return_value = "pirate"
+        system.ip_address.return_value = None
+        system.shutdown.side_effect = SystemShutdownError("denied")
         app = build_app(self.configuration("none", "none"))
         for event in SHUT_DOWN:
             app._controller.handle(event)
-        host.shutdown.assert_called_once_with()
+        system.shutdown.assert_called_once_with()
         assert app._display.is_on is True
         assert app._state.shutting_down is False
         app._moc = mocker.create_autospec(SubprocessMocClient, instance=True)
@@ -1066,15 +1140,15 @@ class TestBuildApp:
         ],
     )
     def test_shutdown_is_a_dry_run_with_the_simulator(self, mocker, origin, target, dry_run):
-        host_class = mocker.patch("mocassino.app.Host", autospec=True)
+        system_class = mocker.patch("mocassino.app.System", autospec=True)
         build_app(self.configuration(origin, target))
-        host_class.assert_called_once_with(
+        system_class.assert_called_once_with(
             shutdown_command=("sudo", "shutdown", "-h", "now"),
             dry_run=dry_run,
         )
 
     def test_shutdown_with_the_simulator_runs_no_command(self, mocker):
-        run = mocker.patch("mocassino.model.host.subprocess.run")
+        run = mocker.patch("mocassino.model.system.subprocess.run")
         app = build_app(self.configuration("simulator", "simulator"))
         for event in SHUT_DOWN:
             app._controller.handle(event)

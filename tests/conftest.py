@@ -17,5 +17,5 @@ def no_real_commands(mocker):
     def refuse(command, *args, **kwargs):
         raise AssertionError(f"A test tried to run a real command: {command}")
 
-    mocker.patch("mocassino.model.host.subprocess.run", side_effect=refuse)
+    mocker.patch("mocassino.model.system.subprocess.run", side_effect=refuse)
     mocker.patch("mocassino.model.moc.subprocess.run", side_effect=refuse)
