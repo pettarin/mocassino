@@ -122,6 +122,8 @@ In the simulator window:
   or keep it pressed for a long press and for the hold presses, which repeat until it is released;
 - alternatively, type `a`, `b`, `x`, or `y` for a short press,
   and `A`, `B`, `X`, or `Y` for a long press together with a single hold press;
+- or use the arrow keys: left for `A`, right for `B`, up for `X`, and down for `Y`,
+  for a short press; with `Shift`, for a long press together with a single hold press;
 - close the window to stop the service.
 
 The simulator requires Tk (the `tkinter` module of the Python standard library),

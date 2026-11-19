@@ -28,9 +28,14 @@ LONG_PRESS_TIME = 0.5
 REPEAT_HOLD_TIME = 0.2
 
 
+def arrow(name: str, shift: bool = False) -> SimpleNamespace:
+    """Build the Tk event of an arrow key, possibly with Shift and other modifiers down."""
+    return SimpleNamespace(char="", keysym=name, state=0x0011 if shift else 0x0010)
+
+
 def key(character: str) -> SimpleNamespace:
-    """Build the Tk event of a key."""
-    return SimpleNamespace(char=character)
+    """Build the Tk event of a key producing a character."""
+    return SimpleNamespace(char=character, keysym=character or "Shift_L", state=0)
 
 
 @pytest.fixture
@@ -81,6 +86,25 @@ class TestImportTk:
 
 class TestTkSimulator:
     """Tests for the TkSimulator class"""
+
+    @pytest.mark.parametrize(
+        ("name", "button"),
+        [("Down", Button.Y), ("Left", Button.A), ("Right", Button.B), ("Up", Button.X)],
+    )
+    def test_arrow_key(self, simulator, events, name, button):
+        simulator._on_key(arrow(name))
+        assert events.get_nowait() == ButtonEvent(button)
+        assert events.empty()
+
+    @pytest.mark.parametrize(
+        ("name", "button"),
+        [("Down", Button.Y), ("Left", Button.A), ("Right", Button.B), ("Up", Button.X)],
+    )
+    def test_arrow_key_with_shift(self, simulator, events, name, button):
+        simulator._on_key(arrow(name, shift=True))
+        assert events.get_nowait() == ButtonEvent(button, Press.LONG)
+        assert events.get_nowait() == ButtonEvent(button, Press.HOLD)
+        assert events.empty()
 
     def test_click(self, simulator, tk, events):
         simulator._on_press(Button.A)
@@ -137,6 +161,11 @@ class TestTkSimulator:
     @pytest.mark.parametrize("character", ["", "q", "1", " "])
     def test_key_of_no_button(self, simulator, events, character):
         simulator._on_key(key(character))
+        assert events.empty()
+
+    @pytest.mark.parametrize("name", ["Home", "Next", "Return", "KP_Up"])
+    def test_key_of_no_button_without_character(self, simulator, events, name):
+        simulator._on_key(arrow(name))
         assert events.empty()
 
     def test_long_click(self, simulator, tk, events):

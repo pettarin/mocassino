@@ -24,6 +24,13 @@ from mocassino.view.display.base import HEIGHT, WIDTH
 if TYPE_CHECKING:
     import tkinter
 
+# The arrow keys standing for the buttons, by the name Tk gives them
+ARROW_KEYS: dict[str, Button] = {
+    "Down": Button.Y,
+    "Left": Button.A,
+    "Right": Button.B,
+    "Up": Button.X,
+}
 # The row and the column of each button in the window, around the display like on the hat
 BUTTON_CELLS: dict[Button, tuple[int, int]] = {
     Button.A: (0, 0),
@@ -33,11 +40,14 @@ BUTTON_CELLS: dict[Button, tuple[int, int]] = {
 }
 HINT: str = (
     "Click a button, or keep it pressed for a long press, repeated while pressed.\n"
-    "Keys: a b x y for a short press, A B X Y for a long press."
+    "Keys: a b x y, or the arrows (left=A, right=B, up=X, down=Y), for a short press;\n"
+    "with Shift, for a long press."
 )
 PADDING: int = 8
 POLL_INTERVAL_MS: int = 30
 SCALE: int = 2
+# The bit of the state of a Tk key event telling that Shift is down
+SHIFT_MASK: int = 0x0001
 TITLE: str = "mocassino simulator"
 
 
@@ -78,19 +88,26 @@ class TkSimulator:
         self._on_repeat(button)
 
     def _on_key(self, tk_event: tkinter.Event[tkinter.Misc]) -> None:
-        """Report the press of the button named by a key.
+        """Report the press of the button named by a key: its letter, or its arrow.
 
-        A lowercase key is a short press;
-        an uppercase key is a button held just long enough: a long press and a hold press.
+        The arrows are: left for A, right for B, up for X, and down for Y.
+        A key alone is a short press; with Shift (i.e., an uppercase letter), it is a button
+        held just long enough: a long press and a hold press.
         """
         character = str(tk_event.char)
-        if character and character.upper() in list(Button):
+        if tk_event.keysym in ARROW_KEYS:
+            button = ARROW_KEYS[tk_event.keysym]
+            held = bool(int(tk_event.state) & SHIFT_MASK)
+        elif character and character.upper() in list(Button):
             button = Button(character.upper())
-            if character.isupper():
-                self._emit(ButtonEvent(button, Press.LONG))
-                self._emit(ButtonEvent(button, Press.HOLD))
-            else:
-                self._emit(ButtonEvent(button))
+            held = character.isupper()
+        else:
+            return
+        if held:
+            self._emit(ButtonEvent(button, Press.LONG))
+            self._emit(ButtonEvent(button, Press.HOLD))
+        else:
+            self._emit(ButtonEvent(button))
 
     def _on_press(self, button: Button, tk_event: object = None) -> None:
         """Start timing the press of a button of the window."""
