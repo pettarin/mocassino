@@ -40,12 +40,16 @@ class TestConfiguration:
 
     def test_defaults(self):
         configuration = Configuration()
-        assert configuration.buttons == ButtonsConfiguration(hold_time=1.0, origin="gpio")
+        assert configuration.buttons == ButtonsConfiguration(
+            long_press_time=0.6, origin="gpio", repeat_hold_time=0.3
+        )
         assert configuration.display == DisplayConfiguration(
             font_file_path=None, target="st7789", tick=0.5
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
-        assert configuration.playback == PlaybackConfiguration(initial_volume=50, volume_step=5)
+        assert configuration.playback == PlaybackConfiguration(
+            initial_volume=50, seek_step=10, volume_step=2
+        )
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
             shutdown_command=("sudo", "shutdown", "-h", "now"),
@@ -55,12 +59,13 @@ class TestConfiguration:
         assert Configuration().to_dict() == {
             "buttons": {
                 "button_map": DEFAULT_BUTTON_MAP,
-                "hold_time": 1.0,
+                "long_press_time": 0.6,
                 "origin": "gpio",
+                "repeat_hold_time": 0.3,
             },
             "display": {"font_file_path": None, "target": "st7789", "tick": 0.5},
             "library": {"directory_path": "/music"},
-            "playback": {"initial_volume": 50, "volume_step": 5},
+            "playback": {"initial_volume": 50, "seek_step": 10, "volume_step": 2},
             "system": {
                 "mocp_file_path": "mocp",
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
@@ -80,7 +85,7 @@ class TestLoadConfiguration:
     def test_button_map(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "buttons:\n  button_map:\n    playback:\n      B: previous\n      B_long: null\n",
+            "buttons:\n  button_map:\n    playback:\n      B: previous\n      B_hold: null\n",
         )
         button_map = load_configuration(path).buttons.button_map
         assert button_map["menu"] == DEFAULT_BUTTON_MAP["menu"]
@@ -89,7 +94,9 @@ class TestLoadConfiguration:
             "A_long": "open_menu",
             "B": "previous",
             "X": "volume_up",
+            "X_hold": "seek_forward",
             "Y": "volume_down",
+            "Y_hold": "seek_backward",
         }
 
     def test_default_file_is_read(self, home):
@@ -113,8 +120,9 @@ class TestLoadConfiguration:
         path = write_yaml(
             tmp_path,
             "buttons:\n"
-            "  hold_time: 2\n"
+            "  long_press_time: 2\n"
             "  origin: none\n"
+            "  repeat_hold_time: 0.5\n"
             "display:\n"
             "  font_file_path: ~/font.ttf\n"
             "  target: simulator\n"
@@ -123,18 +131,19 @@ class TestLoadConfiguration:
             "  directory_path: /srv/music\n"
             "playback:\n"
             "  initial_volume: 70\n"
+            "  seek_step: 30\n"
             "  volume_step: 10\n"
             "system:\n"
             "  mocp_file_path: /usr/bin/mocp\n"
             "  shutdown_command: [systemctl, poweroff]\n",
         )
         assert load_configuration(path) == Configuration(
-            buttons=ButtonsConfiguration(hold_time=2.0, origin="none"),
+            buttons=ButtonsConfiguration(long_press_time=2.0, origin="none", repeat_hold_time=0.5),
             display=DisplayConfiguration(
                 font_file_path=tmp_path / "font.ttf", target="simulator", tick=0.25
             ),
             library=LibraryConfiguration(directory_path=Path("/srv/music")),
-            playback=PlaybackConfiguration(initial_volume=70, volume_step=10),
+            playback=PlaybackConfiguration(initial_volume=70, seek_step=30, volume_step=10),
             system=SystemConfiguration(
                 mocp_file_path="/usr/bin/mocp",
                 shutdown_command=("systemctl", "poweroff"),
@@ -150,11 +159,13 @@ class TestLoadConfiguration:
         [
             ("buttons", "button_map", "A"),
             ("buttons", "button_map", {"menu": {"A": "rewind"}}),
-            ("buttons", "hold_time", 0),
-            ("buttons", "hold_time", "long"),
-            ("buttons", "hold_time", True),
+            ("buttons", "long_press_time", 0),
+            ("buttons", "long_press_time", "long"),
+            ("buttons", "long_press_time", True),
             ("buttons", "origin", "keyboard"),
             ("buttons", "origin", 5),
+            ("buttons", "repeat_hold_time", 0),
+            ("buttons", "repeat_hold_time", "fast"),
             ("display", "font_file_path", 5),
             ("display", "target", "hdmi"),
             ("display", "tick", -0.5),
@@ -163,6 +174,8 @@ class TestLoadConfiguration:
             ("playback", "initial_volume", 101),
             ("playback", "initial_volume", 50.5),
             ("playback", "initial_volume", True),
+            ("playback", "seek_step", 0),
+            ("playback", "seek_step", "far"),
             ("playback", "volume_step", 0),
             ("playback", "volume_step", 101),
             ("system", "mocp_file_path", ["mocp"]),
@@ -200,16 +213,16 @@ class TestLoadConfiguration:
     def test_overrides_are_merged_per_section(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "buttons:\n  hold_time: 2\nplayback:\n  initial_volume: 30\n  volume_step: 2\n",
+            "buttons:\n  long_press_time: 2\nplayback:\n  initial_volume: 30\n  volume_step: 3\n",
         )
         overrides = {
             "library": {"directory_path": Path("/other")},
             "playback": {"initial_volume": 40},
         }
         assert load_configuration(path, overrides) == Configuration(
-            buttons=ButtonsConfiguration(hold_time=2.0),
+            buttons=ButtonsConfiguration(long_press_time=2.0),
             library=LibraryConfiguration(directory_path=Path("/other")),
-            playback=PlaybackConfiguration(initial_volume=40, volume_step=2),
+            playback=PlaybackConfiguration(initial_volume=40, volume_step=3),
         )
 
     def test_partial_section(self, tmp_path):

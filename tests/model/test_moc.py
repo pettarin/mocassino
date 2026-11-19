@@ -159,6 +159,11 @@ class TestSubprocessMocClient:
         SubprocessMocClient().previous()
         assert commands(run) == [["mocp", "--previous"]]
 
+    @pytest.mark.parametrize("seconds", [-10, 10])
+    def test_seek(self, run, seconds):
+        SubprocessMocClient().seek(seconds)
+        assert commands(run) == [["mocp", f"--seek={seconds}"]]
+
     def test_server_not_running(self, run):
         run.return_value = completed(
             returncode=2,

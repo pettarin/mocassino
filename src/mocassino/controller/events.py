@@ -20,9 +20,24 @@ class Button(StrEnum):
     Y = "Y"
 
 
+class Press(StrEnum):
+    """The kinds of press of a button.
+
+    A button released early gives one short press.
+    A button held gives one long press, as soon as it has been held long enough,
+    and a hold press at the same time and then repeatedly, until it is released.
+
+    Defined before the button event, as the latter refers to it.
+    """
+
+    HOLD = "hold"
+    LONG = "long"
+    SHORT = "short"
+
+
 @dataclass(frozen=True)
 class ButtonEvent:
-    """A press of a button, either short or long (i.e., the button was held)."""
+    """A press of a button, of a given kind."""
 
     button: Button
-    long: bool = False
+    press: Press = Press.SHORT

@@ -12,7 +12,7 @@ from mocassino.controller.actions import (
     parse_button_map,
     resolve_button_map,
 )
-from mocassino.controller.events import Button, ButtonEvent
+from mocassino.controller.events import Button, ButtonEvent, Press
 from mocassino.model.state import Mode
 
 
@@ -24,13 +24,17 @@ class TestParseButtonMap:
             (Mode.MENU, ButtonEvent(Button.A)): Action.MENU_BACK,
             (Mode.MENU, ButtonEvent(Button.B)): Action.MENU_SELECT,
             (Mode.MENU, ButtonEvent(Button.X)): Action.MENU_UP,
+            (Mode.MENU, ButtonEvent(Button.X, Press.LONG)): Action.MENU_SELECT,
             (Mode.MENU, ButtonEvent(Button.Y)): Action.MENU_DOWN,
+            (Mode.MENU, ButtonEvent(Button.Y, Press.LONG)): Action.MENU_SELECT,
             (Mode.PLAYBACK, ButtonEvent(Button.A)): Action.PLAY_PAUSE,
-            (Mode.PLAYBACK, ButtonEvent(Button.A, long=True)): Action.OPEN_MENU,
+            (Mode.PLAYBACK, ButtonEvent(Button.A, Press.LONG)): Action.OPEN_MENU,
             (Mode.PLAYBACK, ButtonEvent(Button.B)): Action.NEXT,
-            (Mode.PLAYBACK, ButtonEvent(Button.B, long=True)): Action.PREVIOUS,
+            (Mode.PLAYBACK, ButtonEvent(Button.B, Press.HOLD)): Action.PREVIOUS,
             (Mode.PLAYBACK, ButtonEvent(Button.X)): Action.VOLUME_UP,
+            (Mode.PLAYBACK, ButtonEvent(Button.X, Press.HOLD)): Action.SEEK_FORWARD,
             (Mode.PLAYBACK, ButtonEvent(Button.Y)): Action.VOLUME_DOWN,
+            (Mode.PLAYBACK, ButtonEvent(Button.Y, Press.HOLD)): Action.SEEK_BACKWARD,
         }
 
     @pytest.mark.parametrize(
@@ -39,6 +43,8 @@ class TestParseButtonMap:
             {"settings": {"A": "next"}},
             {"menu": {"Q": "next"}},
             {"menu": {"A_short": "next"}},
+            {"menu": {"A_": "next"}},
+            {"menu": {"A_long_hold": "next"}},
             {"menu": {"A": "rewind"}},
         ],
     )
@@ -76,7 +82,7 @@ class TestResolveButtonMap:
 
     def test_overrides(self):
         resolved = resolve_button_map(
-            {"playback": {"B": "previous", "B_long": None, "X_long": "next", "Y_long": None}}
+            {"playback": {"B": "previous", "B_hold": None, "X_long": "next", "Y_hold": None}}
         )
         assert resolved["menu"] == DEFAULT_BUTTON_MAP["menu"]
         assert resolved["playback"] == {
@@ -84,6 +90,7 @@ class TestResolveButtonMap:
             "A_long": "open_menu",
             "B": "previous",
             "X": "volume_up",
+            "X_hold": "seek_forward",
             "X_long": "next",
             "Y": "volume_down",
         }

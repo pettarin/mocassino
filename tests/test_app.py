@@ -14,7 +14,7 @@ from mocassino.controller.actions import DEFAULT_BUTTON_MAP
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
 from mocassino.controller.controller import Controller
-from mocassino.controller.events import Button, ButtonEvent
+from mocassino.controller.events import Button, ButtonEvent, Press
 from mocassino.model.host import Host
 from mocassino.model.library import Library
 from mocassino.model.moc import (
@@ -59,7 +59,9 @@ def state():
 @pytest.fixture
 def app(mocker, tmp_path, state, moc, display, button_source):
     host = mocker.create_autospec(Host, instance=True)
-    controller = Controller(state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP, volume_step=5)
+    controller = Controller(
+        state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP, seek_step=10, volume_step=5
+    )
     return App(state, controller, moc, Renderer(), display, button_source, tick=TICK)
 
 
@@ -117,7 +119,7 @@ class TestApp:
     def test_step_handles_all_the_events(self, app, state, moc, display):
         for _ in range(3):
             app.events.put(ButtonEvent(Button.X))
-        app.events.put(ButtonEvent(Button.A, long=True))
+        app.events.put(ButtonEvent(Button.A, Press.LONG))
         app.step()
         assert state.volume == 55
         assert state.mode == Mode.MENU
@@ -183,7 +185,7 @@ class TestBuildApp:
         assert app.simulator is None
         assert app._state.volume == 30
         assert app._tick == 0.5
-        app.events.put(ButtonEvent(Button.A, long=True))
+        app.events.put(ButtonEvent(Button.A, Press.LONG))
         app._controller.handle(app.events.get())
         assert app._state.mode == Mode.MENU
 

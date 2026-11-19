@@ -156,7 +156,10 @@ def _build_button_source(
     """Build the button source selected by the configuration."""
     origin = configuration.buttons.origin
     if origin == "gpio":
-        return GpioButtonSource(hold_time=configuration.buttons.hold_time)
+        return GpioButtonSource(
+            long_press_time=configuration.buttons.long_press_time,
+            repeat_hold_time=configuration.buttons.repeat_hold_time,
+        )
     if origin == "simulator" and simulator is not None:
         return simulator
     return NullButtonSource()
@@ -182,7 +185,10 @@ def build_app(configuration: Configuration) -> App:
     """
     simulator: TkSimulator | None = None
     if "simulator" in (configuration.buttons.origin, configuration.display.target):
-        simulator = TkSimulator(hold_time=configuration.buttons.hold_time)
+        simulator = TkSimulator(
+            long_press_time=configuration.buttons.long_press_time,
+            repeat_hold_time=configuration.buttons.repeat_hold_time,
+        )
     host = Host(shutdown_command=configuration.system.shutdown_command)
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
@@ -193,6 +199,7 @@ def build_app(configuration: Configuration) -> App:
         library,
         host,
         button_map=configuration.buttons.button_map,
+        seek_step=configuration.playback.seek_step,
         volume_step=configuration.playback.volume_step,
     )
     return App(

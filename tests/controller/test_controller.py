@@ -10,7 +10,7 @@ import pytest
 
 from mocassino.controller.actions import DEFAULT_BUTTON_MAP, resolve_button_map
 from mocassino.controller.controller import Controller
-from mocassino.controller.events import Button, ButtonEvent
+from mocassino.controller.events import Button, ButtonEvent, Press
 from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
 from mocassino.model.menu import Menu, MenuCommand, MenuItem
@@ -24,12 +24,16 @@ from mocassino.model.moc import (
 from mocassino.model.state import AppState, Mode
 
 A = ButtonEvent(Button.A)
-A_LONG = ButtonEvent(Button.A, long=True)
+A_LONG = ButtonEvent(Button.A, Press.LONG)
 B = ButtonEvent(Button.B)
-B_LONG = ButtonEvent(Button.B, long=True)
+B_HOLD = ButtonEvent(Button.B, Press.HOLD)
+B_LONG = ButtonEvent(Button.B, Press.LONG)
 X = ButtonEvent(Button.X)
-X_LONG = ButtonEvent(Button.X, long=True)
+X_HOLD = ButtonEvent(Button.X, Press.HOLD)
+X_LONG = ButtonEvent(Button.X, Press.LONG)
 Y = ButtonEvent(Button.Y)
+Y_HOLD = ButtonEvent(Button.Y, Press.HOLD)
+Y_LONG = ButtonEvent(Button.Y, Press.LONG)
 
 
 @pytest.fixture
@@ -61,7 +65,7 @@ def state():
 
 @pytest.fixture
 def controller(state, moc, library, host):
-    return Controller(state, moc, library, host, DEFAULT_BUTTON_MAP, volume_step=5)
+    return Controller(state, moc, library, host, DEFAULT_BUTTON_MAP, seek_step=10, volume_step=5)
 
 
 def open_single_item_menu(state, item) -> None:
@@ -75,7 +79,7 @@ class TestController:
 
     def test_custom_button_map(self, state, moc, library, host):
         button_map = {"playback": {"X_long": "next"}}
-        controller = Controller(state, moc, library, host, button_map, volume_step=5)
+        controller = Controller(state, moc, library, host, button_map, seek_step=10, volume_step=5)
         controller.handle(X_LONG)
         moc.next.assert_called_once_with()
         controller.handle(A)
@@ -90,11 +94,13 @@ class TestController:
 
     def test_invalid_button_map(self, state, moc, library, host):
         with pytest.raises(ValueError, match="is not a valid"):
-            Controller(state, moc, library, host, {"menu": {"A": "rewind"}}, volume_step=5)
+            Controller(
+                state, moc, library, host, {"menu": {"A": "rewind"}}, seek_step=10, volume_step=5
+            )
 
     def test_menu_actions_without_menu(self, state, moc, library, host):
         button_map = {"playback": {"A": "menu_select", "B": "menu_back", "X": "menu_up"}}
-        controller = Controller(state, moc, library, host, button_map, volume_step=5)
+        controller = Controller(state, moc, library, host, button_map, seek_step=10, volume_step=5)
         for event in (A, B, X):
             controller.handle(event)
         assert state.mode == Mode.PLAYBACK
@@ -123,6 +129,12 @@ class TestController:
         open_single_item_menu(state, MenuItem(label="Cancel", command=MenuCommand.BACK))
         controller.handle(B)
         assert state.current_menu.title == "Below"
+
+    @pytest.mark.parametrize("event", [B, X_LONG, Y_LONG])
+    def test_menu_select_buttons(self, controller, state, event):
+        controller.handle(A_LONG)
+        controller.handle(event)
+        assert [menu.title for menu in state.menus] == ["Menu", "Library"]
 
     def test_menu_select_close(self, controller, state):
         open_single_item_menu(state, MenuItem(label="Close", command=MenuCommand.CLOSE))
@@ -202,7 +214,7 @@ class TestController:
 
     def test_open_menu_replaces_the_open_menus(self, state, moc, library, host):
         button_map = resolve_button_map({"menu": {"A_long": "open_menu"}})
-        controller = Controller(state, moc, library, host, button_map, volume_step=5)
+        controller = Controller(state, moc, library, host, button_map, seek_step=10, volume_step=5)
         controller.handle(A_LONG)
         controller.handle(B)
         controller.handle(A_LONG)
@@ -220,13 +232,26 @@ class TestController:
         moc.toggle_pause.assert_not_called()
 
     def test_previous(self, controller, moc):
-        controller.handle(B_LONG)
+        controller.handle(B_HOLD)
         moc.previous.assert_called_once_with()
 
+    def test_seek(self, controller, moc):
+        controller.handle(X_HOLD)
+        moc.seek.assert_called_once_with(10)
+        controller.handle(Y_HOLD)
+        moc.seek.assert_called_with(-10)
+
+    def test_seek_repeats_while_held(self, controller, moc):
+        for event in (Y_LONG, Y_HOLD, Y_HOLD, Y_HOLD):
+            controller.handle(event)
+        assert [call.args for call in moc.seek.call_args_list] == [(-10,), (-10,), (-10,)]
+        assert len(moc.mock_calls) == 3
+
     def test_unmapped_event(self, controller, state, moc):
-        controller.handle(X_LONG)
+        state.open_menu(Menu(title="Empty", items=()))
+        controller.handle(B_LONG)
         assert moc.mock_calls == []
-        assert state.mode == Mode.PLAYBACK
+        assert state.current_menu.title == "Empty"
 
     def test_volume(self, controller, state, moc):
         controller.handle(X)

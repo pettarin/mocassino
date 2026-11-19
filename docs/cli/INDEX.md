@@ -112,9 +112,9 @@ $ mocassino run --foreground --simulator --library-directory-path ~/music
 In the simulator window:
 
 - click a button for a short press,
-  or keep it pressed for a long press;
+  or keep it pressed for a long press and for the hold presses, which repeat until it is released;
 - alternatively, type `a`, `b`, `x`, or `y` for a short press,
-  and `A`, `B`, `X`, or `Y` for a long press;
+  and `A`, `B`, `X`, or `Y` for a long press together with a single hold press;
 - close the window to stop the service.
 
 The simulator requires Tk (the `tkinter` module of the Python standard library),
@@ -159,16 +159,21 @@ buttons:
       A: menu_back
       B: menu_select
       X: menu_up
+      X_long: menu_select
       Y: menu_down
+      Y_long: menu_select
     playback:
       A: play_pause
       A_long: open_menu
       B: next
-      B_long: previous
+      B_hold: previous
       X: volume_up
+      X_hold: seek_forward
       Y: volume_down
-  hold_time: 1.0
+      Y_hold: seek_backward
+  long_press_time: 0.6
   origin: gpio
+  repeat_hold_time: 0.3
 display:
   font_file_path: null
   target: st7789
@@ -177,7 +182,8 @@ library:
   directory_path: /music
 playback:
   initial_volume: 50
-  volume_step: 5
+  seek_step: 10
+  volume_step: 2
 system:
   mocp_file_path: mocp
   shutdown_command:
@@ -203,14 +209,16 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | Key | Default | Meaning |
 |---|---|---|
 | `buttons.button_map` | see below | The action of each button, in each mode |
-| `buttons.hold_time` | `1.0` | How long a button must be held for a long press, in seconds |
+| `buttons.long_press_time` | `0.6` | How long a button must be held for a long press, in seconds |
 | `buttons.origin` | `gpio` | Where the button events come from: `gpio`, `none`, or `simulator` |
+| `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
 | `display.target` | `st7789` | Where the screen is drawn: `none`, `simulator`, or `st7789` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
 | `playback.initial_volume` | `50` | The volume set when the service starts, between 0 and 100 |
-| `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100 |
+| `playback.seek_step` | `10` | The amount of each seek, in seconds |
+| `playback.volume_step` | `2` | The amount of each volume change, between 1 and 100 |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list |
 
@@ -243,8 +251,16 @@ playback:
 
 The four buttons of the Pirate Audio hat are
 `A` (top-left), `B` (bottom-left), `X` (top-right), and `Y` (bottom-right).
-Each of them can be pressed shortly or held:
-in the button map, the long presses have the `_long` suffix (e.g., `A_long`).
+Each of them can be pressed shortly or held, which gives three kinds of press:
+
+| Press | Key in the button map | When it happens |
+|---|---|---|
+| Short | `A` | When the button is released before `buttons.long_press_time` |
+| Long | `A_long` | Once, as soon as the button has been held for `buttons.long_press_time` |
+| Hold | `A_hold` | Together with the long press, and then again every `buttons.repeat_hold_time`, until the button is released |
+
+Use the long press for the actions that must happen once (e.g., opening the menu),
+and the hold press for those that must go on while the button is held (e.g., seeking).
 
 The default button map is:
 
@@ -253,9 +269,13 @@ The default button map is:
 | `A` | `play_pause` | `menu_back` |
 | `A_long` | `open_menu` | |
 | `B` | `next` | `menu_select` |
-| `B_long` | `previous` | |
+| `B_hold` | `previous` | |
 | `X` | `volume_up` | `menu_up` |
+| `X_hold` | `seek_forward` | |
+| `X_long` | | `menu_select` |
 | `Y` | `volume_down` | `menu_down` |
+| `Y_hold` | `seek_backward` | |
+| `Y_long` | | `menu_select` |
 
 The actions are:
 
@@ -269,6 +289,8 @@ The actions are:
 | `open_menu` | Show the top level menu |
 | `play_pause` | Toggle between playing and paused; if stopped, play the playlist |
 | `previous` | Play the previous track |
+| `seek_backward` | Seek backward in the current track, by `playback.seek_step` seconds |
+| `seek_forward` | Seek forward in the current track, by `playback.seek_step` seconds |
 | `volume_down` | Turn the volume down |
 | `volume_up` | Turn the volume up |
 
@@ -280,13 +302,12 @@ buttons:
   button_map:
     playback:
       B: previous
-      B_long: null
+      B_hold: null
       X_long: next
 ```
 
-> [!NOTE]
-> A short press is reported when the button is released,
-> and a long press as soon as the button has been held for `buttons.hold_time`.
+With the default values, holding `X` in playback mode seeks 10 seconds forward
+after 0.6 seconds, and then 10 more seconds every 0.3 seconds, until `X` is released.
 
 
 ## Menus

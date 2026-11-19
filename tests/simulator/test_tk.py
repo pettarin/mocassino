@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import pytest
 from PIL import Image
 
-from mocassino.controller.events import Button, ButtonEvent
+from mocassino.controller.events import Button, ButtonEvent, Press
 from mocassino.simulator.tk import (
     BUTTON_CELLS,
     HINT,
@@ -24,7 +24,8 @@ from mocassino.simulator.tk import (
 )
 from mocassino.view.display.base import HEIGHT, WIDTH
 
-HOLD_TIME = 0.5
+LONG_PRESS_TIME = 0.5
+REPEAT_HOLD_TIME = 0.2
 
 
 def key(character: str) -> SimpleNamespace:
@@ -63,7 +64,7 @@ def on_window_closed(mocker):
 @pytest.fixture
 def simulator(tk, events, on_window_closed):
     """A simulator whose window has been created, and whose source has been started."""
-    simulator = TkSimulator(hold_time=HOLD_TIME)
+    simulator = TkSimulator(long_press_time=LONG_PRESS_TIME, repeat_hold_time=REPEAT_HOLD_TIME)
     simulator.start(events)
     simulator.run(on_window_closed)
     return simulator
@@ -106,7 +107,7 @@ class TestTkSimulator:
         assert tk.root.after.call_count == calls
 
     def test_events_before_start_are_dropped(self, tk, on_window_closed):
-        simulator = TkSimulator(hold_time=HOLD_TIME)
+        simulator = TkSimulator(long_press_time=LONG_PRESS_TIME, repeat_hold_time=REPEAT_HOLD_TIME)
         simulator.run(on_window_closed)
         simulator._on_key(key("a"))
 
@@ -117,13 +118,21 @@ class TestTkSimulator:
             ("b", ButtonEvent(Button.B)),
             ("x", ButtonEvent(Button.X)),
             ("y", ButtonEvent(Button.Y)),
-            ("A", ButtonEvent(Button.A, long=True)),
-            ("Y", ButtonEvent(Button.Y, long=True)),
         ],
     )
     def test_key(self, simulator, events, character, event):
         simulator._on_key(key(character))
         assert events.get_nowait() == event
+        assert events.empty()
+
+    @pytest.mark.parametrize(("character", "button"), [("A", Button.A), ("Y", Button.Y)])
+    def test_key_uppercase(self, simulator, tk, events, character, button):
+        calls = tk.root.after.call_count
+        simulator._on_key(key(character))
+        assert events.get_nowait() == ButtonEvent(button, Press.LONG)
+        assert events.get_nowait() == ButtonEvent(button, Press.HOLD)
+        assert events.empty()
+        assert tk.root.after.call_count == calls
 
     @pytest.mark.parametrize("character", ["", "q", "1", " "])
     def test_key_of_no_button(self, simulator, events, character):
@@ -134,13 +143,28 @@ class TestTkSimulator:
         simulator._on_press(Button.B)
         _, on_held = tk.root.after.call_args.args
         on_held()
-        assert events.get_nowait() == ButtonEvent(Button.B, long=True)
+        assert events.get_nowait() == ButtonEvent(Button.B, Press.LONG)
+        assert events.get_nowait() == ButtonEvent(Button.B, Press.HOLD)
         simulator._on_release(Button.B)
         assert events.empty()
-        tk.root.after_cancel.assert_not_called()
         simulator._on_press(Button.B)
         simulator._on_release(Button.B)
         assert events.get_nowait() == ButtonEvent(Button.B)
+
+    def test_long_click_repeats_while_pressed(self, simulator, tk, events):
+        simulator._on_press(Button.X)
+        _, on_held = tk.root.after.call_args.args
+        on_held()
+        for _ in range(3):
+            delay, on_repeat = tk.root.after.call_args.args
+            assert delay == 200
+            on_repeat()
+        presses = [events.get_nowait().press for _ in range(5)]
+        assert presses == [Press.LONG, Press.HOLD, Press.HOLD, Press.HOLD, Press.HOLD]
+        timer = tk.root.after.call_args.args
+        simulator._on_release(Button.X)
+        tk.root.after_cancel.assert_called_once_with(timer)
+        assert events.empty()
 
     def test_poll_shows_the_latest_frame(self, simulator, tk):
         first = Image.new("RGB", (WIDTH, HEIGHT), (255, 0, 0))

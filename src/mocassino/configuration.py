@@ -30,8 +30,9 @@ class ButtonsConfiguration:
     """
 
     button_map: dict[str, dict[str, str]] = field(default_factory=lambda: resolve_button_map({}))
-    hold_time: float = 1.0
+    long_press_time: float = 0.6
     origin: str = "gpio"
+    repeat_hold_time: float = 0.3
 
 
 class ConfigurationError(Exception):
@@ -59,7 +60,8 @@ class PlaybackConfiguration:
     """The settings of the playback."""
 
     initial_volume: int = 50
-    volume_step: int = 5
+    seek_step: int = 10
+    volume_step: int = 2
 
 
 @dataclass(frozen=True)
@@ -104,12 +106,17 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
     coercers: dict[str, dict[str, Callable[[Any], Any]]] = {
         "buttons": {
             "button_map": resolve_button_map,
-            "hold_time": _to_float,
+            "long_press_time": _to_float,
             "origin": _to_str,
+            "repeat_hold_time": _to_float,
         },
         "display": {"font_file_path": _to_path, "target": _to_str, "tick": _to_float},
         "library": {"directory_path": _to_path},
-        "playback": {"initial_volume": _to_int, "volume_step": _to_int},
+        "playback": {
+            "initial_volume": _to_int,
+            "seek_step": _to_int,
+            "volume_step": _to_int,
+        },
         "system": {"mocp_file_path": _to_str, "shutdown_command": _to_command},
     }
     merged: dict[str, dict[str, Any]] = {section: {} for section in coercers}
@@ -144,10 +151,17 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         system=SystemConfiguration(**merged["system"]),
     )
     checks: dict[str, tuple[object, bool]] = {
-        "buttons.hold_time": (configuration.buttons.hold_time, configuration.buttons.hold_time > 0),
+        "buttons.long_press_time": (
+            configuration.buttons.long_press_time,
+            configuration.buttons.long_press_time > 0,
+        ),
         "buttons.origin": (
             configuration.buttons.origin,
             configuration.buttons.origin in BUTTONS_ORIGINS,
+        ),
+        "buttons.repeat_hold_time": (
+            configuration.buttons.repeat_hold_time,
+            configuration.buttons.repeat_hold_time > 0,
         ),
         "display.target": (
             configuration.display.target,
@@ -157,6 +171,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "playback.initial_volume": (
             configuration.playback.initial_volume,
             0 <= configuration.playback.initial_volume <= 100,
+        ),
+        "playback.seek_step": (
+            configuration.playback.seek_step,
+            configuration.playback.seek_step >= 1,
         ),
         "playback.volume_step": (
             configuration.playback.volume_step,

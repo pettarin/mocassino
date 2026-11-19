@@ -19,7 +19,8 @@ which it controls by running `mocp` commands.
 ## Features
 
 - Playback control with the buttons of the hat:
-  play/pause, next track, previous track, volume up, volume down
+  play/pause, next track, previous track, seek backward and forward,
+  volume up, volume down
 - Playback information on the display of the hat:
   artist, title, and album of the current track,
   playback progress, and volume
@@ -130,8 +131,8 @@ By default they perform the following actions:
 |---|---|---|
 | `A` | Play/pause; hold: open the menu | Back, up one level |
 | `B` | Next track; hold: previous track | Select |
-| `X` | Volume up | Up |
-| `Y` | Volume down | Down |
+| `X` | Volume up; hold: seek forward | Up; hold: select |
+| `Y` | Volume down; hold: seek backward | Down; hold: select |
 
 The permanent settings, including the action of each button,
 can be stored in the `~/.config/mocassino/configuration.yaml` file:

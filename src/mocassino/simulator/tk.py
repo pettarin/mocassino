@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 from PIL import Image
 
-from mocassino.controller.events import Button, ButtonEvent
+from mocassino.controller.events import Button, ButtonEvent, Press
 from mocassino.view.display.base import HEIGHT, WIDTH
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ BUTTON_CELLS: dict[Button, tuple[int, int]] = {
     Button.Y: (1, 2),
 }
 HINT: str = (
-    "Click a button, or keep it pressed for a long press.\n"
+    "Click a button, or keep it pressed for a long press, repeated while pressed.\n"
     "Keys: a b x y for a short press, A B X Y for a long press."
 )
 PADDING: int = 8
@@ -48,18 +48,20 @@ class TkSimulator:
     the run method must be called from the main thread.
     """
 
-    def __init__(self, hold_time: float) -> None:
+    def __init__(self, long_press_time: float, repeat_hold_time: float) -> None:
         """Initialize the simulator; the window is created when it is run.
 
-        :param hold_time: how long a button must be pressed for a long press, in seconds
+        :param long_press_time: how long a button must be pressed for a long press, in seconds
+        :param repeat_hold_time: how often the hold press of a pressed button repeats, in seconds
         """
         self._closed = threading.Event()
         self._events: Queue[ButtonEvent] | None = None
         self._frames: Queue[Image.Image] = Queue()
         self._held: set[Button] = set()
-        self._hold_time = hold_time
+        self._long_press_time = long_press_time
         self._image_tk: Any = None
         self._photo: Any = None
+        self._repeat_hold_time = repeat_hold_time
         self._root: Any = None
         self._screen: Any = None
         self._timers: dict[Button, Any] = {}
@@ -70,30 +72,47 @@ class TkSimulator:
             self._events.put(event)
 
     def _on_held(self, button: Button) -> None:
-        """Report a long press: the button has been pressed for long enough."""
+        """Report a long press and a hold press, and start repeating the latter."""
         self._held.add(button)
-        self._emit(ButtonEvent(button, long=True))
+        self._emit(ButtonEvent(button, Press.LONG))
+        self._on_repeat(button)
 
     def _on_key(self, tk_event: tkinter.Event[tkinter.Misc]) -> None:
-        """Report the press of the button named by a key: short if lowercase, long if not."""
+        """Report the press of the button named by a key.
+
+        A lowercase key is a short press;
+        an uppercase key is a button held just long enough: a long press and a hold press.
+        """
         character = str(tk_event.char)
         if character and character.upper() in list(Button):
-            self._emit(ButtonEvent(Button(character.upper()), long=character.isupper()))
+            button = Button(character.upper())
+            if character.isupper():
+                self._emit(ButtonEvent(button, Press.LONG))
+                self._emit(ButtonEvent(button, Press.HOLD))
+            else:
+                self._emit(ButtonEvent(button))
 
     def _on_press(self, button: Button, tk_event: object = None) -> None:
         """Start timing the press of a button of the window."""
         if button not in self._timers:
-            delay = int(self._hold_time * 1000)
+            delay = int(self._long_press_time * 1000)
             self._timers[button] = self._root.after(delay, partial(self._on_held, button))
 
     def _on_release(self, button: Button, tk_event: object = None) -> None:
-        """Report a short press, unless the release ends a long press already reported."""
+        """Report a short press, unless the button was held: then, stop repeating."""
         timer = self._timers.pop(button, None)
+        if timer is not None:
+            self._root.after_cancel(timer)
         if button in self._held:
             self._held.discard(button)
         elif timer is not None:
-            self._root.after_cancel(timer)
             self._emit(ButtonEvent(button))
+
+    def _on_repeat(self, button: Button) -> None:
+        """Report a hold press, and schedule the next one."""
+        self._emit(ButtonEvent(button, Press.HOLD))
+        delay = int(self._repeat_hold_time * 1000)
+        self._timers[button] = self._root.after(delay, partial(self._on_repeat, button))
 
     def _poll(self) -> None:
         """Show the latest frame received, if any, and close the window when asked to."""

@@ -36,6 +36,9 @@ class MocClient(Protocol):
     def previous(self) -> None:
         """Play the previous track of the playlist."""
 
+    def seek(self, seconds: int) -> None:
+        """Seek by the given number of seconds: forward if positive, backward if negative."""
+
     def set_volume(self, level: int) -> None:
         """Set the volume to the given level, between 0 and 100."""
 
@@ -141,6 +144,10 @@ class SubprocessMocClient:
     def previous(self) -> None:
         """Play the previous track of the playlist."""
         self._run("--previous")
+
+    def seek(self, seconds: int) -> None:
+        """Seek by the given number of seconds: forward if positive, backward if negative."""
+        self._run(f"--seek={seconds}")
 
     def set_volume(self, level: int) -> None:
         """Set the volume to the given level, between 0 and 100."""

@@ -28,11 +28,13 @@ class Controller:
         library: Library,
         host: Host,
         button_map: Mapping[str, Mapping[str, str]],
+        seek_step: int,
         volume_step: int,
     ) -> None:
         """Initialize the controller.
 
         :param button_map: the button map, in plain form
+        :param seek_step: the amount of each seek, in seconds
         :param volume_step: the amount of each volume change
         :raises ValueError: if the button map is not valid
         """
@@ -46,12 +48,15 @@ class Controller:
             Action.OPEN_MENU: self._open_menu,
             Action.PLAY_PAUSE: self._play_pause,
             Action.PREVIOUS: self._previous,
+            Action.SEEK_BACKWARD: self._seek_backward,
+            Action.SEEK_FORWARD: self._seek_forward,
             Action.VOLUME_DOWN: self._volume_down,
             Action.VOLUME_UP: self._volume_up,
         }
         self._host = host
         self._library = library
         self._moc = moc
+        self._seek_step = seek_step
         self._state = state
         self._volume_step = volume_step
 
@@ -115,6 +120,14 @@ class Controller:
     def _previous(self) -> None:
         """Play the previous track."""
         self._moc.previous()
+
+    def _seek_backward(self) -> None:
+        """Seek backward in the current track."""
+        self._moc.seek(-self._seek_step)
+
+    def _seek_forward(self) -> None:
+        """Seek forward in the current track."""
+        self._moc.seek(self._seek_step)
 
     def _volume_down(self) -> None:
         """Turn the volume down."""
