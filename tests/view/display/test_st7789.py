@@ -17,16 +17,29 @@ def device_class(mocker):
     return mocker.patch("st7789.ST7789")
 
 
+@pytest.fixture
+def display(device_class):
+    """A display, with the calls made to the device while initializing it forgotten."""
+    display = St7789Display()
+    device_class.return_value.reset_mock()
+    return display
+
+
+def assert_black(image):
+    """Assert that the image is a black frame."""
+    assert image.mode == "RGB"
+    assert image.size == (WIDTH, HEIGHT)
+    assert image.getextrema() == ((0, 0), (0, 0), (0, 0))
+
+
 class TestSt7789Display:
     """Tests for the St7789Display class"""
 
-    def test_close(self, device_class):
-        St7789Display().close()
+    def test_close(self, device_class, display):
+        display.close()
         device = device_class.return_value
-        image = device.display.call_args.args[0]
-        assert image.mode == "RGB"
-        assert image.size == (WIDTH, HEIGHT)
-        assert image.getextrema() == ((0, 0), (0, 0), (0, 0))
+        device.display.assert_called_once()
+        assert_black(device.display.call_args.args[0])
         device.command.assert_called_once_with(0x28)
         device.set_backlight.assert_called_once_with(0)
         names = [call[0] for call in device.method_calls]
@@ -42,21 +55,24 @@ class TestSt7789Display:
             rotation=90,
             spi_speed_hz=80_000_000,
         )
+        device = device_class.return_value
+        device.display.assert_called_once()
+        assert_black(device.display.call_args.args[0])
+        assert [call[0] for call in device.method_calls] == ["display"]
 
-    def test_show(self, device_class):
+    def test_show(self, device_class, display):
         image = Image.new("RGB", (WIDTH, HEIGHT))
-        St7789Display().show(image)
+        display.show(image)
         device_class.return_value.display.assert_called_once_with(image)
 
-    def test_turn_off(self, device_class):
-        St7789Display().turn_off()
+    def test_turn_off(self, device_class, display):
+        display.turn_off()
         device = device_class.return_value
         device.command.assert_called_once_with(0x28)
         device.set_backlight.assert_called_once_with(0)
         device.display.assert_not_called()
 
-    def test_turn_on(self, device_class):
-        display = St7789Display()
+    def test_turn_on(self, device_class, display):
         display.turn_off()
         display.turn_on()
         device = device_class.return_value

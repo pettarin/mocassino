@@ -341,6 +341,8 @@ def build_app(
             long_press_time=configuration.buttons.long_press_time,
             repeat_hold_time=configuration.buttons.repeat_hold_time,
         )
+    # First, as building the display blanks it, hiding what it shows after the boot
+    display = _build_display(configuration, simulator)
     host = Host(shutdown_command=configuration.system.shutdown_command)
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
@@ -364,7 +366,6 @@ def build_app(
         ),
         volume=volume,
     )
-    display = _build_display(configuration, simulator)
     controller = Controller(
         state,
         moc,

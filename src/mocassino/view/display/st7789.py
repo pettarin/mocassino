@@ -23,10 +23,12 @@ class St7789Display:
     """The LCD of the Pirate Audio hat."""
 
     def __init__(self) -> None:
-        """Initialize the display.
+        """Initialize the display, and blank the screen.
 
         The st7789 library is imported here, so that it is only needed
         (together with the hardware) when this display is actually used.
+        The screen is blanked at once, as after the host boots up the panel
+        shows random pixels until the first frame is drawn.
         """
         from st7789 import ST7789
 
@@ -38,10 +40,15 @@ class St7789Display:
             rotation=ROTATION,
             spi_speed_hz=SPI_SPEED_HZ,
         )
+        self._blank()
+
+    def _blank(self) -> None:
+        """Show a black frame."""
+        self._device.display(Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0)))
 
     def close(self) -> None:
         """Blank the screen and turn the display off."""
-        self._device.display(Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0)))
+        self._blank()
         self.turn_off()
 
     def show(self, image: Image.Image) -> None:
