@@ -28,25 +28,20 @@ BACKGROUND_COLOR: Color = (0, 0, 0)
 # In playback mode, a band on each side of the frame is reserved to the icons of the buttons,
 # when they are shown: the content is then drawn between CONTENT_LEFT and CONTENT_RIGHT
 BAND_WIDTH: int = 20
-# The height of the buttons beside the display: A and X at the top, B and Y at the bottom
-BUTTON_ICONS_BOTTOM_Y: int = 180
-BUTTON_ICONS_TOP_Y: int = 60
 CONTENT_LEFT: int = BAND_WIDTH + 4
 CONTENT_RIGHT: int = WIDTH - BAND_WIDTH - 4
 DIM_COLOR: Color = (140, 140, 140)
 ELLIPSIS: str = "..."
+# The space around the icons of the buttons, and between them
+ICON_BORDER: int = 2
 MARGIN: int = 10
 MENU_ROW_HEIGHT: int = 34
 MENU_TITLE_HEIGHT: int = 36
 MENU_VISIBLE_ROWS: int = 6
 SCROLLBAR_WIDTH: int = 4
-STATE_LABELS: dict[MocState, str] = {
-    MocState.PAUSE: "Paused",
-    MocState.PLAY: "Playing",
-    MocState.STOP: "Stopped",
-}
 TEXT_COLOR: Color = (255, 255, 255)
 TRACK_COLOR: Color = (60, 60, 60)
+VOLUME_BAR_WIDTH: int = 8
 
 
 class Renderer:
@@ -83,23 +78,28 @@ class Renderer:
     def _draw_button_icons(self, draw: ImageDraw.ImageDraw) -> None:
         """Draw the icons of the playback actions of the buttons, in the bands at the sides.
 
-        Each button has the icon of its short press, and below it the icon of its long press
-        or, if it has none, of its hold press. Actions without an icon leave their place empty.
+        The icons of A and X are at the top of the bands, those of B and Y at the bottom.
+        Each button has two icons: at the very top or bottom, that of its long press or,
+        if it has none, of its hold press; next to it, towards the middle, that of its
+        short press. Actions without an icon leave their place empty.
         """
+        step = ICON_SIZE + ICON_BORDER
         for button in Button:
-            left = (BAND_WIDTH - ICON_SIZE) // 2
+            left = ICON_BORDER
             if button in (Button.X, Button.Y):
                 left += WIDTH - BAND_WIDTH
-            middle = BUTTON_ICONS_TOP_Y if button in (Button.A, Button.X) else BUTTON_ICONS_BOTTOM_Y
+            outer, inner = ICON_BORDER, ICON_BORDER + step
+            if button in (Button.B, Button.Y):
+                outer, inner = HEIGHT - step, HEIGHT - 2 * step
             actions = [
                 self._button_map.get((Mode.PLAYBACK, ButtonEvent(button, press))) for press in Press
             ]
             hold, long, short = actions
             held = hold if long is None else long
             if short is not None:
-                draw_icon(draw, short, left, middle - 1 - ICON_SIZE, DIM_COLOR)
+                draw_icon(draw, short, left, inner, DIM_COLOR)
             if held is not None:
-                draw_icon(draw, held, left, middle + 1, DIM_COLOR)
+                draw_icon(draw, held, left, outer, DIM_COLOR)
 
     def _draw_menu(self, draw: ImageDraw.ImageDraw, menu: Menu) -> None:
         """Draw a menu: its title, the items around the selected one, and a scrollbar."""
@@ -145,22 +145,21 @@ class Renderer:
             draw.rectangle((left, thumb_top, WIDTH - 1, thumb_bottom), fill=DIM_COLOR)
 
     def _draw_playback(self, draw: ImageDraw.ImageDraw, state: AppState) -> None:
-        """Draw the playback: the state, the track, its progress, the volume, and the icons."""
+        """Draw the playback: the state, the track, its progress, the volume, and the icons.
+
+        The track takes the top: the artist, the title on up to four lines, and the album.
+        At the bottom, the icon of the state followed by the progress bar, with the times.
+        The icons of the buttons and the volume bar, at the sides, are drawn only if shown.
+        """
         status = state.status
         small_font = self._font(16)
         left, right = MARGIN, WIDTH - MARGIN
         if state.settings.show_side_icons:
             left, right = CONTENT_LEFT, CONTENT_RIGHT
             self._draw_button_icons(draw)
+            self._draw_volume_bar(draw, state.volume)
+        bar_left = left + ICON_SIZE + 8
         width = right - left
-        self._draw_state_icon(draw, status.state, left)
-        draw.text(
-            (left + 26, 18),
-            STATE_LABELS[status.state],
-            anchor="lm",
-            fill=DIM_COLOR,
-            font=small_font,
-        )
         if status.state is MocState.STOP:
             draw.text(
                 (WIDTH // 2, 110),
@@ -174,16 +173,16 @@ class Renderer:
             title_font = self._font(26)
             album_font = self._font(18)
             draw.text(
-                (left, 40),
+                (left, 10),
                 self._fit(status.artist, artist_font, width),
                 fill=DIM_COLOR,
                 font=artist_font,
             )
             title = status.title or Path(status.file_path).stem
-            for index, line in enumerate(self._wrap(title, title_font, width, 2)):
-                draw.text((left, 68 + 30 * index), line, fill=TEXT_COLOR, font=title_font)
+            for index, line in enumerate(self._wrap(title, title_font, width, 4)):
+                draw.text((left, 38 + 30 * index), line, fill=TEXT_COLOR, font=title_font)
             draw.text(
-                (left, 134),
+                (left, 164),
                 self._fit(status.album, album_font, width),
                 fill=DIM_COLOR,
                 font=album_font,
@@ -191,35 +190,28 @@ class Renderer:
             total = status.total_seconds
             self._draw_bar(
                 draw,
-                (left, 168, right - 1, 175),
+                (bar_left, 200, right - 1, 207),
                 status.current_seconds / total if total else 0.0,
             )
             draw.text(
-                (left, 180),
+                (bar_left, 212),
                 _format_seconds(status.current_seconds),
                 fill=TEXT_COLOR,
                 font=small_font,
             )
             if total is not None:
                 draw.text(
-                    (right, 180),
+                    (right, 212),
                     _format_seconds(total),
                     anchor="ra",
                     fill=TEXT_COLOR,
                     font=small_font,
                 )
-        draw.text(
-            (left, 220),
-            f"Vol {state.volume}",
-            anchor="lm",
-            fill=DIM_COLOR,
-            font=small_font,
-        )
-        self._draw_bar(draw, (left + 70, 216, right - 1, 223), state.volume / 100)
+        self._draw_state_icon(draw, status.state, left)
 
     def _draw_state_icon(self, draw: ImageDraw.ImageDraw, state: MocState, left: int) -> None:
         """Draw the icon of the playback state: a triangle, two bars, or a square."""
-        box = (left, 10, left + 16, 26)
+        box = (left, 196, left + ICON_SIZE, 196 + ICON_SIZE)
         left, top, right, bottom = box
         if state is MocState.PLAY:
             draw.polygon(
@@ -231,6 +223,21 @@ class Renderer:
             draw.rectangle((right - 5, top, right, bottom), fill=ACCENT_COLOR)
         else:
             draw.rectangle(box, fill=ACCENT_COLOR)
+
+    def _draw_volume_bar(self, draw: ImageDraw.ImageDraw, volume: int) -> None:
+        """Draw the volume as a vertical bar in the band on the right, filled from the bottom.
+
+        The bar is between the icons of X (which by default turns the volume up)
+        and those of Y (which by default turns it down).
+        """
+        reserved = 2 * (ICON_SIZE + ICON_BORDER) + 2 * ICON_BORDER
+        top, bottom = reserved, HEIGHT - reserved - 1
+        right = WIDTH - (BAND_WIDTH - VOLUME_BAR_WIDTH) // 2 - 1
+        left = right - VOLUME_BAR_WIDTH + 1
+        draw.rectangle((left, top, right, bottom), fill=TRACK_COLOR)
+        filled = round((bottom - top) * max(0.0, min(1.0, volume / 100)))
+        if filled > 0:
+            draw.rectangle((left, bottom - filled, right, bottom), fill=ACCENT_COLOR)
 
     def _fit(self, text: str, font: Font, max_width: int) -> str:
         """Return the text, truncated with an ellipsis if wider than the given width."""

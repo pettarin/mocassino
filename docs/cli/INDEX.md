@@ -320,14 +320,20 @@ after 0.6 seconds, and then 10 more seconds every 0.3 seconds, until `X` is rele
 ### Button Icons
 
 In playback mode, a band of 20 pixels on each side of the screen
-shows the icons of the actions of the buttons, next to the buttons themselves:
-for each button, the icon of its short press and, below it,
-the icon of its long press or, if it has none, of its hold press.
+shows the icons of the actions of the buttons:
+those of `A` and `X` at the top, and those of `B` and `Y` at the bottom.
+Each button has two icons: at the very top or bottom,
+the icon of its long press or, if it has none, of its hold press;
+next to it, towards the middle of the screen, the icon of its short press.
 
 The icons follow the button map: a button without action,
 or with an action that has no icon (the `menu_*` actions), shows no icon.
 
-Set `display.show_side_icons` to `false` to hide the icons:
+The volume is shown as a vertical bar in the band on the right, between the icons of `X` and `Y`:
+with the default button map, between the icon turning the volume up, where the bar is full,
+and the icon turning the volume down, where the bar is empty.
+
+Set `display.show_side_icons` to `false` to hide the icons and the volume bar:
 the two bands are then used by the playback information.
 The icons can also be shown or hidden while the service runs, from the `Settings` menu.
 
