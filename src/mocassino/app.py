@@ -30,7 +30,7 @@ from mocassino.model.moc import (
     MocState,
     SubprocessMocClient,
 )
-from mocassino.model.resume import adopt_playback, resume_playback
+from mocassino.model.resume import adopt_playback, playing_from, resume_playback
 from mocassino.model.settings import Settings, StartupPlaylist
 from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
@@ -115,13 +115,19 @@ class App:
                 self._last_error = str(exc)
 
     def _save_state(self) -> None:
-        """Save the state to the state file, if there is one."""
+        """Save the state to the state file, if there is one.
+
+        The directory saved is what MOC was given to play, if known and if the track
+        being played is inside it; otherwise, the directory of that track.
+        """
         if self._state_file is not None and not self._state_frozen:
             state, status = self._state, self._state.status
             playing = status.state is not MocState.STOP and status.file_path != ""
             self._state_file.save(
                 SavedState(
-                    directory_path=state.played_path if playing else None,
+                    directory_path=(
+                        playing_from(state.played_path, status.file_path) if playing else None
+                    ),
                     file_path=status.file_path if playing else None,
                     seek=status.current_seconds if playing else 0,
                     state=status.state if playing else MocState.STOP,

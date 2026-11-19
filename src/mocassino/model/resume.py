@@ -78,18 +78,34 @@ def _wait_for_track(moc: MocClient, previous: str, sleep: Callable[[float], None
 
 
 def adopt_playback(moc: MocClient, saved: SavedState) -> str | None:
-    """Tell what MOC is playing from, if it is playing a file inside the saved directory.
+    """Tell what MOC is playing from, without asking anything of MOC other than its status.
 
-    Nothing is asked of MOC other than its status.
-
-    :return: the saved directory path, or None if MOC is stopped or plays something else
+    :return: the saved directory path, if MOC is playing a file inside it; otherwise,
+             the directory of the file it is playing; None if MOC is stopped
     :raises MocError: if the MOC status cannot be asked
     """
     status = moc.status()
-    if status.state is MocState.STOP or saved.directory_path is None:
+    if status.state is MocState.STOP:
         return None
-    inside = Path(status.file_path).is_relative_to(saved.directory_path)
-    return saved.directory_path if inside else None
+    return playing_from(saved.directory_path, status.file_path)
+
+
+def playing_from(played_path: str | None, file_path: str) -> str | None:
+    """Tell what a track is being played from.
+
+    That is what MOC was given to play, when known and when the track is inside it
+    (or is it). Otherwise (e.g., MOC was not given it by this service), it is taken to be
+    the directory of the track.
+
+    :param played_path: what MOC was given to play (a directory, or a single file), if known
+    :param file_path: the track
+    :return: the path, or None if the track is not a file (e.g., it is a network stream)
+    """
+    if played_path is not None and Path(file_path).is_relative_to(played_path):
+        return played_path
+    if not file_path.startswith("/"):
+        return None
+    return str(Path(file_path).parent)
 
 
 def resume_playback(
@@ -100,17 +116,20 @@ def resume_playback(
     """Resume the saved playback, if MOC is stopped and what was playing still exists.
 
     If MOC is already playing or paused, it is left alone.
+    If the saved directory is missing, or the saved track is not inside it,
+    the directory of the saved track is played.
     Otherwise the saved directory (or single file) is played from its start with
     the volume at zero, the tracks before the saved one are skipped,
     the saved position is reached, and the playback is paused if it was.
     If the saved track cannot be reached, or a MOC command fails, the playback is stopped;
     if only the saved position cannot be reached, the track is resumed from its start.
 
-    :return: what MOC is playing from: the saved directory path if the playback has been
-             resumed, or if MOC was already playing a file inside it; None otherwise
+    :return: what MOC is playing from, if the playback has been resumed or MOC was
+             already playing; None otherwise
     :raises MocError: if a MOC command fails
     """
-    directory_path, file_path = saved.directory_path, saved.file_path
+    file_path = saved.file_path
+    directory_path = None if file_path is None else playing_from(saved.directory_path, file_path)
     if directory_path is None or file_path is None:
         return None
     if moc.status().state is not MocState.STOP:
@@ -118,7 +137,7 @@ def resume_playback(
         return adopt_playback(moc, saved)
     if saved.state is MocState.STOP:
         return None
-    if not Path(file_path).is_file() or not Path(file_path).is_relative_to(directory_path):
+    if not Path(file_path).is_file():
         LOGGER.warning("The saved track '%s' cannot be resumed", file_path)
         return None
     LOGGER.info("Resuming '%s' at %d seconds", file_path, saved.seek)

@@ -13,6 +13,7 @@ from mocassino.model.resume import (
     POLL_ATTEMPTS,
     SEEK_ATTEMPTS,
     adopt_playback,
+    playing_from,
     resume_playback,
 )
 from mocassino.model.state_file import SavedState
@@ -59,7 +60,7 @@ class TestAdoptPlayback:
         other.touch()
         moc = FakeMoc()
         moc.play(other)
-        assert adopt_playback(moc, saved(album)) is None
+        assert adopt_playback(moc, saved(album)) == str(tmp_path)
 
     def test_moc_stopped(self, album):
         assert adopt_playback(FakeMoc(), saved(album)) is None
@@ -67,7 +68,27 @@ class TestAdoptPlayback:
     def test_nothing_saved(self, album):
         moc = FakeMoc()
         moc.play(album)
-        assert adopt_playback(moc, SavedState(volume=85)) is None
+        assert adopt_playback(moc, SavedState(volume=85)) == str(album)
+
+
+class TestPlayingFrom:
+    """Tests for the playing_from function"""
+
+    @pytest.mark.parametrize(
+        ("played_path", "file_path", "expected"),
+        [
+            ("/music/Album", "/music/Album/01.flac", "/music/Album"),
+            ("/music", "/music/Artist/Album/01.flac", "/music"),
+            ("/music/Album/01.flac", "/music/Album/01.flac", "/music/Album/01.flac"),
+            (None, "/music/Album/01.flac", "/music/Album"),
+            ("/music/Other", "/music/Album/01.flac", "/music/Album"),
+            ("/music/Album", "http://example.com/stream", None),
+            (None, "http://example.com/stream", None),
+            (None, "", None),
+        ],
+    )
+    def test_playing_from(self, played_path, file_path, expected):
+        assert playing_from(played_path, file_path) == expected
 
 
 class TestResumePlayback:
@@ -94,7 +115,7 @@ class TestResumePlayback:
         moc.play(other)
         moc.pause()
         moc.calls.clear()
-        assert resume_playback(moc, saved(album), pauses.append) is None
+        assert resume_playback(moc, saved(album), pauses.append) == str(tmp_path)
         assert moc.names() == []
         assert moc.state is MocState.PAUSE
 
@@ -108,9 +129,25 @@ class TestResumePlayback:
     def test_nothing_saved(self, album, pauses):
         moc = FakeMoc()
         assert resume_playback(moc, SavedState(volume=85), pauses.append) is None
-        assert resume_playback(moc, SavedState(file_path="/music/a.flac"), pauses.append) is None
         assert resume_playback(moc, SavedState(directory_path="/music"), pauses.append) is None
+        stream = SavedState(file_path="http://example.com/stream", state=MocState.PLAY)
+        assert resume_playback(moc, stream, pauses.append) is None
         assert moc.calls == []
+
+    def test_directory_not_saved(self, album, pauses):
+        """The state file has the track, but not what it was played from."""
+        state = SavedState(
+            directory_path=None,
+            file_path=str(album / "03.flac"),
+            seek=5,
+            state=MocState.PLAY,
+            volume=90,
+        )
+        moc = FakeMoc()
+        assert resume_playback(moc, state, pauses.append) == str(album)
+        assert moc.names() == ["set_volume", "play", "next", "next", "jump"]
+        assert ("play", str(album)) in moc.calls
+        assert (moc.index, moc.seconds, moc.state) == (2, 5, MocState.PLAY)
 
     def test_paused(self, album, pauses):
         moc = FakeMoc()
@@ -176,8 +213,9 @@ class TestResumePlayback:
         other.touch()
         state = SavedState(directory_path=str(album), file_path=str(other), state=MocState.PLAY)
         moc = FakeMoc()
-        assert resume_playback(moc, state, pauses.append) is None
-        assert moc.names() == []
+        assert resume_playback(moc, state, pauses.append) == str(tmp_path)
+        assert ("play", str(tmp_path)) in moc.calls
+        assert moc.tracks[moc.index] == str(other)
 
     def test_track_not_in_the_playlist(self, album, pauses, caplog):
         (album / "notes.txt").touch()

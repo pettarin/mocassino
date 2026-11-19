@@ -102,7 +102,9 @@ class TestApp:
 
     def test_state_is_saved(self, saving_app, state_file, moc):
         app = saving_app
-        playing = SavedState(file_path="/music/a.flac", state=MocState.PLAY, volume=40)
+        playing = SavedState(
+            directory_path="/music", file_path="/music/a.flac", state=MocState.PLAY, volume=40
+        )
         app.step()
         state_file.save.assert_called_once_with(playing)
         app.step()
@@ -117,7 +119,7 @@ class TestApp:
         app.step()
         assert state_file.save.call_count == 3
         state_file.save.assert_called_with(
-            SavedState(file_path="/music/b.flac", seek=7, state=MocState.PAUSE, volume=45)
+            replace(playing, file_path="/music/b.flac", seek=7, state=MocState.PAUSE, volume=45)
         )
         for event in TOGGLE_SIDE_ICONS:
             app.events.put(event)
@@ -133,7 +135,7 @@ class TestApp:
         app.close()
         assert state_file.save.call_count == 5
         state_file.save.assert_called_with(
-            SavedState(file_path="/music/b.flac", seek=60, state=MocState.PAUSE, volume=45)
+            replace(playing, file_path="/music/b.flac", seek=60, state=MocState.PAUSE, volume=45)
         )
 
     def test_state_saved_has_the_played_path(self, saving_app, state_file, state):
@@ -146,6 +148,30 @@ class TestApp:
                 state=MocState.PLAY,
                 volume=40,
             )
+        )
+
+    def test_state_saved_has_the_directory_of_the_track_when_played_from_elsewhere(
+        self, saving_app, state_file, state, moc
+    ):
+        state.played_path = "/music/Other"
+        moc.status.return_value = MocStatus(file_path="/music/Album/03.flac", state=MocState.PLAY)
+        saving_app.step()
+        state_file.save.assert_called_once_with(
+            SavedState(
+                directory_path="/music/Album",
+                file_path="/music/Album/03.flac",
+                state=MocState.PLAY,
+                volume=40,
+            )
+        )
+
+    def test_state_saved_of_a_stream_has_no_directory(self, saving_app, state_file, moc):
+        moc.status.return_value = MocStatus(
+            file_path="http://example.com/stream", state=MocState.PLAY
+        )
+        saving_app.step()
+        state_file.save.assert_called_once_with(
+            SavedState(file_path="http://example.com/stream", state=MocState.PLAY, volume=40)
         )
 
     def test_state_saved_is_blank_when_stopped(self, saving_app, state_file, state, moc):
@@ -233,7 +259,7 @@ class TestApp:
         )
         saving_app.start()
         moc.stop.assert_not_called()
-        assert state.played_path is None
+        assert state.played_path == "/music"
         assert state.status == PLAYING
 
     def test_start_selecting_from_the_library(self, saving_app, state_file, state, moc, mocker):
@@ -503,6 +529,7 @@ class TestBuildApp:
         app.step()
         moc.set_volume.assert_called_with(80)
         assert StateFile(state_file_path).load() == SavedState(
+            directory_path="/music",
             file_path=PLAYING.file_path,
             state=MocState.PLAY,
             volume=80,
@@ -621,6 +648,38 @@ class TestBuildApp:
         assert moc.names()[-1] == "set_volume"
         assert app._state.played_path == str(album)
         assert StateFile(state_file_path).load() == saved
+
+    def test_playback_saved_without_directory_is_resumed(self, mocker, tmp_path):
+        """A state file with the track but no directory: the directory of the track is played."""
+        album = tmp_path / "music" / "Polvere"
+        album.mkdir(parents=True)
+        for number in range(1, 6):
+            (album / f"00{number}.flac").touch()
+        moc = FakeMoc()
+        mocker.patch("mocassino.app.SubprocessMocClient", return_value=moc)
+        mocker.patch("mocassino.model.resume.time.sleep")
+        state_file_path = tmp_path / "state.yaml"
+        state_file_path.write_text(
+            "playback:\n"
+            "  directory_path: null\n"
+            f"  file_path: {album / '003.flac'}\n"
+            "  seek: 5\n"
+            "  state: playing\n"
+            "  volume: 90\n",
+            encoding="utf-8",
+        )
+        app = build_app(self.configuration("none", "none"), state_file_path=state_file_path)
+        app.start()
+        assert moc.names()[:2] == ["start_server", "stop"]
+        assert (moc.index, moc.seconds, moc.state) == (2, 5, MocState.PLAY)
+        assert moc.volume == 90
+        assert StateFile(state_file_path).load() == SavedState(
+            directory_path=str(album),
+            file_path=str(album / "003.flac"),
+            seek=5,
+            state=MocState.PLAY,
+            volume=90,
+        )
 
     def test_playback_that_no_longer_exists_is_blanked(self, mocker, tmp_path):
         moc = FakeMoc()

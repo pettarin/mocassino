@@ -314,7 +314,7 @@ playback:
 
 | Key | Meaning |
 |---|---|
-| `playback.directory_path` | What was being played from: the directory selected in the `Library` menu or, if a single file was selected, that file |
+| `playback.directory_path` | What was being played from: the directory selected in the `Library` menu or, if a single file was selected, that file; when that is not known (e.g., the playback was not started from the `Library` menu), the directory of the track |
 | `playback.file_path` | The track that was playing |
 | `playback.seek` | The position in the track, in seconds |
 | `playback.state` | `playing`, `paused`, or `stopped` |
@@ -344,6 +344,7 @@ When the service starts:
 To resume the saved playback, the service plays the saved directory from its first track
 with the volume at zero, skips to the saved track, goes to the saved position,
 pauses if the saved state was `paused`, and only then sets the volume.
+If the state file has the track but not the directory, the directory of the track is played.
 If the saved playback cannot be resumed (e.g., the file no longer exists),
 it plays nothing, and blanks the directory, the file, and the position in the state file.
 
