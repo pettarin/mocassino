@@ -21,6 +21,7 @@ from mocassino.configuration import (
     RunConfiguration,
     StartupConfiguration,
     SystemConfiguration,
+    UiElementsConfiguration,
     load_configuration,
     replace_invalid_configuration_file,
     simulated_defaults,
@@ -55,11 +56,14 @@ class TestConfiguration:
         assert configuration.display == DisplayConfiguration(
             font_file_path=None,
             orientation=0,
+            target="pirateaudio",
+            tick=0.5,
+        )
+        assert configuration.display.ui_elements == UiElementsConfiguration(
+            show_playlist_bar=True,
             show_progress_bar=True,
             show_side_icons=True,
             show_volume_bar=True,
-            target="pirateaudio",
-            tick=0.5,
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
         assert configuration.playback == PlaybackConfiguration(
@@ -95,12 +99,14 @@ class TestConfiguration:
                 },
                 "font_file_path": None,
                 "orientation": 0,
-                "show_playlist_bar": True,
-                "show_progress_bar": True,
-                "show_side_icons": True,
-                "show_volume_bar": True,
                 "target": "pirateaudio",
                 "tick": 0.5,
+                "ui_elements": {
+                    "show_playlist_bar": True,
+                    "show_progress_bar": True,
+                    "show_side_icons": True,
+                    "show_volume_bar": True,
+                },
             },
             "library": {"directory_path": "/music"},
             "playback": {"seek_step": 10, "volume_default": 50, "volume_step": 5},
@@ -172,9 +178,10 @@ class TestLoadConfiguration:
             "display:\n"
             "  brightness: 0.5\n"
             "  font_file_path: ~/font.ttf\n"
-            "  show_side_icons: false\n"
             "  target: simulator\n"
             "  tick: 0.25\n"
+            "  ui_elements:\n"
+            "    show_side_icons: false\n"
             "library:\n"
             "  directory_path: /srv/music\n"
             "playback:\n"
@@ -195,9 +202,9 @@ class TestLoadConfiguration:
             display=DisplayConfiguration(
                 brightness=0.5,
                 font_file_path=tmp_path / "font.ttf",
-                show_side_icons=False,
                 target="simulator",
                 tick=0.25,
+                ui_elements=UiElementsConfiguration(show_side_icons=False),
             ),
             library=LibraryConfiguration(directory_path=Path("/srv/music")),
             playback=PlaybackConfiguration(seek_step=30, volume_default=70, volume_step=10),
@@ -237,11 +244,6 @@ class TestLoadConfiguration:
             ("display", "orientation", -90),
             ("display", "orientation", "90"),
             ("display", "orientation", True),
-            ("display", "show_playlist_bar", "no"),
-            ("display", "show_progress_bar", "yes"),
-            ("display", "show_side_icons", "yes"),
-            ("display", "show_volume_bar", 0),
-            ("display", "show_side_icons", 1),
             ("display", "target", "hdmi"),
             ("display", "tick", -0.5),
             ("library", "directory_path", 5),
@@ -316,14 +318,53 @@ class TestLoadConfiguration:
         path = write_yaml(tmp_path, f"display:\n  orientation: {orientation}\n")
         assert load_configuration(path).display.orientation == orientation
 
-    def test_display_bars(self, tmp_path):
+    def test_ui_elements(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "display:\n  show_progress_bar: false\n  show_volume_bar: false\n",
+            "display:\n  ui_elements:\n    show_progress_bar: false\n    show_volume_bar: false\n",
         )
-        display = load_configuration(path).display
-        assert (display.show_progress_bar, display.show_volume_bar) == (False, False)
-        assert display.show_side_icons is True
+        assert load_configuration(path).display.ui_elements == UiElementsConfiguration(
+            show_progress_bar=False, show_volume_bar=False
+        )
+
+    def test_ui_elements_partial_or_empty(self, tmp_path):
+        path = write_yaml(tmp_path, "display:\n  ui_elements:\n    show_side_icons:\n")
+        assert load_configuration(path).display.ui_elements == UiElementsConfiguration()
+        path = write_yaml(tmp_path, "display:\n  ui_elements:\n")
+        assert load_configuration(path).display.ui_elements == UiElementsConfiguration()
+
+    @pytest.mark.parametrize(
+        ("key", "value"),
+        [
+            ("show_playlist_bar", "no"),
+            ("show_progress_bar", "yes"),
+            ("show_side_icons", 1),
+            ("show_volume_bar", 0),
+        ],
+    )
+    def test_ui_elements_not_valid(self, key, value):
+        with pytest.raises(
+            ConfigurationError, match=f"Invalid value for 'display.ui_elements.{key}': {value!r}"
+        ):
+            load_configuration(overrides={"display": {"ui_elements": {key: value}}})
+
+    def test_ui_elements_unknown(self):
+        with pytest.raises(
+            ConfigurationError, match="Unknown configuration keys: display.ui_elements.show_clock"
+        ):
+            load_configuration(overrides={"display": {"ui_elements": {"show_clock": True}}})
+
+    def test_ui_elements_not_a_mapping(self):
+        with pytest.raises(ConfigurationError, match="Invalid value for 'display.ui_elements'"):
+            load_configuration(overrides={"display": {"ui_elements": True}})
+
+    @pytest.mark.parametrize(
+        "key", ["show_playlist_bar", "show_progress_bar", "show_side_icons", "show_volume_bar"]
+    )
+    def test_ui_elements_old_keys_are_unknown(self, tmp_path, key):
+        path = write_yaml(tmp_path, f"display:\n  {key}: false\n")
+        with pytest.raises(ConfigurationError, match=f"Unknown configuration keys: display.{key}"):
+            load_configuration(path)
 
     def test_invalid_yaml(self, tmp_path):
         with pytest.raises(ConfigurationError, match="is not valid YAML"):
@@ -523,10 +564,10 @@ class TestUpdateConfigurationFile:
     """Tests for the update_configuration_file function"""
 
     def test_default_file_is_created(self, home):
-        path = update_configuration_file(None, {"display": {"show_side_icons": False}})
+        path = update_configuration_file(None, {"display": {"orientation": 90}})
         assert path == home / ".config" / "mocassino" / "configuration.yaml"
-        assert path.read_text(encoding="utf-8") == "display:\n  show_side_icons: false\n"
-        assert load_configuration().display.show_side_icons is False
+        assert path.read_text(encoding="utf-8") == "display:\n  orientation: 90\n"
+        assert load_configuration().display.orientation == 90
 
     def test_existing_file_is_updated(self, tmp_path):
         path = write_yaml(
@@ -536,17 +577,17 @@ class TestUpdateConfigurationFile:
             "  volume_step: 3\n"
             "display:\n"
             "  tick: 0.25\n"
-            "  show_side_icons: true\n"
+            "  orientation: 0\n"
             "library:\n"
             "  directory_path: /srv/musica/Andrè\n",
         )
-        assert update_configuration_file(path, {"display": {"show_side_icons": False}}) == path
+        assert update_configuration_file(path, {"display": {"orientation": 90}}) == path
         assert path.read_text(encoding="utf-8") == (
             "playback:\n"
             "  volume_step: 3\n"
             "display:\n"
             "  tick: 0.25\n"
-            "  show_side_icons: false\n"
+            "  orientation: 90\n"
             "library:\n"
             "  directory_path: /srv/musica/Andrè\n"
         )
@@ -561,7 +602,7 @@ class TestUpdateConfigurationFile:
     def test_file_not_valid(self, tmp_path):
         path = write_yaml(tmp_path, "display: [unclosed\n")
         with pytest.raises(ConfigurationError, match="is not valid YAML"):
-            update_configuration_file(path, {"display": {"show_side_icons": False}})
+            update_configuration_file(path, {"display": {"orientation": 90}})
         assert path.read_text(encoding="utf-8") == "display: [unclosed\n"
 
     def test_section_empty_or_missing(self, tmp_path):
@@ -575,7 +616,7 @@ class TestUpdateConfigurationFile:
     def test_section_not_a_mapping(self, tmp_path):
         path = write_yaml(tmp_path, "display: st7789\n")
         with pytest.raises(ConfigurationError, match="Section 'display' must be a mapping"):
-            update_configuration_file(path, {"display": {"show_side_icons": False}})
+            update_configuration_file(path, {"display": {"orientation": 90}})
         assert path.read_text(encoding="utf-8") == "display: st7789\n"
 
 
@@ -592,7 +633,7 @@ class TestWriteConfigurationFile:
             tmp_path,
             "# my settings\n"
             "display:\n"
-            "  show_side_icons: false\n"
+            "  orientation: 90\n"
             "library:\n"
             "  directory_path: /srv/musica/Andrè\n",
         )

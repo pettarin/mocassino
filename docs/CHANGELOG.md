@@ -15,6 +15,10 @@ All notable changes to this project will be documented in this file.
 
 - First actual implementation of the service
 - A Tk-based simulator that can be used on a PC (with MOC installed)
+- The `display.ui_elements` configuration keys, and the `UI elements` menu of the display settings,
+  to show or hide the side icons and the progress, playlist, and volume bars
+  (development versions used `display.show_side_icons` etc.: a configuration file written by them
+  has to be updated, or it is backed up and replaced with the default values)
 - The `display.brightness` configuration key, the `Brightness (%)` menu of the display settings,
   and the `--brightness` option of the `configuration` command, to set the brightness of the display
 

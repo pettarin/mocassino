@@ -17,8 +17,8 @@ from mocassino.model.menu import (
     MenuCommand,
     build_display_brightness_menu,
     build_display_color_menu,
-    build_display_menu,
     build_display_orientation_menu,
+    build_display_ui_elements_menu,
     build_library_menu,
     build_playback_seek_step_menu,
     build_playback_volume_default_menu,
@@ -227,7 +227,7 @@ class Controller:
             settings = self._state.settings
             attribute = TOGGLES[item.command]
             setattr(settings, attribute, not getattr(settings, attribute))
-            self._state.replace_menu(build_display_menu(settings))
+            self._state.replace_menu(build_display_ui_elements_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)
 

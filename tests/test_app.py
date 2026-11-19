@@ -80,15 +80,15 @@ RESET_ALL_SETTINGS = (
 )
 TICK = 0.01
 # From playback mode: open the menu, go to Settings, open it, open Display (its first item),
-# go to Show side icons (its third item), and select it
+# go up to UI elements (its last item), open it, go to Show side icons (its third item),
+# and select it
 TOGGLE_SIDE_ICONS = (
     ButtonEvent(Button.A, Press.LONG),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
     ButtonEvent(Button.B),
-    ButtonEvent(Button.Y),
-    ButtonEvent(Button.Y),
-    ButtonEvent(Button.Y),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
@@ -613,7 +613,7 @@ class TestBuildApp:
         configuration = load_configuration(
             overrides={
                 "buttons": {"origin": "none"},
-                "display": {"show_side_icons": False, "target": "none"},
+                "display": {"target": "none", "ui_elements": {"show_side_icons": False}},
             }
         )
         assert build_app(configuration)._state.settings.show_side_icons is False
@@ -643,10 +643,11 @@ class TestBuildApp:
             "    normal: white\n"
             "    track: dimgray\n"
             "  orientation: 0\n"
-            "  show_playlist_bar: true\n"
-            "  show_progress_bar: true\n"
-            "  show_side_icons: false\n"
-            "  show_volume_bar: true\n"
+            "  ui_elements:\n"
+            "    show_playlist_bar: true\n"
+            "    show_progress_bar: true\n"
+            "    show_side_icons: false\n"
+            "    show_volume_bar: true\n"
             "startup:\n"
             "  playlist: use_saved\n"
             "  state: use_saved\n"
@@ -654,7 +655,7 @@ class TestBuildApp:
             "system:\n"
             "  moc_state_on_exit: do_nothing\n"
         )
-        assert load_configuration(path).display.show_side_icons is False
+        assert load_configuration(path).display.ui_elements.show_side_icons is False
 
     def test_settings_are_saved_to_the_default_file(self, tmp_path):
         app = build_app(self.configuration("none", "none"))
@@ -671,10 +672,11 @@ class TestBuildApp:
             "    normal: white\n"
             "    track: dimgray\n"
             "  orientation: 0\n"
-            "  show_playlist_bar: true\n"
-            "  show_progress_bar: true\n"
-            "  show_side_icons: false\n"
-            "  show_volume_bar: true\n"
+            "  ui_elements:\n"
+            "    show_playlist_bar: true\n"
+            "    show_progress_bar: true\n"
+            "    show_side_icons: false\n"
+            "    show_volume_bar: true\n"
             "playback:\n"
             "  seek_step: 10\n"
             "  volume_default: 50\n"
@@ -789,7 +791,7 @@ class TestBuildApp:
         configuration = load_configuration(
             overrides={
                 "buttons": {"origin": "none"},
-                "display": {"show_playlist_bar": False, "target": "none"},
+                "display": {"target": "none", "ui_elements": {"show_playlist_bar": False}},
             }
         )
         assert build_app(configuration)._state.settings.show_playlist_bar is False
@@ -799,9 +801,8 @@ class TestBuildApp:
             overrides={
                 "buttons": {"origin": "none"},
                 "display": {
-                    "show_progress_bar": False,
-                    "show_volume_bar": False,
                     "target": "none",
+                    "ui_elements": {"show_progress_bar": False, "show_volume_bar": False},
                 },
             }
         )
@@ -819,9 +820,8 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.Y),
-            ButtonEvent(Button.Y),
-            ButtonEvent(Button.Y),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
@@ -832,7 +832,7 @@ class TestBuildApp:
             app._controller.handle(event)
         assert app._state.settings.show_progress_bar is False
         assert app._state.settings.show_volume_bar is False
-        saved = load_configuration(path).display
+        saved = load_configuration(path).display.ui_elements
         assert (saved.show_progress_bar, saved.show_side_icons, saved.show_volume_bar) == (
             False,
             True,
@@ -1039,7 +1039,7 @@ class TestBuildApp:
             app._controller.handle(event)
         assert app._state.settings.startup_volume is StartupVolume.USE_DEFAULT
         assert load_configuration(path).startup.volume == "use_default"
-        assert load_configuration(path).display.show_side_icons is True
+        assert load_configuration(path).display.ui_elements.show_side_icons is True
 
     def test_volume_from_the_state_file_not_valid(self, tmp_path):
         state_file_path = tmp_path / "state.yaml"
@@ -1273,7 +1273,8 @@ class TestBuildApp:
         path.write_text(
             "display:\n"
             "  brightness: 0.4\n"
-            "  show_side_icons: false\n"
+            "  ui_elements:\n"
+            "    show_side_icons: false\n"
             "library:\n"
             "  directory_path: /srv/music\n"
             "playback:\n"

@@ -295,6 +295,35 @@ def build_display_menu(settings: Settings) -> Menu:
                 submenu=partial(build_display_orientation_menu, settings),
             ),
             MenuItem(
+                label="UI elements",
+                submenu=partial(build_display_ui_elements_menu, settings),
+            ),
+        ),
+    )
+
+
+def build_display_orientation_menu(settings: Settings) -> Menu:
+    """Build the menu choosing by how many degrees what is shown on the display is rotated.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_number_menu(
+        "Orientation",
+        ORIENTATIONS,
+        settings.display_orientation,
+        MenuCommand.SET_DISPLAY_ORIENTATION,
+    )
+
+
+def build_display_ui_elements_menu(settings: Settings) -> Menu:
+    """Build the menu showing which elements are shown in playback mode, and changing them.
+
+    Like the display menu, it has to be built again when a setting changes.
+    """
+    return Menu(
+        title="UI elements",
+        items=(
+            MenuItem(
                 label="Show playlist bar",
                 checked=settings.show_playlist_bar,
                 command=MenuCommand.TOGGLE_PLAYLIST_BAR,
@@ -315,19 +344,6 @@ def build_display_menu(settings: Settings) -> Menu:
                 command=MenuCommand.TOGGLE_VOLUME_BAR,
             ),
         ),
-    )
-
-
-def build_display_orientation_menu(settings: Settings) -> Menu:
-    """Build the menu choosing by how many degrees what is shown on the display is rotated.
-
-    It has to be built again when the choice changes.
-    """
-    return _build_number_menu(
-        "Orientation",
-        ORIENTATIONS,
-        settings.display_orientation,
-        MenuCommand.SET_DISPLAY_ORIENTATION,
     )
 
 

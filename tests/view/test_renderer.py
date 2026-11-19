@@ -399,7 +399,7 @@ class TestRenderer:
             for held in (False, True):
                 assert icon_slot(loud, button, held) == icon_slot(shown, button, held)
 
-    def test_playback_volume_bar_without_side_icons(self, renderer):
+    def test_playback_bars_need_the_side_icons(self, renderer):
         text = "A very long text that would never fit in the width of the frame"
         status = MocStatus(
             album=text,
@@ -410,21 +410,20 @@ class TestRenderer:
             title=text,
             total_seconds=205,
         )
-        settings = Settings(show_playlist_bar=False, show_side_icons=False)
-        image = renderer.render(AppState(settings=settings, status=status, volume=100))
-        with_icons = renderer.render(
-            AppState(settings=Settings(show_playlist_bar=False), status=status, volume=100)
+        playlist = ("/music/a.flac",)
+        settings = Settings(show_playlist_bar=True, show_side_icons=False, show_volume_bar=True)
+        image = renderer.render(
+            AppState(playlist=playlist, settings=settings, status=status, volume=100)
         )
-        bar = (WIDTH - BAND_WIDTH + 6, 36, WIDTH - 6, 204)
-        assert image.crop(bar).tobytes() == with_icons.crop(bar).tobytes()
-        assert image.getpixel((229, 100)) == ACCENT_COLOR
-        assert not has_content(image, (WIDTH - BAND_WIDTH, 0, WIDTH, 36))
-        assert not has_content(image, (WIDTH - BAND_WIDTH, 204, WIDTH, HEIGHT))
-        assert not has_content(image, (CONTENT_RIGHT, 0, WIDTH - BAND_WIDTH + 6, HEIGHT))
+        nothing = Settings(show_playlist_bar=False, show_side_icons=False, show_volume_bar=False)
+        bare = renderer.render(AppState(playlist=playlist, settings=nothing, status=status))
+        assert image.tobytes() == bare.tobytes()
         assert image.getpixel((12, 211)) == ACCENT_COLOR
-        assert image.getpixel((CONTENT_RIGHT - 1, 211)) == ACCENT_COLOR
+        assert image.getpixel((WIDTH - 12, 211)) == ACCENT_COLOR
         assert has_content(image, (10, 10, 24, 190))
+        assert has_content(image, (CONTENT_RIGHT, 10, WIDTH - 10, 190))
         assert not has_content(image, (0, 0, 10, HEIGHT))
+        assert not has_content(image, (WIDTH - 9, 0, WIDTH, HEIGHT))
 
     def test_playback_progress_bar_hidden(self, renderer):
         settings = Settings(show_progress_bar=False)
@@ -491,12 +490,12 @@ class TestRenderer:
         image = renderer.render(AppState(settings=settings, status=status, volume=50))
         left_band_used = has_content(image, (14, 40, CONTENT_LEFT - 4, 200))
         right_band_used = has_content(image, (CONTENT_RIGHT + 4, 40, WIDTH - BAND_WIDTH + 6, 200))
-        assert left_band_used is (not show_side_icons and not show_playlist_bar)
-        assert right_band_used is (not show_side_icons and not show_volume_bar)
+        assert left_band_used is (not show_side_icons)
+        assert right_band_used is (not show_side_icons)
         bar_drawn = image.getpixel((229, 190)) == ACCENT_COLOR
-        assert bar_drawn is show_volume_bar
+        assert bar_drawn is (show_side_icons and show_volume_bar)
         playlist_bar_drawn = image.getpixel((10, 100)) == TRACK_COLOR
-        assert playlist_bar_drawn is show_playlist_bar
+        assert playlist_bar_drawn is (show_side_icons and show_playlist_bar)
 
     @pytest.mark.parametrize("artist", ["ABBA", "Fabrizio De Andre", "moe.", ""])
     @pytest.mark.parametrize("show_side_icons", [False, True])

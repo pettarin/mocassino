@@ -351,16 +351,18 @@ class TestController:
         controller.handle(B)
         assert state.current_menu.title == "Display"
         assert state.current_menu.selected.label == "Brightness (%)"
-        controller.handle(Y)
-        controller.handle(Y)
-        controller.handle(Y)
+        controller.handle(X)
+        assert state.current_menu.selected.label == "UI elements"
+        controller.handle(B)
+        assert state.current_menu.title == "UI elements"
         controller.handle(Y)
         controller.handle(Y)
         assert state.current_menu.selected.label == "Show side icons"
         assert state.current_menu.selected.checked is True
         controller.handle(B)
         assert state.settings.show_side_icons is False
-        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Display"]
+        titles = ["Menu", "Settings", "Display", "UI elements"]
+        assert [menu.title for menu in state.menus] == titles
         assert state.current_menu.selected.checked is False
         controller.handle(B)
         assert state.settings.show_side_icons is True
@@ -369,18 +371,15 @@ class TestController:
         controller.handle(B)
         controller.handle(Y)
         controller.handle(Y)
-        controller.handle(Y)
-        controller.handle(Y)
-        controller.handle(Y)
         assert state.current_menu.selected.checked is True
 
     @pytest.mark.parametrize(
         ("moves", "label", "attribute"),
         [
-            (3, "Show playlist bar", "show_playlist_bar"),
-            (4, "Show progress bar", "show_progress_bar"),
-            (5, "Show side icons", "show_side_icons"),
-            (6, "Show volume bar", "show_volume_bar"),
+            (0, "Show playlist bar", "show_playlist_bar"),
+            (1, "Show progress bar", "show_progress_bar"),
+            (2, "Show side icons", "show_side_icons"),
+            (3, "Show volume bar", "show_volume_bar"),
         ],
     )
     def test_menu_select_toggles_of_the_display(
@@ -395,9 +394,9 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, B, *[Y] * moves):
+        for event in (A_LONG, Y, B, B, X, B, *[Y] * moves):
             controller.handle(event)
-        assert state.current_menu.title == "Display"
+        assert state.current_menu.title == "UI elements"
         assert state.current_menu.selected.label == label
         assert state.current_menu.selected.checked is True
         controller.handle(B)
@@ -836,7 +835,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, B, Y, Y, Y, Y, Y):
+        for event in (A_LONG, Y, B, B, X, B, Y, Y):
             controller.handle(event)
         save_settings.assert_not_called()
         controller.handle(B)

@@ -247,12 +247,13 @@ display:
     track: dimgray
   font_file_path: null
   orientation: 0
-  show_playlist_bar: true
-  show_progress_bar: true
-  show_side_icons: true
-  show_volume_bar: true
   target: pirateaudio
   tick: 0.5
+  ui_elements:
+    show_playlist_bar: true
+    show_progress_bar: true
+    show_side_icons: true
+    show_volume_bar: true
 library:
   directory_path: /music
 playback:
@@ -316,12 +317,12 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `display.colors.track` | `dimgray` | The color of the background of the bars, of the title of the menus, and of the scrollbar |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
 | `display.orientation` | `0` | By how many degrees, clockwise, what is shown on the display is rotated: `0`, `90`, `180`, or `270`; it can be changed from the `Settings` menu |
-| `display.show_playlist_bar` | `true` | Whether the playlist bar is shown in playback mode; it can be changed from the `Settings` menu |
-| `display.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode; it can be changed from the `Settings` menu |
-| `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode; it can be changed from the `Settings` menu |
-| `display.show_volume_bar` | `true` | Whether the volume bar is shown in playback mode; it can be changed from the `Settings` menu |
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
+| `display.ui_elements.show_playlist_bar` | `true` | Whether the playlist bar is shown in playback mode, if `display.ui_elements.show_side_icons` is `true`; it can be changed from the `Settings` menu |
+| `display.ui_elements.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode; it can be changed from the `Settings` menu |
+| `display.ui_elements.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode, with the playlist and volume bars next to them; it can be changed from the `Settings` menu |
+| `display.ui_elements.show_volume_bar` | `true` | Whether the volume bar is shown in playback mode, if `display.ui_elements.show_side_icons` is `true`; it can be changed from the `Settings` menu |
 | `library.directory_path` | `/music` | The music root directory |
 | `playback.seek_step` | `10` | The amount of each seek, in seconds; it can be changed from the `Settings` menu |
 | `playback.volume_default` | `50` | The default volume, between 0 and 100: the one set when the service starts if `startup.volume` is `use_default`, or if there is no saved volume; it can be changed from the `Settings` menu |
@@ -541,15 +542,15 @@ sorted by their full path (or the single file selected);
 when the playback was not started from the `Library` menu, the directory of the current track.
 The bar is empty when nothing is playing, or when a network stream is.
 
-Set `display.show_side_icons` to `false` to hide the icons,
-`display.show_playlist_bar` to `false` to hide the playlist bar,
-and `display.show_volume_bar` to `false` to hide the volume bar.
-The band on the left is reserved to the icons and the playlist bar, and the band on the right
-to the icons and the volume bar: a band that has nothing to show
-is used by the playback information.
-Set `display.show_progress_bar` to `false` to hide the progress bar:
+Set `display.ui_elements.show_playlist_bar` to `false` to hide the playlist bar,
+and `display.ui_elements.show_volume_bar` to `false` to hide the volume bar.
+Set `display.ui_elements.show_side_icons` to `false` to hide the icons, and with them both bars,
+whatever `display.ui_elements.show_playlist_bar` and `display.ui_elements.show_volume_bar` say:
+the two bands are then used by the playback information.
+Set `display.ui_elements.show_progress_bar` to `false` to hide the progress bar:
 the times and the state of the playback are still shown below its place.
-The four can also be shown or hidden while the service runs, from the `Settings` menu.
+The four can also be shown or hidden while the service runs, from the `UI elements` menu
+of the `Display` settings.
 
 
 ### Orientation
@@ -614,14 +615,16 @@ The top level menu has the following items:
     - `Orientation` (`display.orientation`): a menu with the four choices
       `0`, `90`, `180`, and `270`; the current one has the solid square.
       The change is immediate (see below).
-    - `Show playlist bar` (`display.show_playlist_bar`):
-      whether the playlist bar is shown in playback mode.
-    - `Show progress bar` (`display.show_progress_bar`):
-      whether the progress bar of the track is shown in playback mode.
-    - `Show side icons` (`display.show_side_icons`):
-      whether the icons of the buttons are shown in playback mode.
-    - `Show volume bar` (`display.show_volume_bar`):
-      whether the volume bar is shown in playback mode.
+    - `UI elements`: what is shown in playback mode.
+      - `Show playlist bar` (`display.ui_elements.show_playlist_bar`):
+        whether the playlist bar is shown, if the side icons are.
+      - `Show progress bar` (`display.ui_elements.show_progress_bar`):
+        whether the progress bar of the track is shown.
+      - `Show side icons` (`display.ui_elements.show_side_icons`):
+        whether the icons of the buttons are shown,
+        with the playlist and volume bars next to them.
+      - `Show volume bar` (`display.ui_elements.show_volume_bar`):
+        whether the volume bar is shown, if the side icons are.
   - `Playback`: the amount of each seek, the default volume, and the amount of each volume change.
     The steps take effect immediately;
     the default volume, the next time the service starts and uses it.

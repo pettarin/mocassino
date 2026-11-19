@@ -69,6 +69,20 @@ class ColorsConfiguration:
 
 
 @dataclass(frozen=True)
+class UiElementsConfiguration:
+    """Which elements are shown on the display in playback mode.
+
+    Defined before the settings of the display, as they refer to it.
+    The playlist bar and the volume bar are shown only if the side icons are too.
+    """
+
+    show_playlist_bar: bool = True
+    show_progress_bar: bool = True
+    show_side_icons: bool = True
+    show_volume_bar: bool = True
+
+
+@dataclass(frozen=True)
 class DisplayConfiguration:
     """The settings of the display."""
 
@@ -76,12 +90,9 @@ class DisplayConfiguration:
     colors: ColorsConfiguration = field(default_factory=ColorsConfiguration)
     font_file_path: Path | None = None
     orientation: int = 0
-    show_playlist_bar: bool = True
-    show_progress_bar: bool = True
-    show_side_icons: bool = True
-    show_volume_bar: bool = True
     target: str = "pirateaudio"
     tick: float = 0.5
+    ui_elements: UiElementsConfiguration = field(default_factory=UiElementsConfiguration)
 
 
 @dataclass(frozen=True)
@@ -176,12 +187,9 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "colors": _to_colors,
             "font_file_path": _to_path,
             "orientation": _to_int,
-            "show_playlist_bar": _to_bool,
-            "show_progress_bar": _to_bool,
-            "show_side_icons": _to_bool,
-            "show_volume_bar": _to_bool,
             "target": _to_str,
             "tick": _to_float,
+            "ui_elements": _to_ui_elements,
         },
         "library": {"directory_path": _to_path},
         "playback": {
@@ -315,27 +323,21 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return {str(key): value for key, value in content.items()}
 
 
-def _write_yaml(target: Path, content: Mapping[str, Any], sort_keys: bool) -> None:
-    """Write the content to the YAML file, through a temporary file replacing it at once.
-
-    :raises ConfigurationError: if the file cannot be written
-    """
-    temporary = target.with_name(f"{target.name}.tmp")
-    try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        temporary.write_text(
-            yaml.safe_dump(dict(content), allow_unicode=True, sort_keys=sort_keys),
-            encoding="utf-8",
-        )
-        temporary.replace(target)
-    except OSError as exc:
-        raise ConfigurationError(f"Cannot write configuration file '{target}': {exc}") from exc
-
-
 def _to_bool(value: object) -> bool:
     """Coerce a boolean to a bool."""
     if not isinstance(value, bool):
         raise TypeError("expected true or false")
+    return value
+
+
+def _to_color(value: object) -> str:
+    """Check that a value is a color, a name or an HTML code, and return it as it is.
+
+    :raises ValueError: if the value is not a color
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"expected a color name or an HTML code, not {value!r}")
+    parse_color(value)
     return value
 
 
@@ -347,23 +349,8 @@ def _to_colors(value: object) -> ColorsConfiguration:
     :raises ConfigurationError: if a color is unknown or not valid
     :raises TypeError: if the value is not a mapping
     """
-    if not isinstance(value, Mapping):
-        raise TypeError("expected a mapping")
-    unknown = sorted(f"display.colors.{role}" for role in value if role not in DEFAULT_COLOR_SPECS)
-    if unknown:
-        raise ConfigurationError(f"Unknown configuration keys: {', '.join(unknown)}")
-    specs: dict[str, str] = {}
-    for role, spec in value.items():
-        if spec is None:
-            continue
-        try:
-            parse_color(spec)
-        except ValueError as exc:
-            raise ConfigurationError(
-                f"Invalid value for 'display.colors.{role}': {spec!r} ({exc})"
-            ) from exc
-        specs[role] = spec
-    return ColorsConfiguration(**specs)
+    coercers = dict.fromkeys(DEFAULT_COLOR_SPECS, _to_color)
+    return ColorsConfiguration(**_to_nested(value, "display.colors", coercers))
 
 
 def _to_command(value: object) -> tuple[str, ...]:
@@ -393,6 +380,36 @@ def _to_int(value: object) -> int:
     return value
 
 
+def _to_nested(
+    value: object,
+    name: str,
+    coercers: Mapping[str, Callable[[Any], Any]],
+) -> dict[str, Any]:
+    """Coerce a mapping nested in a section (e.g., display.colors), key by key.
+
+    The keys set to None are left out, so that they take their defaults.
+
+    :param name: the full name of the mapping, for the errors (e.g., "display.colors")
+    :param coercers: how to coerce the value of each known key
+    :raises ConfigurationError: if a key is unknown, or its value is not valid
+    :raises TypeError: if the value is not a mapping
+    """
+    if not isinstance(value, Mapping):
+        raise TypeError("expected a mapping")
+    unknown = sorted(f"{name}.{key}" for key in value if key not in coercers)
+    if unknown:
+        raise ConfigurationError(f"Unknown configuration keys: {', '.join(unknown)}")
+    values: dict[str, Any] = {}
+    for key, item in value.items():
+        if item is None:
+            continue
+        try:
+            values[key] = coercers[key](item)
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError(f"Invalid value for '{name}.{key}': {item!r} ({exc})") from exc
+    return values
+
+
 def _to_path(value: object) -> Path:
     """Coerce a string or a path to a Path, expanding the home directory."""
     if not isinstance(value, str | Path):
@@ -405,6 +422,35 @@ def _to_str(value: object) -> str:
     if not isinstance(value, str):
         raise TypeError("expected a string")
     return value
+
+
+def _to_ui_elements(value: object) -> UiElementsConfiguration:
+    """Coerce a mapping of booleans to the elements shown on the display.
+
+    The elements missing, or set to None, take their defaults.
+
+    :raises ConfigurationError: if an element is unknown, or its value is not a boolean
+    :raises TypeError: if the value is not a mapping
+    """
+    coercers = dict.fromkeys(asdict(UiElementsConfiguration()), _to_bool)
+    return UiElementsConfiguration(**_to_nested(value, "display.ui_elements", coercers))
+
+
+def _write_yaml(target: Path, content: Mapping[str, Any], sort_keys: bool) -> None:
+    """Write the content to the YAML file, through a temporary file replacing it at once.
+
+    :raises ConfigurationError: if the file cannot be written
+    """
+    temporary = target.with_name(f"{target.name}.tmp")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary.write_text(
+            yaml.safe_dump(dict(content), allow_unicode=True, sort_keys=sort_keys),
+            encoding="utf-8",
+        )
+        temporary.replace(target)
+    except OSError as exc:
+        raise ConfigurationError(f"Cannot write configuration file '{target}': {exc}") from exc
 
 
 def load_configuration(

@@ -200,9 +200,9 @@ class Renderer:
         the progress bar is centred on the upper row, and the times, with the icon
         of the state between them, take the lower row.
         The icons of the buttons, the progress bar, the playlist bar, and the volume bar
-        are drawn only if the settings say so. The band on the left is reserved to the icons
-        and the playlist bar, when either is shown; the band on the right, to the icons and
-        the volume bar, when either is shown.
+        are drawn only if the settings say so; the playlist bar and the volume bar,
+        only if the icons are drawn too. The bands on the left and on the right
+        are reserved to the icons and to the bars, only when the icons are drawn.
         """
         status = state.status
         small_font = self._font(TIMES_FONT_SIZE)
@@ -210,16 +210,13 @@ class Renderer:
         bar_top = upper_icon_top + (ICON_SIZE - PROGRESS_BAR_HEIGHT) // 2
         settings = state.settings
         left, right = MARGIN, WIDTH - MARGIN
-        if settings.show_side_icons or settings.show_playlist_bar:
-            left = CONTENT_LEFT
         if settings.show_side_icons:
+            left, right = CONTENT_LEFT, CONTENT_RIGHT
             self._draw_button_icons(draw)
-        if settings.show_playlist_bar:
-            self._draw_playlist_bar(draw, playlist_fraction(state.playlist, status))
-        if settings.show_side_icons or settings.show_volume_bar:
-            right = CONTENT_RIGHT
-        if settings.show_volume_bar:
-            self._draw_volume_bar(draw, state.volume)
+            if settings.show_playlist_bar:
+                self._draw_playlist_bar(draw, playlist_fraction(state.playlist, status))
+            if settings.show_volume_bar:
+                self._draw_volume_bar(draw, state.volume)
         width = right - left
         if status.state is MocState.STOP:
             for index, line in enumerate(STOPPED_HINT):
