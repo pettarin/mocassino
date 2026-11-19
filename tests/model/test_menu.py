@@ -149,10 +149,10 @@ class TestBuildDisplayColorMenu:
     def test_items(self):
         menu = build_display_color_menu(Settings(), "accented")
         assert menu.items[0] == MenuItem(
-            label="aliceblue",
-            color="aliceblue",
+            label="black",
+            color="black",
             command=MenuCommand.SET_DISPLAY_COLORS_ACCENTED,
-            value="aliceblue",
+            value="black",
         )
         assert "darkgrey" not in [item.label for item in menu.items]
 
@@ -171,7 +171,7 @@ class TestBuildDisplayColorMenu:
         assert len(menu.items) == 141
         assert menu.selected_index == 0
         assert menu.items[0] == MenuItem(label="#123456 [X]", color="#123456")
-        assert menu.items[1].label == "aliceblue"
+        assert menu.items[1].label == "black"
         assert not [item for item in menu.items[1:] if item.label.endswith(" [X]")]
 
 

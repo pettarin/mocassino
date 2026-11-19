@@ -426,10 +426,10 @@ class TestController:
         save_settings.assert_not_called()
         for event in (Y, B):
             controller.handle(event)
-        assert state.settings.display_colors_accented == "linen"
+        assert state.settings.display_colors_accented == "forestgreen"
         save_settings.assert_called_once_with(state.settings)
         assert [menu.title for menu in state.menus] == titles
-        assert state.current_menu.selected.label == "linen [X]"
+        assert state.current_menu.selected.label == "forestgreen [X]"
         assert "limegreen" in [item.label for item in state.current_menu.items]
 
     def test_menu_select_reset_colors(self, mocker, state, moc, library, system):

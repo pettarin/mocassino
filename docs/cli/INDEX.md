@@ -576,7 +576,8 @@ The top level menu has the following items:
     - `Colors`: a menu with `Accented`, `Background`, `Muted`, `Normal`, `Track`, and `Reset colors`;
       the first five (`display.colors.accented`, etc.) are each a menu with the
       [140 color names of CSS3](https://www.w3.org/TR/css-color-3/#svg-color),
-      in alphabetical order, with the `gray` spelling only (e.g., `darkgray`, not `darkgrey`).
+      ordered by hue (black, the grays, the whites, then reds, oranges, yellows, greens,
+      blues, purples, and pinks), with the `gray` spelling only (e.g., `darkgray`, not `darkgrey`).
       Each name has a square filled with its color, with a black border, on the right;
       the current one has `[X]` after its name.
       A current color with no name (an HTML code, e.g., `#123456`) is shown first,

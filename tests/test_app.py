@@ -854,10 +854,10 @@ class TestBuildApp:
         for event in events:
             app.events.put(event)
         app.step()
-        assert app._state.settings.display_colors_accented == "linen"
-        assert app._renderer._colors.accented == (250, 240, 230)
+        assert app._state.settings.display_colors_accented == "forestgreen"
+        assert app._renderer._colors.accented == (34, 139, 34)
         saved = load_configuration(path).display.colors
-        assert (saved.accented, saved.muted, saved.track) == ("linen", "#123456", "dimgray")
+        assert (saved.accented, saved.muted, saved.track) == ("forestgreen", "#123456", "dimgray")
 
     def test_reset_colors_is_applied_and_saved(self, mocker, tmp_path):
         moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value

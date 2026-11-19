@@ -5,6 +5,7 @@
 """
 
 import pytest
+from colorzero.tables import NAMED_COLORS
 
 from mocassino.model.colors import (
     COLOR_NAMES,
@@ -20,10 +21,22 @@ class TestConstants:
 
     def test_color_names(self):
         assert len(COLOR_NAMES) == 140
-        assert list(COLOR_NAMES) == sorted(COLOR_NAMES)
-        assert COLOR_NAMES[0] == "aliceblue"
-        assert COLOR_NAMES[-1] == "yellowgreen"
-        assert not [name for name in COLOR_NAMES if "grey" in name]
+        assert set(COLOR_NAMES) == {name for name in NAMED_COLORS if "grey" not in name}
+        assert COLOR_NAMES[:9] == (
+            "black",
+            "dimgray",
+            "gray",
+            "darkgray",
+            "silver",
+            "lightgray",
+            "gainsboro",
+            "whitesmoke",
+            "white",
+        )
+        assert COLOR_NAMES[-1] == "mediumvioletred"
+        assert COLOR_NAMES.index("aqua") + 1 == COLOR_NAMES.index("cyan")
+        assert COLOR_NAMES.index("fuchsia") + 1 == COLOR_NAMES.index("magenta")
+        assert "rebeccapurple" not in COLOR_NAMES
         assert {"aqua", "cyan", "fuchsia", "magenta", "gray", "darkslategray"} <= set(COLOR_NAMES)
 
     def test_color_roles(self):
