@@ -92,12 +92,15 @@ class Controller:
         host: Host,
         button_map: Mapping[str, Mapping[str, str]],
         save_settings: Callable[[Settings], None] | None = None,
+        switch_display: Callable[[bool], None] | None = None,
     ) -> None:
         """Initialize the controller.
 
         :param button_map: the button map, in plain form
         :param save_settings: called with the settings when one of them is changed
                               from the settings menu, to make the change permanent
+        :param switch_display: called to turn the display off (False) before the host
+                               is shut down, and on (True) again if the shutdown fails
         :raises ValueError: if the button map is not valid
         """
         self._button_map = parse_button_map(button_map)
@@ -119,6 +122,7 @@ class Controller:
         self._library = library
         self._moc = moc
         self._save_settings = save_settings
+        self._switch_display = switch_display
         self._state = state
 
     def _change_volume(self, delta: int) -> None:
@@ -155,9 +159,7 @@ class Controller:
             if self._save_settings is not None:
                 self._save_settings(settings)
         elif item.command is MenuCommand.SHUTDOWN:
-            self._state.close_menus()
-            self._state.shutting_down = True
-            self._host.shutdown()
+            self._shutdown()
         elif item.command in TOGGLES:
             settings = self._state.settings
             attribute = TOGGLES[item.command]
@@ -203,6 +205,27 @@ class Controller:
     def _seek_forward(self) -> None:
         """Seek forward in the current track."""
         self._moc.seek(self._state.settings.playback_seek_step)
+
+    def _shutdown(self) -> None:
+        """Shut down the host, with the display turned off.
+
+        The display is turned off first, as the host leaves it as it is when it halts.
+        If the host cannot be shut down, the display is turned on again,
+        and the player carries on.
+
+        :raises HostError: if the host cannot be shut down
+        """
+        self._state.close_menus()
+        self._state.shutting_down = True
+        if self._switch_display is not None:
+            self._switch_display(False)
+        try:
+            self._host.shutdown()
+        except HostError:
+            self._state.shutting_down = False
+            if self._switch_display is not None:
+                self._switch_display(True)
+            raise
 
     def _volume_down(self) -> None:
         """Turn the volume down."""

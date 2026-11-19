@@ -8,10 +8,14 @@ from PIL import Image
 
 
 class NullDisplay:
-    """A display that draws nothing; it only remembers the last frame it was given."""
+    """A display that draws nothing.
+
+    It only remembers the last frame it was given, and whether it is turned on.
+    """
 
     def __init__(self) -> None:
         """Initialize the display."""
+        self.is_on: bool = True
         self.last_image: Image.Image | None = None
 
     def close(self) -> None:
@@ -20,3 +24,11 @@ class NullDisplay:
     def show(self, image: Image.Image) -> None:
         """Remember the given frame, without drawing it."""
         self.last_image = image
+
+    def turn_off(self) -> None:
+        """Remember that the display is turned off."""
+        self.is_on = False
+
+    def turn_on(self) -> None:
+        """Remember that the display is turned on."""
+        self.is_on = True

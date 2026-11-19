@@ -543,6 +543,8 @@ The top level menu has the following items:
 - `Host`: show the name and the IP address of the host,
   and `Shut down`, which asks for confirmation
   before running `system.shutdown_command`.
+  The display is turned off before the command is run,
+  and turned on again if the command fails.
 
 To leave the top level menu and go back to the playback, press the back button
 (`A`, with the default button map).

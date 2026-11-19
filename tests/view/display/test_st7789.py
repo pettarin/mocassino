@@ -27,7 +27,10 @@ class TestSt7789Display:
         assert image.mode == "RGB"
         assert image.size == (WIDTH, HEIGHT)
         assert image.getextrema() == ((0, 0), (0, 0), (0, 0))
+        device.command.assert_called_once_with(0x28)
         device.set_backlight.assert_called_once_with(0)
+        names = [call[0] for call in device.method_calls]
+        assert names == ["display", "command", "set_backlight"]
 
     def test_init(self, device_class):
         St7789Display()
@@ -44,3 +47,19 @@ class TestSt7789Display:
         image = Image.new("RGB", (WIDTH, HEIGHT))
         St7789Display().show(image)
         device_class.return_value.display.assert_called_once_with(image)
+
+    def test_turn_off(self, device_class):
+        St7789Display().turn_off()
+        device = device_class.return_value
+        device.command.assert_called_once_with(0x28)
+        device.set_backlight.assert_called_once_with(0)
+        device.display.assert_not_called()
+
+    def test_turn_on(self, device_class):
+        display = St7789Display()
+        display.turn_off()
+        display.turn_on()
+        device = device_class.return_value
+        assert [call.args for call in device.command.call_args_list] == [(0x28,), (0x29,)]
+        assert [call.args for call in device.set_backlight.call_args_list] == [(0,), (1,)]
+        device.display.assert_not_called()

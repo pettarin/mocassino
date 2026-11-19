@@ -66,6 +66,8 @@ class TkSimulator:
         self._held: set[Button] = set()
         self._long_press_time = long_press_time
         self._image_tk: Any = None
+        self._is_on = True
+        self._latest: Image.Image | None = None
         self._photo: Any = None
         self._repeat_hold_time = repeat_hold_time
         self._root: Any = None
@@ -181,12 +183,28 @@ class TkSimulator:
         root.destroy()
 
     def show(self, image: Image.Image) -> None:
-        """Show the given frame, an RGB image of WIDTH x HEIGHT pixels."""
-        self._frames.put(image)
+        """Show the given frame, an RGB image of WIDTH x HEIGHT pixels.
+
+        While the display is turned off, the frame is only kept for when it is turned on.
+        """
+        self._latest = image
+        if self._is_on:
+            self._frames.put(image)
 
     def start(self, events: Queue[ButtonEvent]) -> None:
         """Start putting the events in the given queue."""
         self._events = events
+
+    def turn_off(self) -> None:
+        """Make the display of the window dark."""
+        self._is_on = False
+        self._frames.put(Image.new("RGB", (WIDTH, HEIGHT)))
+
+    def turn_on(self) -> None:
+        """Make the display of the window show the frames again, starting from the latest."""
+        self._is_on = True
+        if self._latest is not None:
+            self._frames.put(self._latest)
 
 
 def _import_tk() -> tuple[Any, Any]:

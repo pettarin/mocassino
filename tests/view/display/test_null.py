@@ -24,3 +24,11 @@ class TestNullDisplay:
         assert display.last_image is None
         display.show(image)
         assert display.last_image is image
+
+    def test_turn_off_and_on(self):
+        display = NullDisplay()
+        assert display.is_on is True
+        display.turn_off()
+        assert display.is_on is False
+        display.turn_on()
+        assert display.is_on is True

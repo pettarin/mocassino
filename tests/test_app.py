@@ -16,7 +16,7 @@ from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
 from mocassino.controller.controller import Controller
 from mocassino.controller.events import Button, ButtonEvent, Press
-from mocassino.model.host import Host
+from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
 from mocassino.model.moc import (
     MocError,
@@ -35,6 +35,17 @@ from mocassino.view.renderer import Renderer
 from tests.model.fake_moc import FakeMoc
 
 PLAYING = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Title")
+# From playback mode: open the menu, go up to Host, open it, go up to Shut down,
+# open it, go down to Shut down now, and select it
+SHUT_DOWN = (
+    ButtonEvent(Button.A, Press.LONG),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.Y),
+    ButtonEvent(Button.B),
+)
 TICK = 0.01
 # From playback mode: open the menu, go to Settings, open it, open Display (its first item),
 # go to Show side icons (its third item), and select it
@@ -962,6 +973,35 @@ class TestBuildApp:
         assert moc.names() == ["start_server", "stop", "set_volume"]
         assert moc.volume == 70
         assert StateFile(state_file_path).load() == SavedState(volume=70)
+
+    def test_shutdown_turns_the_display_off(self, mocker):
+        host = mocker.patch("mocassino.app.Host", autospec=True).return_value
+        host.hostname.return_value = "pirate"
+        host.ip_address.return_value = None
+        app = build_app(self.configuration("none", "none"))
+        display = app._display
+        host.shutdown.side_effect = lambda: mocker.sentinel.done if not display.is_on else 1 / 0
+        for event in SHUT_DOWN:
+            app._controller.handle(event)
+        host.shutdown.assert_called_once_with()
+        assert display.is_on is False
+        assert app._state.shutting_down is True
+
+    def test_shutdown_that_fails_turns_the_display_on_again(self, mocker):
+        host = mocker.patch("mocassino.app.Host", autospec=True).return_value
+        host.hostname.return_value = "pirate"
+        host.ip_address.return_value = None
+        host.shutdown.side_effect = HostError("denied")
+        app = build_app(self.configuration("none", "none"))
+        for event in SHUT_DOWN:
+            app._controller.handle(event)
+        host.shutdown.assert_called_once_with()
+        assert app._display.is_on is True
+        assert app._state.shutting_down is False
+        app._moc = mocker.create_autospec(SubprocessMocClient, instance=True)
+        app._moc.status.return_value = PLAYING
+        app.step()
+        assert app._state_frozen is False
 
     def test_simulator(self):
         app = build_app(self.configuration("simulator", "simulator"))

@@ -20,3 +20,9 @@ class Display(Protocol):
 
     def show(self, image: Image.Image) -> None:
         """Show the given frame, an RGB image of WIDTH x HEIGHT pixels."""
+
+    def turn_off(self) -> None:
+        """Make the display dark; the frames shown meanwhile appear when it is turned on."""
+
+    def turn_on(self) -> None:
+        """Make the display show the frames again, after it has been turned off."""

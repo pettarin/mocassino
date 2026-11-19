@@ -309,6 +309,14 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
         LOGGER.info("Settings saved to '%s'", path)
 
 
+def _switch_display(display: Display, on: bool) -> None:
+    """Turn the display on or off."""
+    if on:
+        display.turn_on()
+    else:
+        display.turn_off()
+
+
 def build_app(
     configuration: Configuration,
     configuration_file_path: Path | None = None,
@@ -356,6 +364,7 @@ def build_app(
         ),
         volume=volume,
     )
+    display = _build_display(configuration, simulator)
     controller = Controller(
         state,
         moc,
@@ -363,6 +372,7 @@ def build_app(
         host,
         button_map=configuration.buttons.button_map,
         save_settings=partial(_save_settings, configuration_file_path),
+        switch_display=partial(_switch_display, display),
     )
     return App(
         state,
@@ -372,7 +382,7 @@ def build_app(
             font_file_path=configuration.display.font_file_path,
             button_map=configuration.buttons.button_map,
         ),
-        display=_build_display(configuration, simulator),
+        display=display,
         button_source=_build_button_source(configuration, simulator),
         tick=configuration.display.tick,
         simulator=simulator,

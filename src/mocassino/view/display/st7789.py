@@ -11,6 +11,9 @@ from mocassino.view.display.base import HEIGHT, WIDTH
 BACKLIGHT_PIN: int = 13
 CHIP_SELECT: int = 1
 DATA_COMMAND_PIN: int = 9
+# The commands making the panel stop and resume showing the frame it holds
+DISPLAY_OFF_COMMAND: int = 0x28
+DISPLAY_ON_COMMAND: int = 0x29
 ROTATION: int = 90
 SPI_PORT: int = 0
 SPI_SPEED_HZ: int = 80_000_000
@@ -37,10 +40,20 @@ class St7789Display:
         )
 
     def close(self) -> None:
-        """Blank the screen and turn the backlight off."""
+        """Blank the screen and turn the display off."""
         self._device.display(Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0)))
-        self._device.set_backlight(0)
+        self.turn_off()
 
     def show(self, image: Image.Image) -> None:
         """Show the given frame, an RGB image of WIDTH x HEIGHT pixels."""
         self._device.display(image)
+
+    def turn_off(self) -> None:
+        """Make the panel stop showing its frame, and turn the backlight off."""
+        self._device.command(DISPLAY_OFF_COMMAND)
+        self._device.set_backlight(0)
+
+    def turn_on(self) -> None:
+        """Make the panel show its frame again, and turn the backlight on."""
+        self._device.command(DISPLAY_ON_COMMAND)
+        self._device.set_backlight(1)

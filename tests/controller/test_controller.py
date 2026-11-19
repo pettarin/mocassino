@@ -91,6 +91,7 @@ class TestController:
         with caplog.at_level(logging.ERROR):
             controller.handle(B)
         assert "Cannot perform menu_select: denied" in caplog.text
+        assert state.shutting_down is False
 
     def test_invalid_button_map(self, state, moc, library, host):
         with pytest.raises(ValueError, match="is not a valid"):
@@ -192,6 +193,37 @@ class TestController:
         host.shutdown.assert_called_once_with()
         assert state.mode == Mode.PLAYBACK
         assert state.shutting_down is True
+
+    def test_menu_select_shutdown_turns_the_display_off_first(
+        self, mocker, state, moc, library, host
+    ):
+        calls = mocker.Mock()
+        host.shutdown.side_effect = calls.shutdown
+        controller = Controller(
+            state, moc, library, host, DEFAULT_BUTTON_MAP, switch_display=calls.switch_display
+        )
+        open_single_item_menu(state, MenuItem(label="Off", command=MenuCommand.SHUTDOWN))
+        controller.handle(B)
+        assert calls.mock_calls == [mocker.call.switch_display(False), mocker.call.shutdown()]
+        assert state.shutting_down is True
+
+    def test_menu_select_shutdown_fails(self, mocker, state, moc, library, host, caplog):
+        calls = mocker.Mock()
+        calls.shutdown.side_effect = HostError("denied")
+        host.shutdown.side_effect = calls.shutdown
+        controller = Controller(
+            state, moc, library, host, DEFAULT_BUTTON_MAP, switch_display=calls.switch_display
+        )
+        open_single_item_menu(state, MenuItem(label="Off", command=MenuCommand.SHUTDOWN))
+        with caplog.at_level(logging.ERROR):
+            controller.handle(B)
+        assert calls.mock_calls == [
+            mocker.call.switch_display(False),
+            mocker.call.shutdown(),
+            mocker.call.switch_display(True),
+        ]
+        assert state.shutting_down is False
+        assert "Cannot perform menu_select: denied" in caplog.text
 
     def test_menu_select_shutdown_is_flagged_before_it_is_asked(self, controller, state, host):
         flags = []
