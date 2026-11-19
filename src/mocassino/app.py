@@ -206,7 +206,11 @@ def build_app(configuration: Configuration) -> App:
         state,
         controller,
         moc,
-        renderer=Renderer(font_file_path=configuration.display.font_file_path),
+        renderer=Renderer(
+            font_file_path=configuration.display.font_file_path,
+            button_map=configuration.buttons.button_map,
+            show_side_icons=configuration.display.show_side_icons,
+        ),
         display=_build_display(configuration, simulator),
         button_source=_build_button_source(configuration, simulator),
         tick=configuration.display.tick,

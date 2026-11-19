@@ -5,15 +5,23 @@
 """
 
 import pytest
-from PIL import ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
+from mocassino.controller.actions import Action, resolve_button_map
+from mocassino.controller.events import Button
 from mocassino.model.menu import Menu, MenuCommand, MenuItem
 from mocassino.model.moc import MocState, MocStatus
 from mocassino.model.state import AppState
 from mocassino.view.display.base import HEIGHT, WIDTH
+from mocassino.view.icons import ICON_SIZE, draw_icon
 from mocassino.view.renderer import (
     ACCENT_COLOR,
     BACKGROUND_COLOR,
+    BAND_WIDTH,
+    BUTTON_ICONS_BOTTOM_Y,
+    BUTTON_ICONS_TOP_Y,
+    CONTENT_LEFT,
+    CONTENT_RIGHT,
     DIM_COLOR,
     ELLIPSIS,
     MENU_ROW_HEIGHT,
@@ -32,6 +40,22 @@ PLAYING = MocStatus(
     title="Title",
     total_seconds=205,
 )
+
+
+def icon(action: Action | None) -> bytes:
+    """Return the pixels of the icon of the given action, as drawn next to a button."""
+    image = Image.new("RGB", (ICON_SIZE, ICON_SIZE), BACKGROUND_COLOR)
+    if action is not None:
+        draw_icon(ImageDraw.Draw(image), action, 0, 0, DIM_COLOR)
+    return image.tobytes()
+
+
+def icon_slot(image, button: Button, lower: bool) -> bytes:
+    """Return the pixels of the upper or lower icon place of the given button."""
+    left = 2 if button in (Button.A, Button.B) else WIDTH - BAND_WIDTH + 2
+    middle = BUTTON_ICONS_TOP_Y if button in (Button.A, Button.X) else BUTTON_ICONS_BOTTOM_Y
+    top = middle + 1 if lower else middle - 1 - ICON_SIZE
+    return image.crop((left, top, left + ICON_SIZE, top + ICON_SIZE)).tobytes()
 
 
 def has_content(image, box) -> bool:
@@ -80,6 +104,10 @@ class TestRenderer:
 
     def test_fit_short_text(self, renderer):
         assert renderer._fit("Short", ImageFont.load_default(20), 100) == "Short"
+
+    def test_button_map_invalid(self):
+        with pytest.raises(ValueError, match="is not a valid"):
+            Renderer(button_map={"playback": {"A": "rewind"}})
 
     def test_font_file(self, mocker, tmp_path):
         truetype = mocker.patch(
@@ -138,24 +166,119 @@ class TestRenderer:
         assert image.getpixel((2, row_top(0) + 2)) == BACKGROUND_COLOR
         assert image.getpixel((2, row_top(1) + 2)) == ACCENT_COLOR
 
+    def test_playback_button_icons(self, renderer):
+        image = renderer.render(AppState(status=PLAYING))
+        expected = {
+            Button.A: (Action.PLAY_PAUSE, Action.OPEN_MENU),
+            Button.B: (Action.NEXT, Action.PREVIOUS),
+            Button.X: (Action.VOLUME_UP, Action.SEEK_FORWARD),
+            Button.Y: (Action.VOLUME_DOWN, Action.SEEK_BACKWARD),
+        }
+        for button, (short, held) in expected.items():
+            assert icon_slot(image, button, lower=False) == icon(short)
+            assert icon_slot(image, button, lower=True) == icon(held)
+
+    def test_playback_button_icons_are_alone_in_the_bands(self, renderer):
+        text = "A very long text that would never fit in the width of the frame"
+        status = MocStatus(
+            album=text,
+            artist=text,
+            current_seconds=70,
+            file_path="/music/a.flac",
+            state=MocState.PLAY,
+            title=text,
+            total_seconds=205,
+        )
+        image = renderer.render(AppState(status=status))
+        for left in (0, WIDTH - BAND_WIDTH):
+            right = left + BAND_WIDTH
+            assert not has_content(image, (left, 0, right, BUTTON_ICONS_TOP_Y - 17))
+            assert not has_content(
+                image, (left, BUTTON_ICONS_TOP_Y + 17, right, BUTTON_ICONS_BOTTOM_Y - 17)
+            )
+            assert not has_content(image, (left, BUTTON_ICONS_BOTTOM_Y + 17, right, HEIGHT))
+        assert not has_content(image, (BAND_WIDTH, 0, CONTENT_LEFT, HEIGHT))
+        assert not has_content(image, (CONTENT_RIGHT, 0, WIDTH - BAND_WIDTH, HEIGHT))
+
+    def test_playback_button_icons_follow_the_button_map(self):
+        button_map = resolve_button_map(
+            {
+                "playback": {
+                    "A": "next",
+                    "A_hold": "seek_forward",
+                    "B": "menu_up",
+                    "B_hold": None,
+                    "X": None,
+                    "X_hold": None,
+                    "Y_long": "open_menu",
+                }
+            }
+        )
+        image = Renderer(button_map=button_map).render(AppState(status=PLAYING))
+        expected = {
+            Button.A: (Action.NEXT, Action.OPEN_MENU),
+            Button.B: (None, None),
+            Button.X: (None, None),
+            Button.Y: (Action.VOLUME_DOWN, Action.OPEN_MENU),
+        }
+        for button, (short, held) in expected.items():
+            assert icon_slot(image, button, lower=False) == icon(short)
+            assert icon_slot(image, button, lower=True) == icon(held)
+
+    def test_playback_button_icons_not_in_menu_mode(self, renderer):
+        state = AppState(menus=[letters_menu(3)])
+        without_icons = Renderer(button_map={})
+        assert renderer.render(state).tobytes() == without_icons.render(state).tobytes()
+        assert renderer.render(AppState()).tobytes() != without_icons.render(AppState()).tobytes()
+
+    def test_playback_button_icons_hidden(self):
+        text = "A very long text that would never fit in the width of the frame"
+        status = MocStatus(
+            album=text,
+            artist=text,
+            current_seconds=70,
+            file_path="/music/a.flac",
+            state=MocState.PLAY,
+            title=text,
+            total_seconds=205,
+        )
+        image = Renderer(show_side_icons=False).render(AppState(status=status, volume=100))
+        defaults = {
+            Button.A: (Action.PLAY_PAUSE, Action.OPEN_MENU),
+            Button.B: (Action.NEXT, Action.PREVIOUS),
+            Button.X: (Action.VOLUME_UP, Action.SEEK_FORWARD),
+            Button.Y: (Action.VOLUME_DOWN, Action.SEEK_BACKWARD),
+        }
+        for button, (short, held) in defaults.items():
+            assert icon_slot(image, button, lower=False) != icon(short)
+            assert icon_slot(image, button, lower=True) != icon(held)
+        assert not has_content(image, (0, 0, 10, HEIGHT))
+        assert not has_content(image, (WIDTH - 10, 0, WIDTH, HEIGHT))
+        assert image.getpixel((12, 18)) == ACCENT_COLOR
+        assert image.getpixel((12, 171)) == ACCENT_COLOR
+        assert image.getpixel((WIDTH - 12, 171)) == TRACK_COLOR
+        assert image.getpixel((WIDTH - 12, 220)) == ACCENT_COLOR
+        assert has_content(image, (10, 40, 24, 160))
+        assert has_content(image, (216, 40, 230, 160))
+
     def test_playback_pause_icon(self, renderer):
         status = MocStatus(file_path="/music/a.flac", state=MocState.PAUSE)
         image = renderer.render(AppState(status=status))
-        assert image.getpixel((12, 18)) == ACCENT_COLOR
-        assert image.getpixel((18, 18)) == BACKGROUND_COLOR
-        assert image.getpixel((24, 18)) == ACCENT_COLOR
+        assert image.getpixel((26, 18)) == ACCENT_COLOR
+        assert image.getpixel((32, 18)) == BACKGROUND_COLOR
+        assert image.getpixel((38, 18)) == ACCENT_COLOR
 
     def test_playback_play_icon(self, renderer):
         image = renderer.render(AppState(status=PLAYING))
-        assert image.getpixel((12, 18)) == ACCENT_COLOR
-        assert image.getpixel((24, 11)) == BACKGROUND_COLOR
+        assert image.getpixel((26, 18)) == ACCENT_COLOR
+        assert image.getpixel((38, 11)) == BACKGROUND_COLOR
 
     def test_playback_progress(self, renderer):
         image = renderer.render(AppState(status=PLAYING))
-        assert image.getpixel((20, 171)) == ACCENT_COLOR
+        assert image.getpixel((30, 171)) == ACCENT_COLOR
         assert image.getpixel((200, 171)) == TRACK_COLOR
-        assert has_content(image, (10, 180, 60, 200))
-        assert has_content(image, (180, 180, 230, 200))
+        assert has_content(image, (24, 180, 74, 200))
+        assert has_content(image, (166, 180, 216, 200))
 
     def test_playback_progress_without_total(self, renderer):
         status = MocStatus(
@@ -164,31 +287,31 @@ class TestRenderer:
             state=MocState.PLAY,
         )
         image = renderer.render(AppState(status=status))
-        assert image.getpixel((20, 171)) == TRACK_COLOR
-        assert has_content(image, (10, 180, 60, 200))
-        assert not has_content(image, (180, 180, 230, 200))
+        assert image.getpixel((30, 171)) == TRACK_COLOR
+        assert has_content(image, (24, 180, 74, 200))
+        assert not has_content(image, (166, 180, 216, 200))
 
     def test_playback_stop(self, renderer):
         image = renderer.render(AppState())
-        assert image.getpixel((24, 11)) == ACCENT_COLOR
+        assert image.getpixel((38, 11)) == ACCENT_COLOR
         assert has_content(image, (40, 95, 200, 125))
-        assert not has_content(image, (0, 130, WIDTH, 205))
+        assert not has_content(image, (BAND_WIDTH, 130, WIDTH - BAND_WIDTH, 205))
 
     def test_playback_title_falls_back_to_file_name(self, renderer):
         tagged = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Name")
         untagged = MocStatus(file_path="/music/Name.flac", state=MocState.PLAY)
-        box = (0, 60, WIDTH, 130)
+        box = (CONTENT_LEFT, 60, CONTENT_RIGHT, 130)
         first = renderer.render(AppState(status=tagged)).crop(box)
         second = renderer.render(AppState(status=untagged)).crop(box)
-        assert has_content(first, (0, 0, WIDTH, 70))
+        assert has_content(first, (0, 0, CONTENT_RIGHT - CONTENT_LEFT, 70))
         assert first.tobytes() == second.tobytes()
 
     def test_playback_track_is_drawn(self, renderer):
         image = renderer.render(AppState(status=PLAYING))
-        assert has_content(image, (10, 40, 230, 64))
-        assert has_content(image, (10, 68, 230, 98))
-        assert not has_content(image, (10, 100, 230, 130))
-        assert has_content(image, (10, 134, 230, 160))
+        assert has_content(image, (24, 40, 216, 64))
+        assert has_content(image, (24, 68, 216, 98))
+        assert not has_content(image, (24, 100, 216, 130))
+        assert has_content(image, (24, 134, 216, 160))
 
     @pytest.mark.parametrize(
         ("volume", "left_color", "right_color"),
@@ -200,9 +323,9 @@ class TestRenderer:
     )
     def test_playback_volume(self, renderer, volume, left_color, right_color):
         image = renderer.render(AppState(volume=volume))
-        assert image.getpixel((90, 220)) == left_color
-        assert image.getpixel((220, 220)) == right_color
-        assert has_content(image, (10, 210, 70, 230))
+        assert image.getpixel((100, 220)) == left_color
+        assert image.getpixel((210, 220)) == right_color
+        assert has_content(image, (24, 210, 84, 230))
 
     def test_wrap(self, renderer):
         font = ImageFont.load_default(26)

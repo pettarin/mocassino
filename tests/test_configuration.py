@@ -44,7 +44,7 @@ class TestConfiguration:
             long_press_time=0.6, origin="gpio", repeat_hold_time=0.3
         )
         assert configuration.display == DisplayConfiguration(
-            font_file_path=None, target="st7789", tick=0.5
+            font_file_path=None, show_side_icons=True, target="st7789", tick=0.5
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
         assert configuration.playback == PlaybackConfiguration(
@@ -63,7 +63,12 @@ class TestConfiguration:
                 "origin": "gpio",
                 "repeat_hold_time": 0.3,
             },
-            "display": {"font_file_path": None, "target": "st7789", "tick": 0.5},
+            "display": {
+                "font_file_path": None,
+                "show_side_icons": True,
+                "target": "st7789",
+                "tick": 0.5,
+            },
             "library": {"directory_path": "/music"},
             "playback": {"initial_volume": 50, "seek_step": 10, "volume_step": 2},
             "system": {
@@ -125,6 +130,7 @@ class TestLoadConfiguration:
             "  repeat_hold_time: 0.5\n"
             "display:\n"
             "  font_file_path: ~/font.ttf\n"
+            "  show_side_icons: false\n"
             "  target: simulator\n"
             "  tick: 0.25\n"
             "library:\n"
@@ -140,7 +146,10 @@ class TestLoadConfiguration:
         assert load_configuration(path) == Configuration(
             buttons=ButtonsConfiguration(long_press_time=2.0, origin="none", repeat_hold_time=0.5),
             display=DisplayConfiguration(
-                font_file_path=tmp_path / "font.ttf", target="simulator", tick=0.25
+                font_file_path=tmp_path / "font.ttf",
+                show_side_icons=False,
+                target="simulator",
+                tick=0.25,
             ),
             library=LibraryConfiguration(directory_path=Path("/srv/music")),
             playback=PlaybackConfiguration(initial_volume=70, seek_step=30, volume_step=10),
@@ -167,6 +176,8 @@ class TestLoadConfiguration:
             ("buttons", "repeat_hold_time", 0),
             ("buttons", "repeat_hold_time", "fast"),
             ("display", "font_file_path", 5),
+            ("display", "show_side_icons", "yes"),
+            ("display", "show_side_icons", 1),
             ("display", "target", "hdmi"),
             ("display", "tick", -0.5),
             ("library", "directory_path", 5),

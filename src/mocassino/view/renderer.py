@@ -6,14 +6,18 @@ The renderer only produces images; showing them is up to a display.
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from mocassino.controller.actions import parse_button_map, resolve_button_map
+from mocassino.controller.events import Button, ButtonEvent, Press
 from mocassino.model.menu import Menu
 from mocassino.model.moc import MocState
-from mocassino.model.state import AppState
+from mocassino.model.state import AppState, Mode
 from mocassino.view.display.base import HEIGHT, WIDTH
+from mocassino.view.icons import ICON_SIZE, draw_icon
 
 type Box = tuple[int, int, int, int]
 type Color = tuple[int, int, int]
@@ -21,15 +25,21 @@ type Font = ImageFont.FreeTypeFont | ImageFont.ImageFont
 
 ACCENT_COLOR: Color = (255, 176, 0)
 BACKGROUND_COLOR: Color = (0, 0, 0)
+# In playback mode, a band on each side of the frame is reserved to the icons of the buttons,
+# when they are shown: the content is then drawn between CONTENT_LEFT and CONTENT_RIGHT
+BAND_WIDTH: int = 20
+# The height of the buttons beside the display: A and X at the top, B and Y at the bottom
+BUTTON_ICONS_BOTTOM_Y: int = 180
+BUTTON_ICONS_TOP_Y: int = 60
+CONTENT_LEFT: int = BAND_WIDTH + 4
+CONTENT_RIGHT: int = WIDTH - BAND_WIDTH - 4
 DIM_COLOR: Color = (140, 140, 140)
 ELLIPSIS: str = "..."
 MARGIN: int = 10
 MENU_ROW_HEIGHT: int = 34
 MENU_TITLE_HEIGHT: int = 36
 MENU_VISIBLE_ROWS: int = 6
-PROGRESS_BAR_BOX: Box = (MARGIN, 168, WIDTH - MARGIN - 1, 175)
 SCROLLBAR_WIDTH: int = 4
-STATE_ICON_BOX: Box = (10, 10, 26, 26)
 STATE_LABELS: dict[MocState, str] = {
     MocState.PAUSE: "Paused",
     MocState.PLAY: "Playing",
@@ -37,18 +47,33 @@ STATE_LABELS: dict[MocState, str] = {
 }
 TEXT_COLOR: Color = (255, 255, 255)
 TRACK_COLOR: Color = (60, 60, 60)
-VOLUME_BAR_BOX: Box = (80, 216, WIDTH - MARGIN - 1, 223)
 
 
 class Renderer:
     """Draws the state of the application into frames of WIDTH x HEIGHT pixels."""
 
-    def __init__(self, font_file_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        font_file_path: Path | None = None,
+        button_map: Mapping[str, Mapping[str, str]] | None = None,
+        show_side_icons: bool = True,
+    ) -> None:
         """Initialize the renderer.
 
         :param font_file_path: the TrueType font; if None, the font built in Pillow
+        :param button_map: the button map, in plain form, whose playback actions are shown
+                           as icons next to the buttons; if None, the default button map
+        :param show_side_icons: whether the icons are shown; if not, the playback content
+                                also takes the place of the bands reserved to them
         :raises OSError: if the font cannot be loaded
+        :raises ValueError: if the button map is not valid
         """
+        if button_map is None:
+            button_map = resolve_button_map({})
+        self._button_map = parse_button_map(button_map)
+        self._content_left = CONTENT_LEFT if show_side_icons else MARGIN
+        self._content_right = CONTENT_RIGHT if show_side_icons else WIDTH - MARGIN
+        self._show_side_icons = show_side_icons
         self._font_file_path = font_file_path
         self._fonts: dict[int, Font] = {}
         self._font(16)
@@ -60,6 +85,27 @@ class Renderer:
         filled = round((right - left) * max(0.0, min(1.0, fraction)))
         if filled > 0:
             draw.rectangle((left, top, left + filled, bottom), fill=ACCENT_COLOR)
+
+    def _draw_button_icons(self, draw: ImageDraw.ImageDraw) -> None:
+        """Draw the icons of the playback actions of the buttons, in the bands at the sides.
+
+        Each button has the icon of its short press, and below it the icon of its long press
+        or, if it has none, of its hold press. Actions without an icon leave their place empty.
+        """
+        for button in Button:
+            left = (BAND_WIDTH - ICON_SIZE) // 2
+            if button in (Button.X, Button.Y):
+                left += WIDTH - BAND_WIDTH
+            middle = BUTTON_ICONS_TOP_Y if button in (Button.A, Button.X) else BUTTON_ICONS_BOTTOM_Y
+            actions = [
+                self._button_map.get((Mode.PLAYBACK, ButtonEvent(button, press))) for press in Press
+            ]
+            hold, long, short = actions
+            held = hold if long is None else long
+            if short is not None:
+                draw_icon(draw, short, left, middle - 1 - ICON_SIZE, DIM_COLOR)
+            if held is not None:
+                draw_icon(draw, held, left, middle + 1, DIM_COLOR)
 
     def _draw_menu(self, draw: ImageDraw.ImageDraw, menu: Menu) -> None:
         """Draw a menu: its title, the items around the selected one, and a scrollbar."""
@@ -105,13 +151,16 @@ class Renderer:
             draw.rectangle((left, thumb_top, WIDTH - 1, thumb_bottom), fill=DIM_COLOR)
 
     def _draw_playback(self, draw: ImageDraw.ImageDraw, state: AppState) -> None:
-        """Draw the playback: the state, the track, its progress, and the volume."""
+        """Draw the playback: the state, the track, its progress, the volume, and the icons."""
         status = state.status
         small_font = self._font(16)
-        width = WIDTH - 2 * MARGIN
+        left, right = self._content_left, self._content_right
+        width = right - left
+        if self._show_side_icons:
+            self._draw_button_icons(draw)
         self._draw_state_icon(draw, status.state)
         draw.text(
-            (36, 18),
+            (left + 26, 18),
             STATE_LABELS[status.state],
             anchor="lm",
             fill=DIM_COLOR,
@@ -130,16 +179,16 @@ class Renderer:
             title_font = self._font(26)
             album_font = self._font(18)
             draw.text(
-                (MARGIN, 40),
+                (left, 40),
                 self._fit(status.artist, artist_font, width),
                 fill=DIM_COLOR,
                 font=artist_font,
             )
             title = status.title or Path(status.file_path).stem
             for index, line in enumerate(self._wrap(title, title_font, width, 2)):
-                draw.text((MARGIN, 68 + 30 * index), line, fill=TEXT_COLOR, font=title_font)
+                draw.text((left, 68 + 30 * index), line, fill=TEXT_COLOR, font=title_font)
             draw.text(
-                (MARGIN, 134),
+                (left, 134),
                 self._fit(status.album, album_font, width),
                 fill=DIM_COLOR,
                 font=album_font,
@@ -147,35 +196,36 @@ class Renderer:
             total = status.total_seconds
             self._draw_bar(
                 draw,
-                PROGRESS_BAR_BOX,
+                (left, 168, right - 1, 175),
                 status.current_seconds / total if total else 0.0,
             )
             draw.text(
-                (MARGIN, 180),
+                (left, 180),
                 _format_seconds(status.current_seconds),
                 fill=TEXT_COLOR,
                 font=small_font,
             )
             if total is not None:
                 draw.text(
-                    (WIDTH - MARGIN, 180),
+                    (right, 180),
                     _format_seconds(total),
                     anchor="ra",
                     fill=TEXT_COLOR,
                     font=small_font,
                 )
         draw.text(
-            (MARGIN, 220),
+            (left, 220),
             f"Vol {state.volume}",
             anchor="lm",
             fill=DIM_COLOR,
             font=small_font,
         )
-        self._draw_bar(draw, VOLUME_BAR_BOX, state.volume / 100)
+        self._draw_bar(draw, (left + 70, 216, right - 1, 223), state.volume / 100)
 
     def _draw_state_icon(self, draw: ImageDraw.ImageDraw, state: MocState) -> None:
         """Draw the icon of the playback state: a triangle, two bars, or a square."""
-        left, top, right, bottom = STATE_ICON_BOX
+        box = (self._content_left, 10, self._content_left + 16, 26)
+        left, top, right, bottom = box
         if state is MocState.PLAY:
             draw.polygon(
                 [(left, top), (right, (top + bottom) // 2), (left, bottom)],
@@ -185,7 +235,7 @@ class Renderer:
             draw.rectangle((left, top, left + 5, bottom), fill=ACCENT_COLOR)
             draw.rectangle((right - 5, top, right, bottom), fill=ACCENT_COLOR)
         else:
-            draw.rectangle(STATE_ICON_BOX, fill=ACCENT_COLOR)
+            draw.rectangle(box, fill=ACCENT_COLOR)
 
     def _fit(self, text: str, font: Font, max_width: int) -> str:
         """Return the text, truncated with an ellipsis if wider than the given width."""

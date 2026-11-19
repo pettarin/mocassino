@@ -10,7 +10,7 @@ import pytest
 
 from mocassino.app import App, build_app
 from mocassino.configuration import load_configuration
-from mocassino.controller.actions import DEFAULT_BUTTON_MAP
+from mocassino.controller.actions import DEFAULT_BUTTON_MAP, Action
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
 from mocassino.controller.controller import Controller
@@ -188,6 +188,27 @@ class TestBuildApp:
         app.events.put(ButtonEvent(Button.A, Press.LONG))
         app._controller.handle(app.events.get())
         assert app._state.mode == Mode.MENU
+
+    def test_renderer_has_the_button_map(self):
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"button_map": {"playback": {"A": "next"}}, "origin": "none"},
+                "display": {"target": "none"},
+            }
+        )
+        button_map = build_app(configuration)._renderer._button_map
+        assert button_map[(Mode.PLAYBACK, ButtonEvent(Button.A))] == Action.NEXT
+
+    def test_renderer_side_icons(self):
+        shown = build_app(self.configuration("none", "none"))
+        assert shown._renderer._show_side_icons is True
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"show_side_icons": False, "target": "none"},
+            }
+        )
+        assert build_app(configuration)._renderer._show_side_icons is False
 
     def test_simulator(self):
         app = build_app(self.configuration("simulator", "simulator"))

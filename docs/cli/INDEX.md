@@ -176,6 +176,7 @@ buttons:
   repeat_hold_time: 0.3
 display:
   font_file_path: null
+  show_side_icons: true
   target: st7789
   tick: 0.5
 library:
@@ -213,6 +214,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `buttons.origin` | `gpio` | Where the button events come from: `gpio`, `none`, or `simulator` |
 | `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
+| `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode |
 | `display.target` | `st7789` | Where the screen is drawn: `none`, `simulator`, or `st7789` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
@@ -308,6 +310,19 @@ buttons:
 
 With the default values, holding `X` in playback mode seeks 10 seconds forward
 after 0.6 seconds, and then 10 more seconds every 0.3 seconds, until `X` is released.
+
+### Button Icons
+
+In playback mode, a band of 20 pixels on each side of the screen
+shows the icons of the actions of the buttons, next to the buttons themselves:
+for each button, the icon of its short press and, below it,
+the icon of its long press or, if it has none, of its hold press.
+
+The icons follow the button map: a button without action,
+or with an action that has no icon (the `menu_*` actions), shows no icon.
+
+Set `display.show_side_icons` to `false` to hide the icons:
+the two bands are then used by the playback information.
 
 
 ## Menus

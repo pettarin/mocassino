@@ -23,7 +23,7 @@ which it controls by running `mocp` commands.
   volume up, volume down
 - Playback information on the display of the hat:
   artist, title, and album of the current track,
-  playback progress, and volume
+  playback progress, volume, and the icons of the actions of the buttons
 - Menu to browse the music root directory
   and play a directory or a single FLAC, MP3, OGG, or WAV file
 - Menu showing the name and the IP address of the host,

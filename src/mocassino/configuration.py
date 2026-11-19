@@ -44,6 +44,7 @@ class DisplayConfiguration:
     """The settings of the display."""
 
     font_file_path: Path | None = None
+    show_side_icons: bool = True
     target: str = "st7789"
     tick: float = 0.5
 
@@ -110,7 +111,12 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "origin": _to_str,
             "repeat_hold_time": _to_float,
         },
-        "display": {"font_file_path": _to_path, "target": _to_str, "tick": _to_float},
+        "display": {
+            "font_file_path": _to_path,
+            "show_side_icons": _to_bool,
+            "target": _to_str,
+            "tick": _to_float,
+        },
         "library": {"directory_path": _to_path},
         "playback": {
             "initial_volume": _to_int,
@@ -200,6 +206,13 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(content, dict):
         raise ConfigurationError(f"Configuration file '{path}' must contain a mapping")
     return {str(key): value for key, value in content.items()}
+
+
+def _to_bool(value: object) -> bool:
+    """Coerce a boolean to a bool."""
+    if not isinstance(value, bool):
+        raise TypeError("expected true or false")
+    return value
 
 
 def _to_command(value: object) -> tuple[str, ...]:
