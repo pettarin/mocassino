@@ -6,6 +6,7 @@
 
 import pytest
 
+from mocassino.model.colors import COLOR_NAMES
 from mocassino.model.library import Library
 from mocassino.model.menu import (
     Menu,
@@ -13,6 +14,8 @@ from mocassino.model.menu import (
     MenuItem,
     _label,
     build_display_brightness_menu,
+    build_display_color_menu,
+    build_display_colors_menu,
     build_display_menu,
     build_display_orientation_menu,
     build_library_menu,
@@ -67,12 +70,13 @@ class TestBuildDisplayMenu:
         assert menu.title == "Display"
         assert [item.label for item in menu.items] == [
             "Brightness (%)",
+            "Colors",
             "Orientation",
             "Show progress bar",
             "Show side icons",
             "Show volume bar",
         ]
-        assert menu.items[3] == MenuItem(
+        assert menu.items[4] == MenuItem(
             label="Show side icons",
             checked=show,
             command=MenuCommand.TOGGLE_SIDE_ICONS,
@@ -82,16 +86,23 @@ class TestBuildDisplayMenu:
     def test_bars(self, show):
         settings = Settings(show_progress_bar=show, show_volume_bar=not show)
         menu = build_display_menu(settings)
-        assert menu.items[2] == MenuItem(
+        assert menu.items[3] == MenuItem(
             label="Show progress bar",
             checked=show,
             command=MenuCommand.TOGGLE_PROGRESS_BAR,
         )
-        assert menu.items[4] == MenuItem(
+        assert menu.items[5] == MenuItem(
             label="Show volume bar",
             checked=not show,
             command=MenuCommand.TOGGLE_VOLUME_BAR,
         )
+
+    def test_colors_submenu(self):
+        settings = Settings()
+        item = build_display_menu(settings).items[1]
+        assert item.checked is None
+        assert item.command is None
+        assert item.submenu().title == "Colors"
 
     def test_brightness_submenu(self):
         settings = Settings()
@@ -105,13 +116,78 @@ class TestBuildDisplayMenu:
 
     def test_orientation_submenu(self):
         settings = Settings()
-        item = build_display_menu(settings).items[1]
+        item = build_display_menu(settings).items[2]
         assert item.checked is None
         assert item.command is None
         assert item.submenu().title == "Orientation"
         assert item.submenu().selected.label == "0"
         settings.display_orientation = 270
         assert item.submenu().selected.label == "270"
+
+
+class TestBuildDisplayColorMenu:
+    """Tests for the build_display_color_menu function"""
+
+    @pytest.mark.parametrize("role", ["accented", "background", "muted", "normal", "track"])
+    def test_default(self, role):
+        settings = Settings()
+        menu = build_display_color_menu(settings, role)
+        current = getattr(settings, f"display_colors_{role}")
+        assert menu.title == role.capitalize()
+        assert len(menu.items) == 140
+        assert menu.selected.label == f"{current} [X]"
+        assert menu.selected.color == current
+        assert [item.label for item in menu.items if item.label.endswith(" [X]")] == [
+            f"{current} [X]"
+        ]
+        command = MenuCommand(f"set_display_colors_{role}")
+        assert all(item.command is command for item in menu.items)
+        assert all(item.checked is None for item in menu.items)
+        assert all(item.color == item.value for item in menu.items)
+        assert [item.value for item in menu.items] == list(COLOR_NAMES)
+
+    def test_items(self):
+        menu = build_display_color_menu(Settings(), "accented")
+        assert menu.items[0] == MenuItem(
+            label="aliceblue",
+            color="aliceblue",
+            command=MenuCommand.SET_DISPLAY_COLORS_ACCENTED,
+            value="aliceblue",
+        )
+        assert "darkgrey" not in [item.label for item in menu.items]
+
+    @pytest.mark.parametrize(
+        ("spec", "label"),
+        [("cyan", "cyan [X]"), ("#00FFFF", "aqua [X]"), ("DarkGrey", "darkgray [X]")],
+    )
+    def test_named_current(self, spec, label):
+        menu = build_display_color_menu(Settings(display_colors_track=spec), "track")
+        assert len(menu.items) == 140
+        assert menu.selected.label == label
+        assert menu.selected.command is MenuCommand.SET_DISPLAY_COLORS_TRACK
+
+    def test_unnamed_current(self):
+        menu = build_display_color_menu(Settings(display_colors_muted="#123456"), "muted")
+        assert len(menu.items) == 141
+        assert menu.selected_index == 0
+        assert menu.items[0] == MenuItem(label="#123456 [X]", color="#123456")
+        assert menu.items[1].label == "aliceblue"
+        assert not [item for item in menu.items[1:] if item.label.endswith(" [X]")]
+
+
+class TestBuildDisplayColorsMenu:
+    """Tests for the build_display_colors_menu function"""
+
+    def test_items(self):
+        settings = Settings()
+        menu = build_display_colors_menu(settings)
+        assert menu.title == "Colors"
+        labels = ["Accented", "Background", "Muted", "Normal", "Track"]
+        assert [item.label for item in menu.items] == labels
+        assert [item.submenu().title for item in menu.items] == labels
+        assert all(item.command is None and item.checked is None for item in menu.items)
+        settings.display_colors_normal = "gold"
+        assert menu.items[3].submenu().selected.label == "gold [X]"
 
 
 class TestBuildDisplayBrightnessMenu:
@@ -211,9 +287,9 @@ class TestBuildRootMenu:
     def test_settings_menu_shows_the_current_values(self, library, system):
         settings = Settings()
         item = build_root_menu(library, system, settings).items[1]
-        assert item.submenu().items[0].submenu().items[3].checked is True
+        assert item.submenu().items[0].submenu().items[4].checked is True
         settings.show_side_icons = False
-        assert item.submenu().items[0].submenu().items[3].checked is False
+        assert item.submenu().items[0].submenu().items[4].checked is False
 
     def test_submenus_are_built_when_opened(self, library, system):
         build_root_menu(library, system, Settings())
@@ -239,11 +315,11 @@ class TestBuildSettingsMenu:
         assert playback.submenu().items[0].submenu().selected.label == "10"
         settings.playback_seek_step = 30
         assert playback.submenu().items[0].submenu().selected.label == "30"
-        assert display.submenu().items[3].checked is True
+        assert display.submenu().items[4].checked is True
         assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
         settings.startup_volume = StartupVolume.USE_DEFAULT
-        assert display.submenu().items[3].checked is False
+        assert display.submenu().items[4].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use default"
 
     def test_other_items_are_not_checkable(self, library, system):

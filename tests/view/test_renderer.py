@@ -219,7 +219,14 @@ class TestRenderer:
         assert image.getpixel((WIDTH - 2, HEIGHT - 2)) == DIM_COLOR
         assert image.getpixel((WIDTH - 2, MENU_TITLE_HEIGHT + 2)) == TRACK_COLOR
 
-    def test_colors(self):
+    def test_colors(self, renderer):
+        settings = Settings(
+            display_colors_accented="red",
+            display_colors_background="#00F",
+            display_colors_muted="lime",
+            display_colors_normal="yellow",
+            display_colors_track="Fuchsia",
+        )
         colors = Colors(
             accented=(255, 0, 0),
             background=(0, 0, 255),
@@ -227,13 +234,41 @@ class TestRenderer:
             normal=(255, 255, 0),
             track=(255, 0, 255),
         )
-        image = Renderer(colors=colors).render(AppState(menus=[letters_menu(10)]))
+        image = renderer.render(AppState(menus=[letters_menu(10)], settings=settings))
         assert image.getpixel((2, row_top(0) + 2)) == colors.accented
         assert image.getpixel((2, row_top(1) + 2)) == colors.background
         assert image.getpixel((1, 1)) == colors.track
         assert image.getpixel((WIDTH - 2, MENU_TITLE_HEIGHT + 2)) == colors.muted
         assert image.getpixel((WIDTH - 2, HEIGHT - 2)) == colors.track
         assert colors.normal in {color for _, color in image.getcolors(WIDTH * HEIGHT)}
+
+    def test_menu_color_item_has_a_filled_square(self, renderer):
+        items = (
+            MenuItem(label="Other", command=MenuCommand.BACK),
+            MenuItem(label="red [X]", color="red", command=MenuCommand.BACK, value="red"),
+            MenuItem(label="#00F", color="#00F"),
+        )
+        image = renderer.render(AppState(menus=[Menu(title="Colors", items=items)]))
+        for row, fill in ((1, (255, 0, 0)), (2, (0, 0, 255))):
+            middle = row_top(row) + MENU_ROW_HEIGHT // 2
+            assert image.getpixel((215, middle)) == fill
+            assert image.getpixel((209, middle)) == (0, 0, 0)
+            assert image.getpixel((222, middle)) == (0, 0, 0)
+
+    def test_menu_color_item_label_leaves_room_for_the_square(self, renderer):
+        label = "A very long label that cannot possibly fit in a row"
+        item = MenuItem(label=label, color="white", command=MenuCommand.BACK, value="white")
+        other = MenuItem(label="Other", command=MenuCommand.BACK)
+        image = renderer.render(AppState(menus=[Menu(title="Colors", items=(other, item))]))
+        assert has_content(image, (10, row_top(1), 190, row_top(2)))
+        assert not has_content(image, (199, row_top(1), 208, row_top(2)))
+
+    def test_menu_color_item_selected_shows_the_border(self, renderer):
+        item = MenuItem(label="black", color="black", command=MenuCommand.BACK, value="black")
+        image = renderer.render(AppState(menus=[Menu(title="Colors", items=(item,))]))
+        middle = row_top(0) + MENU_ROW_HEIGHT // 2
+        assert image.getpixel((209, middle)) == (0, 0, 0)
+        assert image.getpixel((207, middle)) == ACCENT_COLOR
 
     def test_default_colors(self, renderer):
         image = renderer.render(AppState())

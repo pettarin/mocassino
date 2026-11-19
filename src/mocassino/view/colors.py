@@ -1,23 +1,13 @@
-"""The colors the renderer draws with, and how they are read from their names or codes.
+"""The colors the renderer draws with.
 
 :copyright: Copyright (C) 2026 Alberto Pettarin
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
-from colorzero import Color as ColorZero
-
-type Color = tuple[int, int, int]
-
-# The default color of each role, as a name or an HTML code
-DEFAULT_COLOR_SPECS: dict[str, str] = {
-    "accented": "limegreen",
-    "background": "black",
-    "muted": "silver",
-    "normal": "white",
-    "track": "dimgray",
-}
+from mocassino.model.colors import DEFAULT_COLOR_SPECS, Color, parse_color
 
 
 @dataclass(frozen=True)
@@ -38,23 +28,7 @@ class Colors:
     track: Color
 
 
-def parse_color(spec: str) -> Color:
-    """Return the RGB color of an HTML code (e.g., "#00F" or "#0000FF") or of a CSS name.
-
-    The names are not case-sensitive (e.g., "DarkGray" is "darkgray").
-
-    :raises ValueError: if the color is neither a valid HTML code nor a known name
-    """
-    if not isinstance(spec, str):
-        raise ValueError(f"expected a color name or an HTML code, not {spec!r}")
-    text = spec.strip()
-    if not text.startswith("#"):
-        text = text.lower()
-    red, green, blue = ColorZero(text).rgb_bytes
-    return (red, green, blue)
-
-
-def parse_colors(specs: dict[str, str]) -> Colors:
+def parse_colors(specs: Mapping[str, str]) -> Colors:
     """Return the colors of the given names or HTML codes, one per role.
 
     :raises ValueError: if a color is not valid
@@ -62,5 +36,5 @@ def parse_colors(specs: dict[str, str]) -> Colors:
     return Colors(**{role: parse_color(spec) for role, spec in specs.items()})
 
 
-# Defined last, as it needs the functions above
+# Defined last, as it needs the function above
 DEFAULT_COLORS: Colors = parse_colors(DEFAULT_COLOR_SPECS)

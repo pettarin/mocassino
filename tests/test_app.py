@@ -89,6 +89,7 @@ TOGGLE_SIDE_ICONS = (
     ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
+    ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
 )
 
@@ -512,10 +513,13 @@ class TestBuildApp:
                 "display": {"colors": {"background": "#00F", "muted": "Red"}, "target": "none"},
             }
         )
-        colors = build_app(configuration)._renderer._colors
-        assert colors.background == (0, 0, 255)
-        assert colors.muted == (255, 0, 0)
-        assert colors.accented == (50, 205, 50)
+        app = build_app(configuration)
+        settings = app._state.settings
+        assert settings.display_colors_background == "#00F"
+        assert settings.display_colors_muted == "Red"
+        assert settings.display_colors_accented == "limegreen"
+        image = app._renderer.render(app._state)
+        assert image.getpixel((1, 1)) == (0, 0, 255)
 
     def test_no_hardware(self):
         app = build_app(self.configuration("none", "none", volume_default=30, volume_step=10))
@@ -598,6 +602,12 @@ class TestBuildApp:
             "  volume_step: 5\n"
             "display:\n"
             "  brightness: 1.0\n"
+            "  colors:\n"
+            "    accented: limegreen\n"
+            "    background: black\n"
+            "    muted: silver\n"
+            "    normal: white\n"
+            "    track: dimgray\n"
             "  orientation: 0\n"
             "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
@@ -619,6 +629,12 @@ class TestBuildApp:
         assert path.read_text(encoding="utf-8") == (
             "display:\n"
             "  brightness: 1.0\n"
+            "  colors:\n"
+            "    accented: limegreen\n"
+            "    background: black\n"
+            "    muted: silver\n"
+            "    normal: white\n"
+            "    track: dimgray\n"
             "  orientation: 0\n"
             "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
@@ -759,6 +775,7 @@ class TestBuildApp:
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
@@ -811,6 +828,36 @@ class TestBuildApp:
         )
         assert build_app(configuration)._state.settings.display_brightness == 42
 
+    def test_display_color_setting_is_applied_and_saved(self, mocker, tmp_path):
+        moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
+        moc.status.return_value = PLAYING
+        path = tmp_path / "custom.yaml"
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"colors": {"muted": "#123456"}, "target": "none"},
+            }
+        )
+        app = build_app(configuration, path)
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app.events.put(event)
+        app.step()
+        assert app._state.settings.display_colors_accented == "linen"
+        assert app._renderer._colors.accented == (250, 240, 230)
+        saved = load_configuration(path).display.colors
+        assert (saved.accented, saved.muted, saved.track) == ("linen", "#123456", "dimgray")
+
     def test_display_brightness_setting_is_applied_and_saved(self, mocker, tmp_path):
         moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
         moc.status.return_value = PLAYING
@@ -854,6 +901,7 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),

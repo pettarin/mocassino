@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, fields
 from enum import StrEnum
 
+from mocassino.model.colors import COLOR_ROLES, DEFAULT_COLOR_SPECS
+
 # By how many degrees, clockwise, the display can be rotated
 ORIENTATIONS: tuple[int, ...] = (0, 90, 180, 270)
 
@@ -66,6 +68,11 @@ class Settings:
     """
 
     display_brightness: int = 100
+    display_colors_accented: str = DEFAULT_COLOR_SPECS["accented"]
+    display_colors_background: str = DEFAULT_COLOR_SPECS["background"]
+    display_colors_muted: str = DEFAULT_COLOR_SPECS["muted"]
+    display_colors_normal: str = DEFAULT_COLOR_SPECS["normal"]
+    display_colors_track: str = DEFAULT_COLOR_SPECS["track"]
     display_orientation: int = 0
     playback_seek_step: int = 10
     playback_volume_default: int = 50
@@ -77,6 +84,10 @@ class Settings:
     startup_state: StartupState = StartupState.USE_SAVED
     startup_volume: StartupVolume = StartupVolume.USE_SAVED
     system_moc_state_on_exit: MocStateOnExit = MocStateOnExit.DO_NOTHING
+
+    def color_specs(self) -> dict[str, str]:
+        """Return the colors of the display, as names or HTML codes, by role."""
+        return {role: getattr(self, f"display_colors_{role}") for role in COLOR_ROLES}
 
     def update(self, other: Settings) -> None:
         """Copy all the values of the other settings into these.

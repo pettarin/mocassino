@@ -16,6 +16,7 @@ from typing import Any
 import yaml
 
 from mocassino.controller.actions import resolve_button_map
+from mocassino.model.colors import DEFAULT_COLOR_SPECS, parse_color
 from mocassino.model.settings import (
     ORIENTATIONS,
     MocStateOnExit,
@@ -23,7 +24,6 @@ from mocassino.model.settings import (
     StartupState,
     StartupVolume,
 )
-from mocassino.view.colors import DEFAULT_COLOR_SPECS, parse_color
 
 # "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")

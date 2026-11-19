@@ -13,10 +13,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 from mocassino.controller.actions import parse_button_map, resolve_button_map
 from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.model.colors import parse_color
 from mocassino.model.menu import Menu
 from mocassino.model.moc import MocState
 from mocassino.model.state import AppState, Mode
-from mocassino.view.colors import DEFAULT_COLORS, Colors
+from mocassino.view.colors import DEFAULT_COLORS, parse_colors
 from mocassino.view.display.base import HEIGHT, WIDTH
 from mocassino.view.icons import ICON_SIZE, draw_icon, draw_state_icon
 
@@ -45,6 +46,8 @@ ROTATIONS: dict[int, Image.Transpose] = {
     270: Image.Transpose.ROTATE_90,
 }
 SCROLLBAR_WIDTH: int = 4
+# The color of the border of the squares showing a color in the menus
+SWATCH_BORDER: tuple[int, int, int] = (0, 0, 0)
 # What is shown, centred in the frame, when nothing is playing
 STOPPED_HINT: tuple[str, ...] = ("Press Menu to select", "the folder to play")
 STOPPED_HINT_LINE_HEIGHT: int = 26
@@ -64,21 +67,20 @@ class Renderer:
         self,
         font_file_path: Path | None = None,
         button_map: Mapping[str, Mapping[str, str]] | None = None,
-        colors: Colors | None = None,
     ) -> None:
         """Initialize the renderer.
 
         :param font_file_path: the TrueType font; if None, the font built in Pillow
         :param button_map: the button map, in plain form, whose playback actions are shown
                            as icons next to the buttons; if None, the default button map
-        :param colors: the colors to draw with; if None, the default ones
         :raises OSError: if the font cannot be loaded
         :raises ValueError: if the button map is not valid
         """
         if button_map is None:
             button_map = resolve_button_map({})
         self._button_map = parse_button_map(button_map)
-        self._colors = DEFAULT_COLORS if colors is None else colors
+        # The colors to draw with, taken from the settings at each frame
+        self._colors = DEFAULT_COLORS
         self._font_file_path = font_file_path
         self._fonts: dict[int, Font] = {}
         self._font(TIMES_FONT_SIZE)
@@ -120,8 +122,9 @@ class Renderer:
     def _draw_menu(self, draw: ImageDraw.ImageDraw, menu: Menu) -> None:
         """Draw a menu: its title, the items around the selected one, and a scrollbar.
 
-        On the right of its row, an item with a submenu has an arrow, and an item standing for
-        a setting that is on or off has a square: solid if on, empty if off.
+        On the right of its row, an item with a submenu has an arrow, an item standing for
+        a setting that is on or off has a square: solid if on, empty if off,
+        and an item standing for a color has a square filled with it.
         """
         font = self._font(20)
         draw.rectangle((0, 0, WIDTH - 1, MENU_TITLE_HEIGHT - 1), fill=self._colors.track)
@@ -152,15 +155,18 @@ class Renderer:
             if item.submenu is not None:
                 draw.text((right - MARGIN, middle), ">", anchor="rm", fill=color, font=font)
                 label_width -= 2 * MARGIN
+            box_top = middle - MENU_CHECK_SIZE // 2
+            box = (
+                right - MARGIN - MENU_CHECK_SIZE + 1,
+                box_top,
+                right - MARGIN,
+                box_top + MENU_CHECK_SIZE - 1,
+            )
             if item.checked is not None:
-                box_top = middle - MENU_CHECK_SIZE // 2
-                box = (
-                    right - MARGIN - MENU_CHECK_SIZE + 1,
-                    box_top,
-                    right - MARGIN,
-                    box_top + MENU_CHECK_SIZE - 1,
-                )
                 draw.rectangle(box, fill=color if item.checked else None, outline=color, width=2)
+                label_width -= MENU_CHECK_SIZE + MARGIN
+            elif item.color is not None:
+                draw.rectangle(box, fill=parse_color(item.color), outline=SWATCH_BORDER, width=2)
                 label_width -= MENU_CHECK_SIZE + MARGIN
             draw.text(
                 (MARGIN, middle),
@@ -335,6 +341,7 @@ class Renderer:
 
         The frame is then rotated clockwise by the orientation of the display in the settings.
         """
+        self._colors = parse_colors(state.settings.color_specs())
         image = Image.new("RGB", (WIDTH, HEIGHT), self._colors.background)
         draw = ImageDraw.Draw(image)
         menu = state.current_menu

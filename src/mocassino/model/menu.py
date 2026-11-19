@@ -15,6 +15,7 @@ from enum import StrEnum
 from functools import partial
 from pathlib import Path
 
+from mocassino.model.colors import COLOR_NAMES, COLOR_ROLES, color_name
 from mocassino.model.library import Library
 from mocassino.model.settings import (
     ORIENTATIONS,
@@ -31,6 +32,8 @@ ACRONYMS: dict[str, str] = {"moc": "MOC"}
 # The brightnesses of the display, the seek steps, in seconds, the default volumes,
 # and the volume steps that can be chosen from the menu, all but the seek steps in percent
 BRIGHTNESS_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
+# What follows the label of the current color in the menus choosing a color
+CURRENT_MARK: str = "[X]"
 SEEK_STEP_CHOICES: tuple[int, ...] = (1, 2, 5, 10, 30, 60)
 VOLUME_DEFAULT_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
 VOLUME_STEP_CHOICES: tuple[int, ...] = (1, 2, 4, 5, 10)
@@ -63,6 +66,11 @@ class MenuCommand(StrEnum):
     REBOOT = "reboot"
     RESET_SETTINGS = "reset_settings"
     SET_DISPLAY_BRIGHTNESS = "set_display_brightness"
+    SET_DISPLAY_COLORS_ACCENTED = "set_display_colors_accented"
+    SET_DISPLAY_COLORS_BACKGROUND = "set_display_colors_background"
+    SET_DISPLAY_COLORS_MUTED = "set_display_colors_muted"
+    SET_DISPLAY_COLORS_NORMAL = "set_display_colors_normal"
+    SET_DISPLAY_COLORS_TRACK = "set_display_colors_track"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
     SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
     SET_PLAYBACK_VOLUME_DEFAULT = "set_playback_volume_default"
@@ -84,6 +92,7 @@ class MenuItem:
     An item with neither a command nor a submenu only shows information.
     An item standing for a setting that is either on or off says which, as checked;
     the other items leave it to None.
+    An item standing for a color has it, as a name or an HTML code, to show it.
     The path is the file or directory to play, for the PLAY command.
     The value is what a setting is set to, for the commands setting one.
     The submenu is a function, so that it is built only when it is opened.
@@ -91,6 +100,7 @@ class MenuItem:
 
     label: str
     checked: bool | None = None
+    color: str | None = None
     command: MenuCommand | None = None
     path: Path | None = None
     submenu: Callable[[], Menu] | None = None
@@ -207,6 +217,48 @@ def build_display_brightness_menu(settings: Settings) -> Menu:
     )
 
 
+def build_display_color_menu(settings: Settings, role: str) -> Menu:
+    """Build the menu choosing the color of the given role, among the named ones.
+
+    The current color has [X] after its name, and it is the selected item.
+    A current color with no name (an HTML code) is shown first, without a command.
+    It has to be built again when the choice changes.
+
+    :param role: the role of the color, e.g., "accented"
+    """
+    current = getattr(settings, f"display_colors_{role}")
+    name = color_name(current)
+    command = MenuCommand(f"set_display_colors_{role}")
+    items: list[MenuItem] = []
+    if name is None:
+        items.append(MenuItem(label=f"{current} {CURRENT_MARK}", color=current))
+    for candidate in COLOR_NAMES:
+        items.append(
+            MenuItem(
+                label=f"{candidate} {CURRENT_MARK}" if candidate == name else candidate,
+                color=candidate,
+                command=command,
+                value=candidate,
+            )
+        )
+    selected_index = 0 if name is None else COLOR_NAMES.index(name)
+    return Menu(title=role.capitalize(), items=tuple(items), selected_index=selected_index)
+
+
+def build_display_colors_menu(settings: Settings) -> Menu:
+    """Build the menu leading to the menus choosing the colors of the display, one per role."""
+    return Menu(
+        title="Colors",
+        items=tuple(
+            MenuItem(
+                label=role.capitalize(),
+                submenu=partial(build_display_color_menu, settings, role),
+            )
+            for role in COLOR_ROLES
+        ),
+    )
+
+
 def build_display_menu(settings: Settings) -> Menu:
     """Build the menu showing the settings of the display, and changing them.
 
@@ -218,6 +270,10 @@ def build_display_menu(settings: Settings) -> Menu:
             MenuItem(
                 label="Brightness (%)",
                 submenu=partial(build_display_brightness_menu, settings),
+            ),
+            MenuItem(
+                label="Colors",
+                submenu=partial(build_display_colors_menu, settings),
             ),
             MenuItem(
                 label="Orientation",

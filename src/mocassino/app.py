@@ -6,7 +6,7 @@
 
 import logging
 import threading
-from dataclasses import asdict, astuple, replace
+from dataclasses import astuple, replace
 from functools import partial
 from pathlib import Path
 from queue import Empty, Queue
@@ -48,7 +48,6 @@ from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.model.system import System
 from mocassino.simulator.tk import TkSimulator
-from mocassino.view.colors import Colors, parse_colors
 from mocassino.view.display.base import Display
 from mocassino.view.display.null import NullDisplay
 from mocassino.view.display.st7789 import St7789Display
@@ -310,11 +309,6 @@ def _build_button_source(
     return NullButtonSource()
 
 
-def _build_colors(configuration: Configuration) -> Colors:
-    """Build the colors of the display from the configuration, which has checked them."""
-    return parse_colors(asdict(configuration.display.colors))
-
-
 def _build_display(configuration: Configuration, simulator: TkSimulator | None) -> Display:
     """Build the display selected by the configuration."""
     target = configuration.display.target
@@ -329,6 +323,11 @@ def _build_settings(configuration: Configuration) -> Settings:
     """Build the settings that can be changed from the menus, from the configuration."""
     return Settings(
         display_brightness=round(configuration.display.brightness * 100),
+        display_colors_accented=configuration.display.colors.accented,
+        display_colors_background=configuration.display.colors.background,
+        display_colors_muted=configuration.display.colors.muted,
+        display_colors_normal=configuration.display.colors.normal,
+        display_colors_track=configuration.display.colors.track,
         display_orientation=configuration.display.orientation,
         playback_seek_step=configuration.playback.seek_step,
         playback_volume_default=configuration.playback.volume_default,
@@ -377,6 +376,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
     updates: dict[str, dict[str, object]] = {
         "display": {
             "brightness": settings.display_brightness / 100,
+            "colors": settings.color_specs(),
             "orientation": settings.display_orientation,
             "show_progress_bar": settings.show_progress_bar,
             "show_side_icons": settings.show_side_icons,
@@ -471,7 +471,6 @@ def build_app(
         renderer=Renderer(
             font_file_path=configuration.display.font_file_path,
             button_map=configuration.buttons.button_map,
-            colors=_build_colors(configuration),
         ),
         display=display,
         button_source=_build_button_source(configuration, simulator),

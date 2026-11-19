@@ -6,14 +6,17 @@
 
 import logging
 from collections.abc import Callable, Mapping
+from functools import partial
 
 from mocassino.controller.actions import Action, parse_button_map
 from mocassino.controller.events import ButtonEvent
+from mocassino.model.colors import COLOR_ROLES
 from mocassino.model.library import Library
 from mocassino.model.menu import (
     Menu,
     MenuCommand,
     build_display_brightness_menu,
+    build_display_color_menu,
     build_display_menu,
     build_display_orientation_menu,
     build_library_menu,
@@ -49,6 +52,14 @@ SETTERS: dict[
         int,
         build_display_brightness_menu,
     ),
+    **{
+        MenuCommand(f"set_display_colors_{role}"): (
+            f"display_colors_{role}",
+            str,
+            partial(build_display_color_menu, role=role),
+        )
+        for role in COLOR_ROLES
+    },
     MenuCommand.SET_DISPLAY_ORIENTATION: (
         "display_orientation",
         int,

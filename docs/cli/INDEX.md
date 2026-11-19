@@ -332,6 +332,7 @@ Each of the `display.colors` is either an HTML code, `#RGB` or `#RRGGBB` (e.g., 
 or a [CSS color name](https://developer.mozilla.org/en-US/docs/Web/CSS/named-color)
 (e.g., `orange`, `darkgray`, or `white`; the case does not matter).
 The colors not set take their defaults.
+They can also be changed from the `Settings` menu, among the named colors (see below).
 In the YAML file, the HTML codes have to be quoted, as `#` starts a comment:
 
 ```yaml
@@ -572,6 +573,16 @@ The top level menu has the following items:
       At `0` the backlight is off, and the display is dark:
       the brightness can be raised again from the same menu, without seeing it,
       or by editing the configuration file.
+    - `Colors`: a menu with `Accented`, `Background`, `Muted`, `Normal`, and `Track`
+      (`display.colors.accented`, etc.), each a menu with the
+      [140 color names of CSS3](https://www.w3.org/TR/css-color-3/#svg-color),
+      in alphabetical order, with the `gray` spelling only (e.g., `darkgray`, not `darkgrey`).
+      Each name has a square filled with its color, with a black border, on the right;
+      the current one has `[X]` after its name.
+      A current color with no name (an HTML code, e.g., `#123456`) is shown first,
+      and it cannot be selected; a name spelled with `grey`, or an HTML code
+      with the color of a name (e.g., `#696969`), counts as that name (e.g., `dimgray`).
+      The change is immediate.
     - `Orientation` (`display.orientation`): a menu with the four choices
       `0`, `90`, `180`, and `270`; the current one has the solid square.
       The change is immediate (see below).

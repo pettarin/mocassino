@@ -354,6 +354,7 @@ class TestController:
         controller.handle(Y)
         controller.handle(Y)
         controller.handle(Y)
+        controller.handle(Y)
         assert state.current_menu.selected.label == "Show side icons"
         assert state.current_menu.selected.checked is True
         controller.handle(B)
@@ -368,14 +369,15 @@ class TestController:
         controller.handle(Y)
         controller.handle(Y)
         controller.handle(Y)
+        controller.handle(Y)
         assert state.current_menu.selected.checked is True
 
     @pytest.mark.parametrize(
         ("moves", "label", "attribute"),
         [
-            (2, "Show progress bar", "show_progress_bar"),
-            (3, "Show side icons", "show_side_icons"),
-            (4, "Show volume bar", "show_volume_bar"),
+            (3, "Show progress bar", "show_progress_bar"),
+            (4, "Show side icons", "show_side_icons"),
+            (5, "Show volume bar", "show_volume_bar"),
         ],
     )
     def test_menu_select_toggles_of_the_display(
@@ -405,6 +407,40 @@ class TestController:
         controller.handle(B)
         assert getattr(state.settings, attribute) is True
         assert state.current_menu.selected.checked is True
+
+    def test_menu_select_display_color(self, mocker, state, moc, library, system):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, B, Y, B, B):
+            controller.handle(event)
+        titles = ["Menu", "Settings", "Display", "Colors", "Accented"]
+        assert [menu.title for menu in state.menus] == titles
+        assert state.current_menu.selected.label == "limegreen [X]"
+        save_settings.assert_not_called()
+        for event in (Y, B):
+            controller.handle(event)
+        assert state.settings.display_colors_accented == "linen"
+        save_settings.assert_called_once_with(state.settings)
+        assert [menu.title for menu in state.menus] == titles
+        assert state.current_menu.selected.label == "linen [X]"
+        assert "limegreen" in [item.label for item in state.current_menu.items]
+
+    def test_menu_select_display_color_unnamed_does_nothing(self, controller, state):
+        state.settings.display_colors_track = "#123456"
+        for event in (A_LONG, Y, B, B, Y, B, X, B):
+            controller.handle(event)
+        assert state.current_menu.title == "Track"
+        assert state.current_menu.selected.label == "#123456 [X]"
+        controller.handle(B)
+        assert state.settings.display_colors_track == "#123456"
+        assert state.current_menu.title == "Track"
 
     def test_menu_select_display_brightness(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
@@ -451,7 +487,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, B, Y, B):
+        for event in (A_LONG, Y, B, B, Y, Y, B):
             controller.handle(event)
         titles = ["Menu", "Settings", "Display", "Orientation"]
         assert [menu.title for menu in state.menus] == titles
@@ -469,7 +505,7 @@ class TestController:
         assert state.current_menu.selected.label == "180"
 
     def test_menu_select_display_orientation_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, B, Y, B, Y, B):
+        for event in (A_LONG, Y, B, B, Y, Y, B, Y, B):
             controller.handle(event)
         assert state.settings.display_orientation == 90
 
@@ -745,7 +781,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, B, Y, Y, Y):
+        for event in (A_LONG, Y, B, B, Y, Y, Y, Y):
             controller.handle(event)
         save_settings.assert_not_called()
         controller.handle(B)
