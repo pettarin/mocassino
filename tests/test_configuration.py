@@ -56,10 +56,12 @@ class TestConfiguration:
             tick=0.5,
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
-        assert configuration.playback == PlaybackConfiguration(seek_step=10, volume_step=5)
+        assert configuration.playback == PlaybackConfiguration(
+            seek_step=10, volume_default=50, volume_step=5
+        )
         assert configuration.run == RunConfiguration(mode="background")
         assert configuration.startup == StartupConfiguration(
-            fixed_volume=50, playlist="use_saved", state="use_saved", volume="use_saved"
+            playlist="use_saved", state="use_saved", volume="use_saved"
         )
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
@@ -84,10 +86,9 @@ class TestConfiguration:
                 "tick": 0.5,
             },
             "library": {"directory_path": "/music"},
-            "playback": {"seek_step": 10, "volume_step": 5},
+            "playback": {"seek_step": 10, "volume_default": 50, "volume_step": 5},
             "run": {"mode": "background"},
             "startup": {
-                "fixed_volume": 50,
                 "playlist": "use_saved",
                 "state": "use_saved",
                 "volume": "use_saved",
@@ -129,10 +130,10 @@ class TestLoadConfiguration:
         directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
-            "startup:\n  fixed_volume: 30\n",
+            "playback:\n  volume_default: 30\n",
             encoding="utf-8",
         )
-        assert load_configuration().startup.fixed_volume == 30
+        assert load_configuration().playback.volume_default == 30
 
     def test_empty_file(self, tmp_path):
         assert load_configuration(write_yaml(tmp_path, "")) == Configuration()
@@ -158,12 +159,12 @@ class TestLoadConfiguration:
             "  directory_path: /srv/music\n"
             "playback:\n"
             "  seek_step: 30\n"
+            "  volume_default: 70\n"
             "  volume_step: 10\n"
             "run:\n"
             "  mode: foreground\n"
             "startup:\n"
-            "  fixed_volume: 70\n"
-            "  volume: use_fixed\n"
+            "  volume: use_default\n"
             "system:\n"
             "  mocp_file_path: /usr/bin/mocp\n"
             "  shutdown_command: [systemctl, poweroff]\n",
@@ -177,9 +178,9 @@ class TestLoadConfiguration:
                 tick=0.25,
             ),
             library=LibraryConfiguration(directory_path=Path("/srv/music")),
-            playback=PlaybackConfiguration(seek_step=30, volume_step=10),
+            playback=PlaybackConfiguration(seek_step=30, volume_default=70, volume_step=10),
             run=RunConfiguration(mode="foreground"),
-            startup=StartupConfiguration(fixed_volume=70, volume="use_fixed"),
+            startup=StartupConfiguration(volume="use_default"),
             system=SystemConfiguration(
                 mocp_file_path="/usr/bin/mocp",
                 shutdown_command=("systemctl", "poweroff"),
@@ -215,6 +216,10 @@ class TestLoadConfiguration:
             ("display", "target", "hdmi"),
             ("display", "tick", -0.5),
             ("library", "directory_path", 5),
+            ("playback", "volume_default", -1),
+            ("playback", "volume_default", 101),
+            ("playback", "volume_default", 50.5),
+            ("playback", "volume_default", True),
             ("playback", "seek_step", 0),
             ("playback", "seek_step", "far"),
             ("playback", "volume_step", 0),
@@ -222,10 +227,6 @@ class TestLoadConfiguration:
             ("run", "mode", "window"),
             ("run", "mode", "Foreground"),
             ("run", "mode", True),
-            ("startup", "fixed_volume", -1),
-            ("startup", "fixed_volume", 101),
-            ("startup", "fixed_volume", 50.5),
-            ("startup", "fixed_volume", True),
             ("startup", "playlist", "shuffle"),
             ("startup", "playlist", "saved"),
             ("startup", "playlist", "Use saved"),
@@ -267,7 +268,7 @@ class TestLoadConfiguration:
         path = write_yaml(tmp_path, f"startup:\n  state: {state}\n")
         assert load_configuration(path).startup.state == state
 
-    @pytest.mark.parametrize("volume", ["use_fixed", "use_saved"])
+    @pytest.mark.parametrize("volume", ["use_default", "use_saved"])
     def test_startup_volumes(self, tmp_path, volume):
         path = write_yaml(tmp_path, f"startup:\n  volume: {volume}\n")
         assert load_configuration(path).startup.volume == volume
@@ -301,11 +302,11 @@ class TestLoadConfiguration:
     def test_none_values_are_ignored(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "display:\n  font_file_path: null\nstartup:\n  fixed_volume: 30\n",
+            "display:\n  font_file_path: null\nplayback:\n  volume_default: 30\n",
         )
-        overrides = {"display": {"tick": None}, "startup": {"fixed_volume": None}}
+        overrides = {"display": {"tick": None}, "playback": {"volume_default": None}}
         assert load_configuration(path, overrides) == Configuration(
-            startup=StartupConfiguration(fixed_volume=30),
+            playback=PlaybackConfiguration(volume_default=30),
         )
 
     def test_not_a_mapping(self, tmp_path):
@@ -328,9 +329,9 @@ class TestLoadConfiguration:
         )
 
     def test_partial_section(self, tmp_path):
-        path = write_yaml(tmp_path, "startup:\n  fixed_volume: 30\n")
+        path = write_yaml(tmp_path, "playback:\n  volume_default: 30\n")
         assert load_configuration(path) == Configuration(
-            startup=StartupConfiguration(fixed_volume=30)
+            playback=PlaybackConfiguration(volume_default=30)
         )
 
     def test_section_not_a_mapping(self, tmp_path):

@@ -292,10 +292,10 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
         },
         "playback": {
             "seek_step": settings.playback_seek_step,
+            "volume_default": settings.playback_volume_default,
             "volume_step": settings.playback_volume_step,
         },
         "startup": {
-            "fixed_volume": settings.startup_fixed_volume,
             "playlist": settings.startup_playlist.value,
             "state": settings.startup_state.value,
             "volume": settings.startup_volume.value,
@@ -328,7 +328,7 @@ def build_app(
     which has to be run in the main thread while the application runs in another one.
 
     The volume is the one saved in the state file, if any and if the configuration says
-    to use it; otherwise, the fixed volume of the configuration.
+    to use it; otherwise, the default volume of the configuration.
 
     :param configuration_file_path: the YAML file where the settings changed from
                                     the settings menu are saved; if None, the default one
@@ -348,16 +348,16 @@ def build_app(
     startup_volume = StartupVolume(configuration.startup.volume)
     volume = state_file.load().volume if startup_volume is StartupVolume.USE_SAVED else None
     if volume is None:
-        volume = configuration.startup.fixed_volume
+        volume = configuration.playback.volume_default
     state = AppState(
         settings=Settings(
             display_orientation=configuration.display.orientation,
             playback_seek_step=configuration.playback.seek_step,
+            playback_volume_default=configuration.playback.volume_default,
             playback_volume_step=configuration.playback.volume_step,
             show_progress_bar=configuration.display.show_progress_bar,
             show_side_icons=configuration.display.show_side_icons,
             show_volume_bar=configuration.display.show_volume_bar,
-            startup_fixed_volume=configuration.startup.fixed_volume,
             startup_playlist=StartupPlaylist(configuration.startup.playlist),
             startup_state=StartupState(configuration.startup.state),
             startup_volume=startup_volume,

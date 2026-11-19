@@ -407,13 +407,12 @@ class TestBuildApp:
         """Point the home directory to a temporary one, so the user's files are never read."""
         monkeypatch.setenv("HOME", str(tmp_path))
 
-    def configuration(self, origin: str, target: str, fixed_volume=None, **playback):
+    def configuration(self, origin: str, target: str, **playback):
         return load_configuration(
             overrides={
                 "buttons": {"origin": origin},
                 "display": {"target": target},
                 "playback": playback,
-                "startup": {"fixed_volume": fixed_volume},
             }
         )
 
@@ -428,7 +427,7 @@ class TestBuildApp:
         assert isinstance(app._display, St7789Display)
 
     def test_no_hardware(self):
-        app = build_app(self.configuration("none", "none", fixed_volume=30, volume_step=10))
+        app = build_app(self.configuration("none", "none", volume_default=30, volume_step=10))
         assert isinstance(app._button_source, NullButtonSource)
         assert isinstance(app._display, NullDisplay)
         assert app.simulator is None
@@ -492,7 +491,7 @@ class TestBuildApp:
 
     def test_settings_are_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
-        path.write_text("startup:\n  fixed_volume: 30\n", encoding="utf-8")
+        path.write_text("playback:\n  volume_default: 30\n", encoding="utf-8")
         configuration = load_configuration(
             path,
             {"buttons": {"origin": "none"}, "display": {"target": "none"}},
@@ -502,19 +501,19 @@ class TestBuildApp:
             app._controller.handle(event)
         assert app._state.settings.show_side_icons is False
         assert path.read_text(encoding="utf-8") == (
-            "startup:\n"
-            "  fixed_volume: 30\n"
-            "  playlist: use_saved\n"
-            "  state: use_saved\n"
-            "  volume: use_saved\n"
+            "playback:\n"
+            "  volume_default: 30\n"
+            "  seek_step: 10\n"
+            "  volume_step: 5\n"
             "display:\n"
             "  orientation: 0\n"
             "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
             "  show_volume_bar: true\n"
-            "playback:\n"
-            "  seek_step: 10\n"
-            "  volume_step: 5\n"
+            "startup:\n"
+            "  playlist: use_saved\n"
+            "  state: use_saved\n"
+            "  volume: use_saved\n"
         )
         assert load_configuration(path).display.show_side_icons is False
 
@@ -531,9 +530,9 @@ class TestBuildApp:
             "  show_volume_bar: true\n"
             "playback:\n"
             "  seek_step: 10\n"
+            "  volume_default: 50\n"
             "  volume_step: 5\n"
             "startup:\n"
-            "  fixed_volume: 50\n"
             "  playlist: use_saved\n"
             "  state: use_saved\n"
             "  volume: use_saved\n"
@@ -553,7 +552,7 @@ class TestBuildApp:
     def test_volume_from_the_configuration(self, tmp_path):
         state_file_path = tmp_path / "state.yaml"
         app = build_app(
-            self.configuration("none", "none", fixed_volume=30),
+            self.configuration("none", "none", volume_default=30),
             state_file_path=state_file_path,
         )
         assert app._state.volume == 30
@@ -565,7 +564,7 @@ class TestBuildApp:
         directory = tmp_path / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "state.yaml").write_text("playback:\n  volume: 85\n", encoding="utf-8")
-        app = build_app(self.configuration("none", "none", fixed_volume=30))
+        app = build_app(self.configuration("none", "none", volume_default=30))
         assert app._state.volume == 85
 
     def test_volume_from_the_state_file(self, mocker, tmp_path):
@@ -574,7 +573,7 @@ class TestBuildApp:
         state_file_path = tmp_path / "state.yaml"
         state_file_path.write_text("playback:\n  volume: 85\n", encoding="utf-8")
         app = build_app(
-            self.configuration("none", "none", fixed_volume=30, volume_step=5),
+            self.configuration("none", "none", volume_default=30, volume_step=5),
             state_file_path=state_file_path,
         )
         assert app._state.volume == 85
@@ -597,12 +596,13 @@ class TestBuildApp:
             overrides={
                 "buttons": {"origin": "none"},
                 "display": {"target": "none"},
-                "startup": {"fixed_volume": 30, "volume": "use_fixed"},
+                "playback": {"volume_default": 30},
+                "startup": {"volume": "use_default"},
             }
         )
         app = build_app(configuration, state_file_path=state_file_path)
         assert app._state.volume == 30
-        assert app._state.settings.startup_volume is StartupVolume.USE_FIXED
+        assert app._state.settings.startup_volume is StartupVolume.USE_DEFAULT
 
     def test_startup_playlist_from_the_configuration(self):
         configuration = load_configuration(
@@ -626,7 +626,6 @@ class TestBuildApp:
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),
@@ -706,17 +705,18 @@ class TestBuildApp:
         assert app._state.settings.display_orientation == 270
         assert load_configuration(path).display.orientation == 270
 
-    def test_startup_fixed_volume_setting_is_saved(self, tmp_path):
+    def test_playback_volume_default_setting_is_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
-        app = build_app(self.configuration("none", "none", fixed_volume=30), path)
-        assert app._state.settings.startup_fixed_volume == 30
+        app = build_app(self.configuration("none", "none", volume_default=30), path)
+        assert app._state.settings.playback_volume_default == 30
         assert app._state.volume == 30
         events = (
             ButtonEvent(Button.A, Press.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.X),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
@@ -724,9 +724,9 @@ class TestBuildApp:
         for event in events:
             app._controller.handle(event)
         assert app._state.current_menu.selected.label == "35"
-        assert app._state.settings.startup_fixed_volume == 35
+        assert app._state.settings.playback_volume_default == 35
         assert app._state.volume == 30
-        assert load_configuration(path).startup.fixed_volume == 35
+        assert load_configuration(path).playback.volume_default == 35
 
     def test_startup_volume_setting_is_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
@@ -745,15 +745,15 @@ class TestBuildApp:
         )
         for event in events:
             app._controller.handle(event)
-        assert app._state.settings.startup_volume is StartupVolume.USE_FIXED
-        assert load_configuration(path).startup.volume == "use_fixed"
+        assert app._state.settings.startup_volume is StartupVolume.USE_DEFAULT
+        assert load_configuration(path).startup.volume == "use_default"
         assert load_configuration(path).display.show_side_icons is True
 
     def test_volume_from_the_state_file_not_valid(self, tmp_path):
         state_file_path = tmp_path / "state.yaml"
         state_file_path.write_text("playback:\n  volume: 850\n", encoding="utf-8")
         app = build_app(
-            self.configuration("none", "none", fixed_volume=30),
+            self.configuration("none", "none", volume_default=30),
             state_file_path=state_file_path,
         )
         assert app._state.volume == 30
@@ -767,7 +767,7 @@ class TestBuildApp:
         mocker.patch("mocassino.app.SubprocessMocClient", return_value=moc)
         mocker.patch("mocassino.model.resume.time.sleep")
         state_file_path = tmp_path / "state.yaml"
-        configuration = self.configuration("none", "none", fixed_volume=30)
+        configuration = self.configuration("none", "none", volume_default=30)
         app = build_app(configuration, state_file_path=state_file_path)
         app.start()
         assert moc.state is MocState.STOP
@@ -944,7 +944,6 @@ class TestBuildApp:
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),

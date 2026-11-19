@@ -378,6 +378,7 @@ class TestController:
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Playback"]
         assert [item.label for item in state.current_menu.items] == [
             "Seek step (s)",
+            "Volume default (%)",
             "Volume step (%)",
         ]
         controller.handle(B)
@@ -388,7 +389,7 @@ class TestController:
         assert state.settings.playback_seek_step == 5
         assert [item.label for item in state.current_menu.items if item.checked] == ["5"]
         save_settings.assert_called_once_with(state.settings)
-        for event in (A, Y, B):
+        for event in (A, Y, Y, B):
             controller.handle(event)
         assert state.current_menu.title == "Volume step (%)"
         assert state.current_menu.selected.label == "5"
@@ -412,7 +413,7 @@ class TestController:
         moc.set_volume.assert_called_with(48)
         assert state.volume == 48
 
-    def test_menu_select_startup_fixed_volume(self, mocker, state, moc, library, host):
+    def test_menu_select_playback_volume_default(self, mocker, state, moc, library, host):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
@@ -422,9 +423,9 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, X, B, B):
+        for event in (A_LONG, Y, B, Y, B, Y, B):
             controller.handle(event)
-        titles = ["Menu", "Settings", "Startup", "Fixed volume (%)"]
+        titles = ["Menu", "Settings", "Playback", "Volume default (%)"]
         assert [menu.title for menu in state.menus] == titles
         menu = state.current_menu
         assert len(menu.items) == 21
@@ -433,7 +434,7 @@ class TestController:
         save_settings.assert_not_called()
         for event in (Y, Y, B):
             controller.handle(event)
-        assert state.settings.startup_fixed_volume == 60
+        assert state.settings.playback_volume_default == 60
         save_settings.assert_called_once_with(state.settings)
         menu = state.current_menu
         assert [menu.title for menu in state.menus] == titles
@@ -442,16 +443,16 @@ class TestController:
         assert state.volume == 50
         moc.set_volume.assert_not_called()
 
-    def test_menu_select_startup_fixed_volume_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, X, B, B, X, B):
+    def test_menu_select_playback_volume_default_without_saving(self, controller, state):
+        for event in (A_LONG, Y, B, Y, B, Y, B, X, B):
             controller.handle(event)
-        assert state.settings.startup_fixed_volume == 45
+        assert state.settings.playback_volume_default == 45
 
-    def test_menu_select_startup_fixed_volume_without_value(self, controller, state):
-        item = MenuItem(label="Broken", command=MenuCommand.SET_STARTUP_FIXED_VOLUME)
+    def test_menu_select_playback_volume_default_without_value(self, controller, state):
+        item = MenuItem(label="Broken", command=MenuCommand.SET_PLAYBACK_VOLUME_DEFAULT)
         open_single_item_menu(state, item)
         controller.handle(B)
-        assert state.settings.startup_fixed_volume == 50
+        assert state.settings.playback_volume_default == 50
         assert state.current_menu.title == "Above"
 
     def test_menu_select_startup_state(self, mocker, state, moc, library, host):
@@ -464,7 +465,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, X, B, Y, Y, B):
+        for event in (A_LONG, Y, B, X, B, Y, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "State"]
         menu = state.current_menu
@@ -499,18 +500,18 @@ class TestController:
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Volume"]
         menu = state.current_menu
-        assert [item.label for item in menu.items] == ["Use fixed", "Use saved"]
+        assert [item.label for item in menu.items] == ["Use default", "Use saved"]
         assert [item.checked for item in menu.items] == [False, True]
         assert menu.selected.label == "Use saved"
         save_settings.assert_not_called()
         controller.handle(X)
         controller.handle(B)
-        assert state.settings.startup_volume is StartupVolume.USE_FIXED
+        assert state.settings.startup_volume is StartupVolume.USE_DEFAULT
         save_settings.assert_called_once_with(state.settings)
         menu = state.current_menu
         assert menu.title == "Volume"
         assert [item.checked for item in menu.items] == [True, False]
-        assert menu.selected.label == "Use fixed"
+        assert menu.selected.label == "Use default"
         assert state.settings.show_side_icons is True
         controller.handle(Y)
         controller.handle(B)
@@ -520,7 +521,7 @@ class TestController:
     def test_menu_select_startup_volume_without_saving(self, controller, state):
         for event in (A_LONG, Y, B, X, B, X, B, X, B):
             controller.handle(event)
-        assert state.settings.startup_volume is StartupVolume.USE_FIXED
+        assert state.settings.startup_volume is StartupVolume.USE_DEFAULT
 
     def test_menu_select_startup_volume_without_value(self, controller, state):
         item = MenuItem(label="Broken", command=MenuCommand.SET_STARTUP_VOLUME)
@@ -539,7 +540,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, X, B, Y, B):
+        for event in (A_LONG, Y, B, X, B, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Playlist"]
         menu = state.current_menu
@@ -567,7 +568,7 @@ class TestController:
         assert save_settings.call_count == 2
 
     def test_menu_select_startup_playlist_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, X, B, Y, B, Y, B):
+        for event in (A_LONG, Y, B, X, B, B, Y, B):
             controller.handle(event)
         assert state.settings.startup_playlist is StartupPlaylist.OPEN_LIBRARY
 

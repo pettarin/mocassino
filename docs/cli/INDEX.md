@@ -63,7 +63,7 @@ if not, it prints the error and exits.
 
 When it starts, the service starts the MOC server, if it is not already running,
 and sets the MOC volume to the one saved in the state file or, if there is none,
-to `startup.fixed_volume`.
+to `playback.volume_default`.
 
 > [!NOTE]
 > MOC does not report its volume to command line clients,
@@ -231,11 +231,11 @@ library:
   directory_path: /music
 playback:
   seek_step: 10
+  volume_default: 50
   volume_step: 5
 run:
   mode: background
 startup:
-  fixed_volume: 50
   playlist: use_saved
   state: use_saved
   volume: use_saved
@@ -276,12 +276,12 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
 | `playback.seek_step` | `10` | The amount of each seek, in seconds; it can be changed from the `Settings` menu |
+| `playback.volume_default` | `50` | The default volume, between 0 and 100: the one set when the service starts if `startup.volume` is `use_default`, or if there is no saved volume; it can be changed from the `Settings` menu |
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100; it can be changed from the `Settings` menu |
 | `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
-| `startup.fixed_volume` | `50` | The volume set when the service starts, between 0 and 100, if `startup.volume` is `use_fixed`, or if there is no saved volume; it can be changed from the `Settings` menu |
 | `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `open_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
-| `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_fixed` (the one in `startup.fixed_volume`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
+| `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list |
 
@@ -313,8 +313,8 @@ display:
   font_file_path: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 library:
   directory_path: /home/pi/music
-startup:
-  fixed_volume: 30
+playback:
+  volume_default: 30
 ```
 
 ### State File
@@ -351,7 +351,7 @@ When the service starts:
 
 - it restores the volume from the state file, if it has one
   and `startup.volume` is `use_saved`;
-  otherwise, it applies `startup.fixed_volume` from the configuration file;
+  otherwise, it applies `playback.volume_default` from the configuration file;
 - it sets up the playlist as `startup.playlist` says:
 
   | Value | What happens |
@@ -378,8 +378,8 @@ If the saved playback cannot be resumed (e.g., the file no longer exists),
 it plays nothing, and blanks the directory, the file, and the position in the state file.
 
 > [!NOTE]
-> Once the state file has a volume, `startup.fixed_volume` is no longer used,
-> unless `startup.volume` is set to `use_fixed`.
+> Once the state file has a volume, `playback.volume_default` is no longer used,
+> unless `startup.volume` is set to `use_default`.
 
 > [!NOTE]
 > The position is saved at the moments listed above, not continuously:
@@ -524,22 +524,23 @@ The top level menu has the following items:
       whether the icons of the buttons are shown in playback mode.
     - `Show volume bar` (`display.show_volume_bar`):
       whether the volume bar is shown in playback mode.
-  - `Playback`: the amounts of each seek and of each volume change.
-    They take effect immediately.
+  - `Playback`: the amount of each seek, the default volume, and the amount of each volume change.
+    The steps take effect immediately;
+    the default volume, the next time the service starts and uses it.
     - `Seek step (s)` (`playback.seek_step`): a menu with the choices
       `1`, `2`, `5`, `10`, `30`, and `60` seconds.
+    - `Volume default (%)` (`playback.volume_default`): a menu with the volumes from `0` to `100`,
+      in steps of 5; the current one has the solid square.
     - `Volume step (%)` (`playback.volume_step`): a menu with the choices
       `1`, `2`, `4`, `5`, and `10`.
   - `Startup`: the settings of what the service does when it starts.
     They take effect the next time the service starts.
-    - `Fixed volume (%)` (`startup.fixed_volume`): a menu with the volumes from `0` to `100`,
-      in steps of 5; the current one has the solid square.
     - `Playlist` (`startup.playlist`): a menu with the three choices
       `Open library`, `Use mocp state`, and `Use saved`; the current one has the solid square.
     - `State` (`startup.state`): a menu with the four choices
       `Pause`, `Play`, `Stop`, and `Use saved`; the current one has the solid square.
     - `Volume` (`startup.volume`): a menu with the two choices
-      `Use fixed` and `Use saved`; the current one has the solid square.
+      `Use default` and `Use saved`; the current one has the solid square.
 - `Host`: show the name and the IP address of the host,
   and `Shut down`, which asks for confirmation
   before running `system.shutdown_command`.

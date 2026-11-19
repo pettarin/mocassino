@@ -18,9 +18,9 @@ from mocassino.model.menu import (
     build_display_orientation_menu,
     build_library_menu,
     build_playback_seek_step_menu,
+    build_playback_volume_default_menu,
     build_playback_volume_step_menu,
     build_root_menu,
-    build_startup_fixed_volume_menu,
     build_startup_playlist_menu,
     build_startup_state_menu,
     build_startup_volume_menu,
@@ -46,15 +46,15 @@ SETTERS: dict[
         int,
         build_playback_seek_step_menu,
     ),
+    MenuCommand.SET_PLAYBACK_VOLUME_DEFAULT: (
+        "playback_volume_default",
+        int,
+        build_playback_volume_default_menu,
+    ),
     MenuCommand.SET_PLAYBACK_VOLUME_STEP: (
         "playback_volume_step",
         int,
         build_playback_volume_step_menu,
-    ),
-    MenuCommand.SET_STARTUP_FIXED_VOLUME: (
-        "startup_fixed_volume",
-        int,
-        build_startup_fixed_volume_menu,
     ),
     MenuCommand.SET_STARTUP_PLAYLIST: (
         "startup_playlist",

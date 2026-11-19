@@ -72,6 +72,7 @@ class PlaybackConfiguration:
     """The settings of the playback."""
 
     seek_step: int = 10
+    volume_default: int = 50
     volume_step: int = 5
 
 
@@ -90,7 +91,6 @@ class RunConfiguration:
 class StartupConfiguration:
     """The settings of what the service does when it starts."""
 
-    fixed_volume: int = 50
     playlist: str = StartupPlaylist.USE_SAVED.value
     state: str = StartupState.USE_SAVED.value
     volume: str = StartupVolume.USE_SAVED.value
@@ -156,11 +156,11 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "library": {"directory_path": _to_path},
         "playback": {
             "seek_step": _to_int,
+            "volume_default": _to_int,
             "volume_step": _to_int,
         },
         "run": {"mode": _to_str},
         "startup": {
-            "fixed_volume": _to_int,
             "playlist": _to_str,
             "state": _to_str,
             "volume": _to_str,
@@ -226,6 +226,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             configuration.playback.seek_step,
             configuration.playback.seek_step >= 1,
         ),
+        "playback.volume_default": (
+            configuration.playback.volume_default,
+            0 <= configuration.playback.volume_default <= 100,
+        ),
         "playback.volume_step": (
             configuration.playback.volume_step,
             1 <= configuration.playback.volume_step <= 100,
@@ -233,10 +237,6 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "run.mode": (
             configuration.run.mode,
             configuration.run.mode in RUN_MODES,
-        ),
-        "startup.fixed_volume": (
-            configuration.startup.fixed_volume,
-            0 <= configuration.startup.fixed_volume <= 100,
         ),
         "startup.playlist": (
             configuration.startup.playlist,

@@ -25,10 +25,10 @@ from mocassino.model.settings import (
     StartupVolume,
 )
 
-# The fixed volumes that can be chosen from the menu
-FIXED_VOLUME_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
-# The seek steps, in seconds, and the volume steps that can be chosen from the menu
+# The seek steps, in seconds, the default volumes, and the volume steps
+# that can be chosen from the menu
 SEEK_STEP_CHOICES: tuple[int, ...] = (1, 2, 5, 10, 30, 60)
+VOLUME_DEFAULT_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
 VOLUME_STEP_CHOICES: tuple[int, ...] = (1, 2, 4, 5, 10)
 
 
@@ -58,8 +58,8 @@ class MenuCommand(StrEnum):
     PLAY = "play"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
     SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
+    SET_PLAYBACK_VOLUME_DEFAULT = "set_playback_volume_default"
     SET_PLAYBACK_VOLUME_STEP = "set_playback_volume_step"
-    SET_STARTUP_FIXED_VOLUME = "set_startup_fixed_volume"
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SET_STARTUP_STATE = "set_startup_state"
     SET_STARTUP_VOLUME = "set_startup_volume"
@@ -234,13 +234,20 @@ def build_library_menu(library: Library, directory_path: Path | None = None) -> 
 
 
 def build_playback_menu(settings: Settings) -> Menu:
-    """Build the menu leading to the settings of the playback: the seek and volume steps."""
+    """Build the menu leading to the settings of the playback.
+
+    They are the seek step, the default volume, and the volume step.
+    """
     return Menu(
         title="Playback",
         items=(
             MenuItem(
                 label="Seek step (s)",
                 submenu=partial(build_playback_seek_step_menu, settings),
+            ),
+            MenuItem(
+                label="Volume default (%)",
+                submenu=partial(build_playback_volume_default_menu, settings),
             ),
             MenuItem(
                 label="Volume step (%)",
@@ -260,6 +267,19 @@ def build_playback_seek_step_menu(settings: Settings) -> Menu:
         SEEK_STEP_CHOICES,
         settings.playback_seek_step,
         MenuCommand.SET_PLAYBACK_SEEK_STEP,
+    )
+
+
+def build_playback_volume_default_menu(settings: Settings) -> Menu:
+    """Build the menu choosing the default volume, which the service can set when it starts.
+
+    It has to be built again when the volume changes.
+    """
+    return _build_number_menu(
+        "Volume default (%)",
+        VOLUME_DEFAULT_CHOICES,
+        settings.playback_volume_default,
+        MenuCommand.SET_PLAYBACK_VOLUME_DEFAULT,
     )
 
 
@@ -300,28 +320,11 @@ def build_settings_menu(settings: Settings) -> Menu:
     )
 
 
-def build_startup_fixed_volume_menu(settings: Settings) -> Menu:
-    """Build the menu choosing the fixed volume the service can set when it starts.
-
-    It has to be built again when the volume changes.
-    """
-    return _build_number_menu(
-        "Fixed volume (%)",
-        FIXED_VOLUME_CHOICES,
-        settings.startup_fixed_volume,
-        MenuCommand.SET_STARTUP_FIXED_VOLUME,
-    )
-
-
 def build_startup_menu(settings: Settings) -> Menu:
     """Build the menu leading to the settings of what happens at startup."""
     return Menu(
         title="Startup",
         items=(
-            MenuItem(
-                label="Fixed volume (%)",
-                submenu=partial(build_startup_fixed_volume_menu, settings),
-            ),
             MenuItem(label="Playlist", submenu=partial(build_startup_playlist_menu, settings)),
             MenuItem(label="State", submenu=partial(build_startup_state_menu, settings)),
             MenuItem(label="Volume", submenu=partial(build_startup_volume_menu, settings)),
