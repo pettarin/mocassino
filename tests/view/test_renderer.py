@@ -396,11 +396,30 @@ class TestRenderer:
 
     def test_playback_stop(self, renderer):
         image = renderer.render(AppState())
-        assert has_content(image, (40, 95, 200, 125))
-        assert not has_content(image, (CONTENT_LEFT, 130, WIDTH - BAND_WIDTH, 218))
+        assert has_content(image, (40, 95, 200, 119))
+        assert has_content(image, (40, 121, 200, 145))
+        assert not has_content(image, (CONTENT_LEFT, 150, WIDTH - BAND_WIDTH, 218))
         assert not has_content(image, (CONTENT_LEFT, 218, 80, HEIGHT))
         assert not has_content(image, (160, 218, WIDTH - BAND_WIDTH, HEIGHT))
         assert has_content(image, (80, 218, 160, HEIGHT))
+
+    @pytest.mark.parametrize("show_side_icons", [False, True])
+    def test_playback_stop_hint_is_centred(self, renderer, show_side_icons):
+        image = renderer.render(AppState(settings=Settings(show_side_icons=show_side_icons)))
+        left, right = (CONTENT_LEFT, CONTENT_RIGHT) if show_side_icons else (10, WIDTH - 10)
+        hint_left, hint_top, hint_right, hint_bottom = image.crop((left, 40, right, 200)).getbbox()
+        assert abs((left + hint_left) + (left + hint_right) - WIDTH) <= 2
+        assert abs((40 + hint_top) + (40 + hint_bottom) - HEIGHT) <= 6
+        rows = [has_content(image, (left, y, right, y + 1)) for y in range(40, 200)]
+        blocks = sum(1 for index in range(1, len(rows)) if rows[index] and not rows[index - 1])
+        assert blocks == 2
+        expected = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
+        draw = ImageDraw.Draw(expected)
+        font = ImageFont.load_default(20)
+        draw.text((120, 107), "Press Menu to select", anchor="mm", fill=DIM_COLOR, font=font)
+        draw.text((120, 133), "the folder to play", anchor="mm", fill=DIM_COLOR, font=font)
+        box = (left, 40, right, 200)
+        assert image.crop(box).tobytes() == expected.crop(box).tobytes()
 
     def test_playback_title_falls_back_to_file_name(self, renderer):
         tagged = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Name")

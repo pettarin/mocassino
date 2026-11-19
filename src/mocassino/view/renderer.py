@@ -49,6 +49,9 @@ STATE_LABELS: dict[MocState, str] = {
 # that makes it as tall as an icon of the buttons at most
 STATE_MAX_FONT_SIZE: int = 20
 STATE_MIN_FONT_SIZE: int = 8
+# What is shown, centred in the frame, when nothing is playing
+STOPPED_HINT: tuple[str, ...] = ("Press Menu to select", "the folder to play")
+STOPPED_HINT_LINE_HEIGHT: int = 26
 TEXT_COLOR: Color = (255, 255, 255)
 TIMES_FONT_SIZE: int = 20
 TITLE_MAX_LINES: int = 5
@@ -185,13 +188,15 @@ class Renderer:
             self._draw_volume_bar(draw, state.volume)
         width = right - left
         if status.state is MocState.STOP:
-            draw.text(
-                (WIDTH // 2, 110),
-                "Nothing playing",
-                anchor="mm",
-                fill=DIM_COLOR,
-                font=self._font(20),
-            )
+            for index, line in enumerate(STOPPED_HINT):
+                offset = STOPPED_HINT_LINE_HEIGHT * (2 * index + 1 - len(STOPPED_HINT)) // 2
+                draw.text(
+                    (WIDTH // 2, HEIGHT // 2 + offset),
+                    line,
+                    anchor="mm",
+                    fill=DIM_COLOR,
+                    font=self._font(20),
+                )
         else:
             artist_font = self._font(20)
             title_font = self._font(26)
