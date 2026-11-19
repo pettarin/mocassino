@@ -172,9 +172,13 @@ class TestBuildApp:
             }
         )
 
-    def test_hardware(self, mocker):
+    @pytest.mark.parametrize(
+        ("origin", "target"),
+        [("gpio", "st7789"), ("pirateaudio", "pirateaudio")],
+    )
+    def test_hardware(self, mocker, origin, target):
         mocker.patch("st7789.ST7789")
-        app = build_app(self.configuration("gpio", "st7789"))
+        app = build_app(self.configuration(origin, target))
         assert isinstance(app._button_source, GpioButtonSource)
         assert isinstance(app._display, St7789Display)
 

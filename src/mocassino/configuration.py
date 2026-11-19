@@ -17,9 +17,10 @@ import yaml
 
 from mocassino.controller.actions import resolve_button_map
 
-BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "simulator")
+# "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
+BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
 DEFAULT_CONFIGURATION_FILE_PATH: Path = Path("~/.config/mocassino/configuration.yaml")
-DISPLAY_TARGETS: tuple[str, ...] = ("none", "simulator", "st7789")
+DISPLAY_TARGETS: tuple[str, ...] = ("none", "pirateaudio", "simulator", "st7789")
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,7 @@ class ButtonsConfiguration:
 
     button_map: dict[str, dict[str, str]] = field(default_factory=lambda: resolve_button_map({}))
     long_press_time: float = 0.6
-    origin: str = "gpio"
+    origin: str = "pirateaudio"
     repeat_hold_time: float = 0.3
 
 
@@ -45,7 +46,7 @@ class DisplayConfiguration:
 
     font_file_path: Path | None = None
     show_side_icons: bool = True
-    target: str = "st7789"
+    target: str = "pirateaudio"
     tick: float = 0.5
 
 

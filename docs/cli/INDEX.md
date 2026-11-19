@@ -37,11 +37,11 @@ Usage: mocassino run [OPTIONS]
 Options:
   --background / --foreground     Run detached from the terminal (default) or
                                   attached to it.
-  --buttons-origin [gpio|none|simulator]
+  --buttons-origin [gpio|none|pirateaudio|simulator]
                                   Where the button events come from
                                   (buttons.origin).
   --configuration-file-path FILE  YAML configuration file.
-  --display-target [none|simulator|st7789]
+  --display-target [none|pirateaudio|simulator|st7789]
                                   Where the screen is drawn (display.target).
   --library-directory-path DIRECTORY
                                   Music root directory
@@ -95,10 +95,12 @@ The buttons and the display can be replaced independently:
 
 | Option | Value | Meaning |
 |---|---|---|
-| `--buttons-origin` | `gpio` | The buttons of the Pirate Audio hat (default) |
+| `--buttons-origin` | `pirateaudio` | The buttons of the Pirate Audio hat (default) |
+| `--buttons-origin` | `gpio` | Synonym of `pirateaudio` |
 | `--buttons-origin` | `simulator` | The buttons of the simulator window |
 | `--buttons-origin` | `none` | No buttons |
-| `--display-target` | `st7789` | The display of the Pirate Audio hat (default) |
+| `--display-target` | `pirateaudio` | The display of the Pirate Audio hat (default) |
+| `--display-target` | `st7789` | Synonym of `pirateaudio` |
 | `--display-target` | `simulator` | The simulator window |
 | `--display-target` | `none` | No display: no draw action is performed |
 
@@ -135,11 +137,11 @@ Usage: mocassino configuration [OPTIONS]
   Print the effective configuration, in YAML format.
 
 Options:
-  --buttons-origin [gpio|none|simulator]
+  --buttons-origin [gpio|none|pirateaudio|simulator]
                                   Where the button events come from
                                   (buttons.origin).
   --configuration-file-path FILE  YAML configuration file.
-  --display-target [none|simulator|st7789]
+  --display-target [none|pirateaudio|simulator|st7789]
                                   Where the screen is drawn (display.target).
   --library-directory-path DIRECTORY
                                   Music root directory
@@ -172,12 +174,12 @@ buttons:
       Y: volume_down
       Y_hold: seek_backward
   long_press_time: 0.6
-  origin: gpio
+  origin: pirateaudio
   repeat_hold_time: 0.3
 display:
   font_file_path: null
   show_side_icons: true
-  target: st7789
+  target: pirateaudio
   tick: 0.5
 library:
   directory_path: /music
@@ -211,11 +213,11 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 |---|---|---|
 | `buttons.button_map` | see below | The action of each button, in each mode |
 | `buttons.long_press_time` | `0.6` | How long a button must be held for a long press, in seconds |
-| `buttons.origin` | `gpio` | Where the button events come from: `gpio`, `none`, or `simulator` |
+| `buttons.origin` | `pirateaudio` | Where the button events come from: `pirateaudio` (or its synonym `gpio`), `none`, or `simulator` |
 | `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
 | `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode, when the service starts |
-| `display.target` | `st7789` | Where the screen is drawn: `none`, `simulator`, or `st7789` |
+| `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
 | `playback.initial_volume` | `50` | The volume set when the service starts, between 0 and 100 |

@@ -156,7 +156,7 @@ def _build_button_source(
 ) -> ButtonSource:
     """Build the button source selected by the configuration."""
     origin = configuration.buttons.origin
-    if origin == "gpio":
+    if origin in ("gpio", "pirateaudio"):
         return GpioButtonSource(
             long_press_time=configuration.buttons.long_press_time,
             repeat_hold_time=configuration.buttons.repeat_hold_time,
@@ -171,7 +171,7 @@ def _build_display(configuration: Configuration, simulator: TkSimulator | None) 
     target = configuration.display.target
     if target == "simulator" and simulator is not None:
         return simulator
-    if target == "st7789":
+    if target in ("pirateaudio", "st7789"):
         return St7789Display()
     return NullDisplay()
 

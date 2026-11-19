@@ -41,10 +41,10 @@ class TestConfiguration:
     def test_defaults(self):
         configuration = Configuration()
         assert configuration.buttons == ButtonsConfiguration(
-            long_press_time=0.6, origin="gpio", repeat_hold_time=0.3
+            long_press_time=0.6, origin="pirateaudio", repeat_hold_time=0.3
         )
         assert configuration.display == DisplayConfiguration(
-            font_file_path=None, show_side_icons=True, target="st7789", tick=0.5
+            font_file_path=None, show_side_icons=True, target="pirateaudio", tick=0.5
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
         assert configuration.playback == PlaybackConfiguration(
@@ -60,13 +60,13 @@ class TestConfiguration:
             "buttons": {
                 "button_map": DEFAULT_BUTTON_MAP,
                 "long_press_time": 0.6,
-                "origin": "gpio",
+                "origin": "pirateaudio",
                 "repeat_hold_time": 0.3,
             },
             "display": {
                 "font_file_path": None,
                 "show_side_icons": True,
-                "target": "st7789",
+                "target": "pirateaudio",
                 "tick": 0.5,
             },
             "library": {"directory_path": "/music"},
@@ -199,6 +199,16 @@ class TestLoadConfiguration:
     def test_invalid_value(self, section, key, value):
         with pytest.raises(ConfigurationError, match=f"Invalid value for '{section}.{key}'"):
             load_configuration(overrides={section: {key: value}})
+
+    @pytest.mark.parametrize("origin", ["gpio", "none", "pirateaudio", "simulator"])
+    def test_buttons_origins(self, origin):
+        configuration = load_configuration(overrides={"buttons": {"origin": origin}})
+        assert configuration.buttons.origin == origin
+
+    @pytest.mark.parametrize("target", ["none", "pirateaudio", "simulator", "st7789"])
+    def test_display_targets(self, target):
+        configuration = load_configuration(overrides={"display": {"target": target}})
+        assert configuration.display.target == target
 
     def test_invalid_yaml(self, tmp_path):
         with pytest.raises(ConfigurationError, match="is not valid YAML"):
