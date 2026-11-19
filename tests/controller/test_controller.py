@@ -544,7 +544,7 @@ class TestController:
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Playlist"]
         menu = state.current_menu
         assert [item.label for item in menu.items] == [
-            "Select from library",
+            "Open library",
             "Use mocp state",
             "Use saved",
         ]
@@ -562,14 +562,14 @@ class TestController:
         assert menu.selected.label == "Use mocp state"
         controller.handle(X)
         controller.handle(B)
-        assert state.settings.startup_playlist is StartupPlaylist.SELECT_FROM_LIBRARY
+        assert state.settings.startup_playlist is StartupPlaylist.OPEN_LIBRARY
         assert [item.checked for item in state.current_menu.items] == [True, False, False]
         assert save_settings.call_count == 2
 
     def test_menu_select_startup_playlist_without_saving(self, controller, state):
         for event in (A_LONG, Y, B, X, B, Y, B, Y, B):
             controller.handle(event)
-        assert state.settings.startup_playlist is StartupPlaylist.SELECT_FROM_LIBRARY
+        assert state.settings.startup_playlist is StartupPlaylist.OPEN_LIBRARY
 
     def test_menu_select_startup_playlist_without_value(self, controller, state):
         item = MenuItem(label="Broken", command=MenuCommand.SET_STARTUP_PLAYLIST)

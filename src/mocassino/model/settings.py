@@ -17,7 +17,7 @@ class StartupPlaylist(StrEnum):
     Defined before the settings, as they refer to it.
     """
 
-    SELECT_FROM_LIBRARY = "select_from_library"
+    OPEN_LIBRARY = "open_library"
     USE_MOCP_STATE = "use_mocp_state"
     USE_SAVED = "use_saved"
 

@@ -370,7 +370,7 @@ class TestBuildStartupPlaylistMenu:
     @pytest.mark.parametrize(
         ("choice", "index"),
         [
-            (StartupPlaylist.SELECT_FROM_LIBRARY, 0),
+            (StartupPlaylist.OPEN_LIBRARY, 0),
             (StartupPlaylist.USE_MOCP_STATE, 1),
             (StartupPlaylist.USE_SAVED, 2),
         ],
@@ -379,12 +379,12 @@ class TestBuildStartupPlaylistMenu:
         menu = build_startup_playlist_menu(Settings(startup_playlist=choice))
         assert menu.title == "Playlist"
         assert [item.label for item in menu.items] == [
-            "Select from library",
+            "Open library",
             "Use mocp state",
             "Use saved",
         ]
         assert [item.value for item in menu.items] == [
-            "select_from_library",
+            "open_library",
             "use_mocp_state",
             "use_saved",
         ]

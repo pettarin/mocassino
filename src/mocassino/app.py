@@ -204,7 +204,7 @@ class App:
         choice = self._state.settings.startup_playlist
         state = STARTUP_STATES.get(self._state.settings.startup_state)
         try:
-            if choice is StartupPlaylist.SELECT_FROM_LIBRARY:
+            if choice is StartupPlaylist.OPEN_LIBRARY:
                 self._moc.stop()
                 self._controller.choose_folder()
             elif choice is StartupPlaylist.USE_MOCP_STATE:

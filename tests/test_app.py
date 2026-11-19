@@ -272,7 +272,7 @@ class TestApp:
         assert state.status == PLAYING
 
     def test_start_selecting_from_the_library(self, saving_app, state_file, state, moc, mocker):
-        state.settings.startup_playlist = StartupPlaylist.SELECT_FROM_LIBRARY
+        state.settings.startup_playlist = StartupPlaylist.OPEN_LIBRARY
         state_file.load.return_value = SavedState(
             directory_path="/music", file_path="/music/a.flac", state=MocState.PLAY, volume=40
         )
@@ -609,11 +609,11 @@ class TestBuildApp:
             overrides={
                 "buttons": {"origin": "none"},
                 "display": {"target": "none"},
-                "startup": {"playlist": "select_from_library"},
+                "startup": {"playlist": "open_library"},
             }
         )
         app = build_app(configuration)
-        assert app._state.settings.startup_playlist is StartupPlaylist.SELECT_FROM_LIBRARY
+        assert app._state.settings.startup_playlist is StartupPlaylist.OPEN_LIBRARY
         default = build_app(self.configuration("none", "none"))
         assert default._state.settings.startup_playlist is StartupPlaylist.USE_SAVED
 
@@ -928,7 +928,7 @@ class TestBuildApp:
         moc.play(album)
         moc.calls.clear()
         app, moc = self.start(
-            mocker, tmp_path, album, "select_from_library", state, MocState.PLAY, moc=moc
+            mocker, tmp_path, album, "open_library", state, MocState.PLAY, moc=moc
         )
         assert moc.names() == ["start_server", "stop", "set_volume"]
         assert moc.state is MocState.STOP

@@ -279,7 +279,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100; it can be changed from the `Settings` menu |
 | `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
 | `startup.fixed_volume` | `50` | The volume set when the service starts, between 0 and 100, if `startup.volume` is `use_fixed`, or if there is no saved volume; it can be changed from the `Settings` menu |
-| `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `select_from_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
+| `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `open_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_fixed` (the one in `startup.fixed_volume`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
@@ -356,12 +356,12 @@ When the service starts:
 
   | Value | What happens |
   |---|---|
-  | `select_from_library` | MOC is stopped, and the `Library` menu is shown, to select what to play |
+  | `open_library` | MOC is stopped, and the `Library` menu is shown, to select what to play |
   | `use_mocp_state` | MOC is left as it is: the display shows whatever it is playing |
   | `use_saved` | MOC is stopped, and the playback saved in the state file is resumed |
 
 - it sets the playback state as `startup.state` says,
-  unless `startup.playlist` is `select_from_library`, in which case it has no effect:
+  unless `startup.playlist` is `open_library`, in which case it has no effect:
 
   | Value | With `startup.playlist: use_saved` | With `startup.playlist: use_mocp_state` |
   |---|---|---|
@@ -535,7 +535,7 @@ The top level menu has the following items:
     - `Fixed volume (%)` (`startup.fixed_volume`): a menu with the volumes from `0` to `100`,
       in steps of 5; the current one has the solid square.
     - `Playlist` (`startup.playlist`): a menu with the three choices
-      `Select from library`, `Use mocp state`, and `Use saved`; the current one has the solid square.
+      `Open library`, `Use mocp state`, and `Use saved`; the current one has the solid square.
     - `State` (`startup.state`): a menu with the four choices
       `Pause`, `Play`, `Stop`, and `Use saved`; the current one has the solid square.
     - `Volume` (`startup.volume`): a menu with the two choices
