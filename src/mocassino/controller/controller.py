@@ -22,10 +22,11 @@ from mocassino.model.menu import (
     build_root_menu,
     build_startup_fixed_volume_menu,
     build_startup_playlist_menu,
+    build_startup_state_menu,
     build_startup_volume_menu,
 )
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
-from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
+from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.state import AppState
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -59,6 +60,11 @@ SETTERS: dict[
         "startup_playlist",
         StartupPlaylist,
         build_startup_playlist_menu,
+    ),
+    MenuCommand.SET_STARTUP_STATE: (
+        "startup_state",
+        StartupState,
+        build_startup_state_menu,
     ),
     MenuCommand.SET_STARTUP_VOLUME: (
         "startup_volume",

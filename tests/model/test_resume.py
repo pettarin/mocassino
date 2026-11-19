@@ -13,6 +13,8 @@ from mocassino.model.resume import (
     POLL_ATTEMPTS,
     SEEK_ATTEMPTS,
     adopt_playback,
+    apply_state,
+    load_playback,
     playing_from,
     resume_playback,
 )
@@ -69,6 +71,71 @@ class TestAdoptPlayback:
         moc = FakeMoc()
         moc.play(album)
         assert adopt_playback(moc, SavedState(volume=85)) == str(album)
+
+
+class TestApplyState:
+    """Tests for the apply_state function"""
+
+    @pytest.mark.parametrize(
+        ("current", "wanted", "commands"),
+        [
+            (MocState.PLAY, MocState.PLAY, []),
+            (MocState.PLAY, MocState.PAUSE, ["pause"]),
+            (MocState.PLAY, MocState.STOP, ["stop"]),
+            (MocState.PAUSE, MocState.PLAY, ["unpause"]),
+            (MocState.PAUSE, MocState.PAUSE, []),
+            (MocState.PAUSE, MocState.STOP, ["stop"]),
+            (MocState.STOP, MocState.PLAY, ["play_playlist"]),
+            (MocState.STOP, MocState.PAUSE, []),
+            (MocState.STOP, MocState.STOP, []),
+        ],
+    )
+    def test_states(self, album, current, wanted, commands):
+        moc = FakeMoc()
+        moc.load(album)
+        if current is not MocState.STOP:
+            moc.play_playlist()
+            moc.next()
+        if current is MocState.PAUSE:
+            moc.pause()
+        assert moc.state is current
+        moc.calls.clear()
+        apply_state(moc, wanted)
+        assert moc.names() == commands
+        if commands:
+            assert moc.state is wanted
+        if current is not MocState.STOP and wanted is not MocState.STOP:
+            assert moc.index == 1
+
+
+class TestLoadPlayback:
+    """Tests for the load_playback function"""
+
+    def test_directory_not_saved(self, album):
+        state = SavedState(file_path=str(album / "03.flac"), state=MocState.PLAY)
+        moc = FakeMoc()
+        assert load_playback(moc, state) == str(album)
+        assert moc.names() == ["load"]
+
+    def test_loaded(self, album):
+        moc = FakeMoc()
+        assert load_playback(moc, saved(album)) == str(album)
+        assert moc.calls == [("load", str(album))]
+        assert moc.state is MocState.STOP
+        assert len(moc.tracks) == 5
+        moc.play_playlist()
+        assert (moc.index, moc.state) == (0, MocState.PLAY)
+
+    def test_nothing_saved(self):
+        moc = FakeMoc()
+        assert load_playback(moc, SavedState(volume=85)) is None
+        assert load_playback(moc, SavedState(file_path="http://example.com/stream")) is None
+        assert moc.calls == []
+
+    def test_track_missing(self, album):
+        moc = FakeMoc()
+        assert load_playback(moc, saved(album, "09.flac")) is None
+        assert moc.calls == []
 
 
 class TestPlayingFrom:

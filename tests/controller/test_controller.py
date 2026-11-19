@@ -21,7 +21,7 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import StartupPlaylist, StartupVolume
+from mocassino.model.settings import StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.state import AppState, Mode
 
 A = ButtonEvent(Button.A)
@@ -427,7 +427,7 @@ class TestController:
         assert state.settings.startup_fixed_volume == 50
         assert state.current_menu.title == "Above"
 
-    def test_menu_select_startup_volume(self, mocker, state, moc, library, host):
+    def test_menu_select_startup_state(self, mocker, state, moc, library, host):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
@@ -438,6 +438,37 @@ class TestController:
             save_settings=save_settings,
         )
         for event in (A_LONG, Y, B, X, B, Y, Y, B):
+            controller.handle(event)
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "State"]
+        menu = state.current_menu
+        assert [item.label for item in menu.items] == ["Pause", "Play", "Stop", "Use saved"]
+        assert [item.checked for item in menu.items] == [False, False, False, True]
+        assert menu.selected.label == "Use saved"
+        save_settings.assert_not_called()
+        controller.handle(Y)
+        controller.handle(B)
+        assert state.settings.startup_state is StartupState.PAUSE
+        save_settings.assert_called_once_with(state.settings)
+        assert [item.checked for item in state.current_menu.items] == [True, False, False, False]
+        controller.handle(Y)
+        controller.handle(Y)
+        controller.handle(B)
+        assert state.settings.startup_state is StartupState.STOP
+        assert state.current_menu.selected.label == "Stop"
+        moc.stop.assert_not_called()
+        moc.pause.assert_not_called()
+
+    def test_menu_select_startup_volume(self, mocker, state, moc, library, host):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            host,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, X, B, X, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Volume"]
         menu = state.current_menu
@@ -460,7 +491,7 @@ class TestController:
         assert [item.checked for item in state.current_menu.items] == [False, True]
 
     def test_menu_select_startup_volume_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, X, B, Y, Y, B, X, B):
+        for event in (A_LONG, Y, B, X, B, X, B, X, B):
             controller.handle(event)
         assert state.settings.startup_volume is StartupVolume.USE_FIXED
 

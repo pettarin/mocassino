@@ -162,6 +162,10 @@ class TestSubprocessMocClient:
         SubprocessMocClient().jump(95)
         assert commands(run) == [["mocp", "--jump=95s"]]
 
+    def test_load(self, run):
+        SubprocessMocClient().load(Path("/music/Artist/Album"))
+        assert commands(run) == [["mocp", "--clear"], ["mocp", "--append", "/music/Artist/Album"]]
+
     def test_next(self, run):
         SubprocessMocClient().next()
         assert commands(run) == [["mocp", "--next"]]
@@ -236,6 +240,10 @@ class TestSubprocessMocClient:
     def test_stop(self, run):
         SubprocessMocClient().stop()
         assert commands(run) == [["mocp", "--stop"]]
+
+    def test_unpause(self, run):
+        SubprocessMocClient().unpause()
+        assert commands(run) == [["mocp", "--unpause"]]
 
     def test_toggle_pause(self, run):
         SubprocessMocClient().toggle_pause()

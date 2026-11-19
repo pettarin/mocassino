@@ -90,6 +90,39 @@ def adopt_playback(moc: MocClient, saved: SavedState) -> str | None:
     return playing_from(saved.directory_path, status.file_path)
 
 
+def apply_state(moc: MocClient, state: MocState) -> None:
+    """Bring what MOC has in its playlist to the given state: playing, paused, or stopped.
+
+    Asking for a pause when MOC is stopped does nothing, as there is nothing to pause.
+
+    :raises MocError: if a MOC command fails
+    """
+    current = moc.status().state
+    if state is MocState.STOP and current is not MocState.STOP:
+        moc.stop()
+    elif state is MocState.PAUSE and current is MocState.PLAY:
+        moc.pause()
+    elif state is MocState.PLAY and current is MocState.PAUSE:
+        moc.unpause()
+    elif state is MocState.PLAY and current is MocState.STOP:
+        moc.play_playlist()
+
+
+def load_playback(moc: MocClient, saved: SavedState) -> str | None:
+    """Give MOC the saved playback as its playlist, without playing it.
+
+    :return: what MOC has been given (the saved directory, or that of the saved track),
+             or None if there is no saved track, or it no longer exists
+    :raises MocError: if a MOC command fails
+    """
+    file_path = saved.file_path
+    directory_path = None if file_path is None else playing_from(saved.directory_path, file_path)
+    if directory_path is None or file_path is None or not Path(file_path).is_file():
+        return None
+    moc.load(Path(directory_path))
+    return directory_path
+
+
 def playing_from(played_path: str | None, file_path: str) -> str | None:
     """Tell what a track is being played from.
 

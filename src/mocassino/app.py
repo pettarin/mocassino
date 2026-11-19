@@ -6,7 +6,7 @@
 
 import logging
 import threading
-from dataclasses import astuple
+from dataclasses import astuple, replace
 from functools import partial
 from pathlib import Path
 from queue import Empty, Queue
@@ -30,8 +30,14 @@ from mocassino.model.moc import (
     MocState,
     SubprocessMocClient,
 )
-from mocassino.model.resume import adopt_playback, playing_from, resume_playback
-from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
+from mocassino.model.resume import (
+    adopt_playback,
+    apply_state,
+    load_playback,
+    playing_from,
+    resume_playback,
+)
+from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.simulator.tk import TkSimulator
@@ -41,6 +47,12 @@ from mocassino.view.display.st7789 import St7789Display
 from mocassino.view.renderer import Renderer
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
+# The playback state each startup state setting asks for; none, for the one using what was saved
+STARTUP_STATES: dict[StartupState, MocState] = {
+    StartupState.PAUSE: MocState.PAUSE,
+    StartupState.PLAY: MocState.PLAY,
+    StartupState.STOP: MocState.STOP,
+}
 
 
 class App:
@@ -178,7 +190,10 @@ class App:
         What happens to the playlist depends on the startup playlist setting:
         MOC is stopped, and the playback saved in the state file is resumed (if it cannot be,
         nothing is played); or MOC is stopped, and the menu of the library is shown;
-        or MOC is left as it is.
+        or MOC is left with the playlist it has.
+        Unless the menu of the library is shown, the startup state setting then tells
+        whether the playback is left playing, paused, stopped, or as it was saved
+        (which, when MOC is left with its playlist, is how MOC is found).
         The state file is then updated to say what is playing.
         The volume is set after the playlist is set up, as resuming needs it at zero.
 
@@ -187,15 +202,23 @@ class App:
         self._moc.start_server()
         saved = SavedState() if self._state_file is None else self._state_file.load()
         choice = self._state.settings.startup_playlist
+        state = STARTUP_STATES.get(self._state.settings.startup_state)
         try:
-            if choice is StartupPlaylist.USE_MOCP_STATE:
+            if choice is StartupPlaylist.SELECT_FROM_LIBRARY:
+                self._moc.stop()
+                self._controller.choose_folder()
+            elif choice is StartupPlaylist.USE_MOCP_STATE:
+                if state is not None:
+                    apply_state(self._moc, state)
                 self._state.played_path = adopt_playback(self._moc, saved)
             else:
                 self._moc.stop()
-                if choice is StartupPlaylist.USE_SAVED:
-                    self._state.played_path = resume_playback(self._moc, saved)
+                if state is MocState.STOP:
+                    self._state.played_path = load_playback(self._moc, saved)
                 else:
-                    self._controller.choose_folder()
+                    if state is not None:
+                        saved = replace(saved, state=state)
+                    self._state.played_path = resume_playback(self._moc, saved)
         except MocError as exc:
             LOGGER.error("Cannot set up the playlist: %s", exc)
         self._moc.set_volume(self._state.volume)
@@ -274,6 +297,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
         "startup": {
             "fixed_volume": settings.startup_fixed_volume,
             "playlist": settings.startup_playlist.value,
+            "state": settings.startup_state.value,
             "volume": settings.startup_volume.value,
         },
     }
@@ -327,6 +351,7 @@ def build_app(
             show_volume_bar=configuration.display.show_volume_bar,
             startup_fixed_volume=configuration.startup.fixed_volume,
             startup_playlist=StartupPlaylist(configuration.startup.playlist),
+            startup_state=StartupState(configuration.startup.state),
             startup_volume=startup_volume,
         ),
         volume=volume,

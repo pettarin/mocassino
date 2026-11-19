@@ -59,7 +59,7 @@ class TestConfiguration:
         assert configuration.playback == PlaybackConfiguration(seek_step=10, volume_step=5)
         assert configuration.run == RunConfiguration(mode="background")
         assert configuration.startup == StartupConfiguration(
-            fixed_volume=50, playlist="use_saved", volume="use_saved"
+            fixed_volume=50, playlist="use_saved", state="use_saved", volume="use_saved"
         )
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
@@ -86,7 +86,12 @@ class TestConfiguration:
             "library": {"directory_path": "/music"},
             "playback": {"seek_step": 10, "volume_step": 5},
             "run": {"mode": "background"},
-            "startup": {"fixed_volume": 50, "playlist": "use_saved", "volume": "use_saved"},
+            "startup": {
+                "fixed_volume": 50,
+                "playlist": "use_saved",
+                "state": "use_saved",
+                "volume": "use_saved",
+            },
             "system": {
                 "mocp_file_path": "mocp",
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
@@ -225,6 +230,9 @@ class TestLoadConfiguration:
             ("startup", "playlist", "saved"),
             ("startup", "playlist", "Use saved"),
             ("startup", "playlist", 5),
+            ("startup", "state", "paused"),
+            ("startup", "state", "use saved"),
+            ("startup", "state", True),
             ("startup", "volume", "use_fallback"),
             ("startup", "volume", "Use saved"),
             ("startup", "volume", True),
@@ -253,6 +261,11 @@ class TestLoadConfiguration:
     def test_startup_playlists(self, tmp_path, playlist):
         path = write_yaml(tmp_path, f"startup:\n  playlist: {playlist}\n")
         assert load_configuration(path).startup.playlist == playlist
+
+    @pytest.mark.parametrize("state", ["pause", "play", "stop", "use_saved"])
+    def test_startup_states(self, tmp_path, state):
+        path = write_yaml(tmp_path, f"startup:\n  state: {state}\n")
+        assert load_configuration(path).startup.state == state
 
     @pytest.mark.parametrize("volume", ["use_fixed", "use_saved"])
     def test_startup_volumes(self, tmp_path, volume):

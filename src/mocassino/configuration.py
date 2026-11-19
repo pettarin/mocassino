@@ -16,7 +16,12 @@ from typing import Any
 import yaml
 
 from mocassino.controller.actions import resolve_button_map
-from mocassino.model.settings import ORIENTATIONS, StartupPlaylist, StartupVolume
+from mocassino.model.settings import (
+    ORIENTATIONS,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 
 # "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
@@ -87,6 +92,7 @@ class StartupConfiguration:
 
     fixed_volume: int = 50
     playlist: str = StartupPlaylist.USE_SAVED.value
+    state: str = StartupState.USE_SAVED.value
     volume: str = StartupVolume.USE_SAVED.value
 
 
@@ -156,6 +162,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "startup": {
             "fixed_volume": _to_int,
             "playlist": _to_str,
+            "state": _to_str,
             "volume": _to_str,
         },
         "system": {"mocp_file_path": _to_str, "shutdown_command": _to_command},
@@ -234,6 +241,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "startup.playlist": (
             configuration.startup.playlist,
             configuration.startup.playlist in list(StartupPlaylist),
+        ),
+        "startup.state": (
+            configuration.startup.state,
+            configuration.startup.state in list(StartupState),
         ),
         "startup.volume": (
             configuration.startup.volume,

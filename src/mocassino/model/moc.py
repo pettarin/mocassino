@@ -33,6 +33,9 @@ class MocClient(Protocol):
     def jump(self, seconds: int) -> None:
         """Jump to the given position, in seconds, in the track being played."""
 
+    def load(self, path: Path) -> None:
+        """Replace the playlist with the given file or directory, without playing it."""
+
     def next(self) -> None:
         """Play the next track of the playlist."""
 
@@ -65,6 +68,9 @@ class MocClient(Protocol):
 
     def toggle_pause(self) -> None:
         """Toggle between playing and paused."""
+
+    def unpause(self) -> None:
+        """Resume the paused playback."""
 
 
 class MocError(Exception):
@@ -151,6 +157,11 @@ class SubprocessMocClient:
         """Jump to the given position, in seconds, in the track being played."""
         self._run(f"--jump={seconds}s")
 
+    def load(self, path: Path) -> None:
+        """Replace the playlist with the given file or directory, without playing it."""
+        self._run("--clear")
+        self._run("--append", str(path))
+
     def next(self) -> None:
         """Play the next track of the playlist."""
         self._run("--next")
@@ -161,8 +172,7 @@ class SubprocessMocClient:
 
     def play(self, path: Path) -> None:
         """Replace the playlist with the given file or directory, and play it."""
-        self._run("--clear")
-        self._run("--append", str(path))
+        self.load(path)
         self._run("--play")
 
     def play_playlist(self) -> None:
@@ -202,6 +212,10 @@ class SubprocessMocClient:
     def toggle_pause(self) -> None:
         """Toggle between playing and paused."""
         self._run("--toggle-pause")
+
+    def unpause(self) -> None:
+        """Resume the paused playback."""
+        self._run("--unpause")
 
 
 def parse_status(output: str) -> MocStatus:

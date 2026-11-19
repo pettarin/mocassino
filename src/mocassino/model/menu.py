@@ -17,7 +17,13 @@ from pathlib import Path
 
 from mocassino.model.host import Host
 from mocassino.model.library import Library
-from mocassino.model.settings import ORIENTATIONS, Settings, StartupPlaylist, StartupVolume
+from mocassino.model.settings import (
+    ORIENTATIONS,
+    Settings,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 
 # The fixed volumes that can be chosen from the menu
 FIXED_VOLUME_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
@@ -56,6 +62,7 @@ class MenuCommand(StrEnum):
     SET_PLAYBACK_VOLUME_STEP = "set_playback_volume_step"
     SET_STARTUP_FIXED_VOLUME = "set_startup_fixed_volume"
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
+    SET_STARTUP_STATE = "set_startup_state"
     SET_STARTUP_VOLUME = "set_startup_volume"
     SHUTDOWN = "shutdown"
     TOGGLE_PROGRESS_BAR = "toggle_progress_bar"
@@ -318,6 +325,7 @@ def build_startup_menu(settings: Settings) -> Menu:
                 submenu=partial(build_startup_fixed_volume_menu, settings),
             ),
             MenuItem(label="Playlist", submenu=partial(build_startup_playlist_menu, settings)),
+            MenuItem(label="State", submenu=partial(build_startup_state_menu, settings)),
             MenuItem(label="Volume", submenu=partial(build_startup_volume_menu, settings)),
         ),
     )
@@ -333,6 +341,19 @@ def build_startup_playlist_menu(settings: Settings) -> Menu:
         tuple(StartupPlaylist),
         settings.startup_playlist,
         MenuCommand.SET_STARTUP_PLAYLIST,
+    )
+
+
+def build_startup_state_menu(settings: Settings) -> Menu:
+    """Build the menu choosing what playback state the service sets when it starts.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_choice_menu(
+        "State",
+        tuple(StartupState),
+        settings.startup_state,
+        MenuCommand.SET_STARTUP_STATE,
     )
 
 

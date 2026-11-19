@@ -25,7 +25,7 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import StartupPlaylist, StartupVolume
+from mocassino.model.settings import StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.state import AppState, Mode
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.simulator.tk import TkSimulator
@@ -494,6 +494,7 @@ class TestBuildApp:
             "startup:\n"
             "  fixed_volume: 30\n"
             "  playlist: use_saved\n"
+            "  state: use_saved\n"
             "  volume: use_saved\n"
             "display:\n"
             "  orientation: 0\n"
@@ -523,6 +524,7 @@ class TestBuildApp:
             "startup:\n"
             "  fixed_volume: 50\n"
             "  playlist: use_saved\n"
+            "  state: use_saved\n"
             "  volume: use_saved\n"
         )
 
@@ -725,8 +727,7 @@ class TestBuildApp:
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.Y),
-            ButtonEvent(Button.Y),
+            ButtonEvent(Button.X),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),
@@ -818,6 +819,130 @@ class TestBuildApp:
             state=MocState.PLAY,
             volume=90,
         )
+
+    @pytest.fixture
+    def album(self, tmp_path):
+        """Create an album of five tracks."""
+        album = tmp_path / "music" / "Album"
+        album.mkdir(parents=True)
+        for number in range(1, 6):
+            (album / f"0{number}.flac").touch()
+        return album
+
+    def start(self, mocker, tmp_path, album, playlist, state, saved_state, moc=None):
+        """Start an application with the given startup settings, and a saved track 3 at 95 s."""
+        moc = moc or FakeMoc()
+        mocker.patch("mocassino.app.SubprocessMocClient", return_value=moc)
+        mocker.patch("mocassino.model.resume.time.sleep")
+        state_file_path = tmp_path / "state.yaml"
+        StateFile(state_file_path).save(
+            SavedState(
+                directory_path=str(album),
+                file_path=str(album / "03.flac"),
+                seek=95,
+                state=saved_state,
+                volume=70,
+            )
+        )
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"target": "none"},
+                "startup": {"playlist": playlist, "state": state},
+            }
+        )
+        app = build_app(configuration, state_file_path=state_file_path)
+        app.start()
+        return app, moc
+
+    @pytest.mark.parametrize(
+        ("state", "saved_state", "expected"),
+        [
+            ("use_saved", MocState.PLAY, MocState.PLAY),
+            ("use_saved", MocState.PAUSE, MocState.PAUSE),
+            ("play", MocState.PAUSE, MocState.PLAY),
+            ("play", MocState.PLAY, MocState.PLAY),
+            ("pause", MocState.PLAY, MocState.PAUSE),
+            ("pause", MocState.PAUSE, MocState.PAUSE),
+        ],
+    )
+    def test_startup_state_with_the_saved_playlist(
+        self, mocker, tmp_path, album, state, saved_state, expected
+    ):
+        app, moc = self.start(mocker, tmp_path, album, "use_saved", state, saved_state)
+        assert (moc.index, moc.seconds, moc.state) == (2, 95, expected)
+        assert moc.volume == 70
+        assert app._state.played_path == str(album)
+        assert app._state.settings.startup_state is StartupState(state)
+
+    @pytest.mark.parametrize("saved_state", [MocState.PLAY, MocState.PAUSE])
+    def test_startup_state_stop_with_the_saved_playlist(self, mocker, tmp_path, album, saved_state):
+        app, moc = self.start(mocker, tmp_path, album, "use_saved", "stop", saved_state)
+        assert moc.names() == ["start_server", "stop", "load", "set_volume"]
+        assert moc.state is MocState.STOP
+        assert len(moc.tracks) == 5
+        assert app._state.played_path == str(album)
+        assert app._state.status.state is MocState.STOP
+
+    @pytest.mark.parametrize(
+        ("state", "commands", "expected"),
+        [
+            ("use_saved", [], MocState.PLAY),
+            ("play", [], MocState.PLAY),
+            ("pause", ["pause"], MocState.PAUSE),
+            ("stop", ["stop"], MocState.STOP),
+        ],
+    )
+    def test_startup_state_with_the_mocp_state(
+        self, mocker, tmp_path, album, state, commands, expected
+    ):
+        moc = FakeMoc()
+        moc.play(album)
+        moc.next()
+        moc.calls.clear()
+        app, moc = self.start(
+            mocker, tmp_path, album, "use_mocp_state", state, MocState.PAUSE, moc=moc
+        )
+        assert moc.names() == ["start_server", *commands, "set_volume"]
+        assert moc.state is expected
+        if expected is not MocState.STOP:
+            assert (moc.index, moc.seconds) == (1, 0)
+            assert app._state.played_path == str(album)
+
+    @pytest.mark.parametrize("state", ["pause", "play", "stop", "use_saved"])
+    def test_startup_state_has_no_effect_when_selecting_from_the_library(
+        self, mocker, tmp_path, album, state
+    ):
+        moc = FakeMoc()
+        moc.play(album)
+        moc.calls.clear()
+        app, moc = self.start(
+            mocker, tmp_path, album, "select_from_library", state, MocState.PLAY, moc=moc
+        )
+        assert moc.names() == ["start_server", "stop", "set_volume"]
+        assert moc.state is MocState.STOP
+        assert [menu.title for menu in app._state.menus] == ["Menu", "Library"]
+
+    def test_startup_state_setting_is_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        app = build_app(self.configuration("none", "none"), path)
+        assert app._state.settings.startup_state is StartupState.USE_SAVED
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.settings.startup_state is StartupState.STOP
+        assert load_configuration(path).startup.state == "stop"
 
     def test_playback_that_no_longer_exists_is_blanked(self, mocker, tmp_path):
         moc = FakeMoc()

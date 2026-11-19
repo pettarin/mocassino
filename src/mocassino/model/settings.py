@@ -22,6 +22,18 @@ class StartupPlaylist(StrEnum):
     USE_SAVED = "use_saved"
 
 
+class StartupState(StrEnum):
+    """What playback state the service sets when it starts.
+
+    Defined before the settings, as they refer to it.
+    """
+
+    PAUSE = "pause"
+    PLAY = "play"
+    STOP = "stop"
+    USE_SAVED = "use_saved"
+
+
 class StartupVolume(StrEnum):
     """What volume the service sets when it starts.
 
@@ -47,4 +59,5 @@ class Settings:
     show_volume_bar: bool = True
     startup_fixed_volume: int = 50
     startup_playlist: StartupPlaylist = StartupPlaylist.USE_SAVED
+    startup_state: StartupState = StartupState.USE_SAVED
     startup_volume: StartupVolume = StartupVolume.USE_SAVED

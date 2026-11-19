@@ -237,6 +237,7 @@ run:
 startup:
   fixed_volume: 50
   playlist: use_saved
+  state: use_saved
   volume: use_saved
 system:
   mocp_file_path: mocp
@@ -279,6 +280,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
 | `startup.fixed_volume` | `50` | The volume set when the service starts, between 0 and 100, if `startup.volume` is `use_fixed`, or if there is no saved volume; it can be changed from the `Settings` menu |
 | `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `select_from_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
+| `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_fixed` (the one in `startup.fixed_volume`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list |
@@ -358,9 +360,19 @@ When the service starts:
   | `use_mocp_state` | MOC is left as it is: the display shows whatever it is playing |
   | `use_saved` | MOC is stopped, and the playback saved in the state file is resumed |
 
+- it sets the playback state as `startup.state` says,
+  unless `startup.playlist` is `select_from_library`, in which case it has no effect:
+
+  | Value | With `startup.playlist: use_saved` | With `startup.playlist: use_mocp_state` |
+  |---|---|---|
+  | `pause` | The saved track is resumed at the saved position, paused | MOC is paused, if it is playing |
+  | `play` | The saved track is resumed at the saved position, playing | MOC is made to play: resumed if paused, started from the first track of its playlist if stopped |
+  | `stop` | The saved directory is given to MOC as its playlist, but nothing is played: play/pause then starts it from its first track | MOC is stopped |
+  | `use_saved` | The saved track is resumed at the saved position, playing or paused as it was saved | MOC is left as it is |
+
 To resume the saved playback, the service plays the saved directory from its first track
 with the volume at zero, skips to the saved track, goes to the saved position,
-pauses if the saved state was `paused`, and only then sets the volume.
+pauses if the playback has to be paused, and only then sets the volume.
 If the state file has the track but not the directory, the directory of the track is played.
 If the saved playback cannot be resumed (e.g., the file no longer exists),
 it plays nothing, and blanks the directory, the file, and the position in the state file.
@@ -524,6 +536,8 @@ The top level menu has the following items:
       in steps of 5; the current one has the solid square.
     - `Playlist` (`startup.playlist`): a menu with the three choices
       `Select from library`, `Use mocp state`, and `Use saved`; the current one has the solid square.
+    - `State` (`startup.state`): a menu with the four choices
+      `Pause`, `Play`, `Stop`, and `Use saved`; the current one has the solid square.
     - `Volume` (`startup.volume`): a menu with the two choices
       `Use fixed` and `Use saved`; the current one has the solid square.
 - `Host`: show the name and the IP address of the host,

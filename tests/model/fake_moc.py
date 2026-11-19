@@ -72,6 +72,14 @@ class FakeMoc:
         elif self.state is MocState.PLAY:
             self.seconds = seconds
 
+    def load(self, path: Path) -> None:
+        self._call("load", str(path))
+        if path.is_dir():
+            self.tracks = sorted(str(child) for child in path.iterdir())
+        else:
+            self.tracks = [str(path)]
+        self._change_track(None)
+
     def names(self) -> list[str]:
         """Return the names of the commands received, in order, without the status requests."""
         return [name for name, _ in self.calls if name != "status"]
@@ -101,6 +109,8 @@ class FakeMoc:
 
     def play_playlist(self) -> None:
         self._call("play_playlist")
+        if self.tracks:
+            self._change_track(0)
 
     def previous(self) -> None:
         self._call("previous")
@@ -128,3 +138,8 @@ class FakeMoc:
 
     def toggle_pause(self) -> None:
         self._call("toggle_pause")
+
+    def unpause(self) -> None:
+        self._call("unpause")
+        if self.state is MocState.PAUSE:
+            self.state = MocState.PLAY
