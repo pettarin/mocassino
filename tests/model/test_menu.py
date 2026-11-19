@@ -18,8 +18,9 @@ from mocassino.model.menu import (
     build_root_menu,
     build_settings_menu,
     build_startup_menu,
+    build_startup_playlist_menu,
 )
-from mocassino.model.settings import Settings
+from mocassino.model.settings import Settings, StartupPlaylist
 
 
 @pytest.fixture
@@ -174,11 +175,11 @@ class TestBuildSettingsMenu:
         settings = Settings()
         display, startup = build_settings_menu(settings).items
         assert display.submenu().items[0].checked is True
-        assert startup.submenu().items[0].checked is True
+        assert startup.submenu().items[1].checked is True
         settings.show_side_icons = False
         settings.use_saved_volume = False
         assert display.submenu().items[0].checked is False
-        assert startup.submenu().items[0].checked is False
+        assert startup.submenu().items[1].checked is False
 
     def test_other_items_are_not_checkable(self, library, host):
         menu = build_root_menu(library, host, Settings())
@@ -191,16 +192,51 @@ class TestBuildStartupMenu:
     @pytest.mark.parametrize("use", [True, False])
     def test_use_saved_volume(self, use):
         menu = build_startup_menu(Settings(use_saved_volume=use))
-        assert menu == Menu(
-            title="Startup",
-            items=(
-                MenuItem(
-                    label="Use saved volume",
-                    checked=use,
-                    command=MenuCommand.TOGGLE_USE_SAVED_VOLUME,
-                ),
-            ),
+        assert menu.title == "Startup"
+        assert [item.label for item in menu.items] == ["Playlist", "Use saved volume"]
+        assert menu.items[1] == MenuItem(
+            label="Use saved volume",
+            checked=use,
+            command=MenuCommand.TOGGLE_USE_SAVED_VOLUME,
         )
+
+    def test_playlist_submenu(self):
+        settings = Settings()
+        item = build_startup_menu(settings).items[0]
+        assert item.checked is None
+        assert item.command is None
+        assert item.submenu().title == "Playlist"
+        settings.startup_playlist = StartupPlaylist.USE_MOCP_STATE
+        assert item.submenu().selected.label == "Use mocp state"
+
+
+class TestBuildStartupPlaylistMenu:
+    """Tests for the build_startup_playlist_menu function"""
+
+    @pytest.mark.parametrize(
+        ("choice", "index"),
+        [
+            (StartupPlaylist.SELECT_FROM_LIBRARY, 0),
+            (StartupPlaylist.USE_MOCP_STATE, 1),
+            (StartupPlaylist.USE_SAVED, 2),
+        ],
+    )
+    def test_choices(self, choice, index):
+        menu = build_startup_playlist_menu(Settings(startup_playlist=choice))
+        assert menu.title == "Playlist"
+        assert [item.label for item in menu.items] == [
+            "Select from library",
+            "Use mocp state",
+            "Use saved",
+        ]
+        assert [item.value for item in menu.items] == [
+            "select_from_library",
+            "use_mocp_state",
+            "use_saved",
+        ]
+        assert [item.checked for item in menu.items] == [position == index for position in range(3)]
+        assert {item.command for item in menu.items} == {MenuCommand.SET_STARTUP_PLAYLIST}
+        assert menu.selected_index == index
 
 
 class TestMenu:

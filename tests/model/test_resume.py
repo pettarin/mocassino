@@ -9,7 +9,12 @@ import logging
 import pytest
 
 from mocassino.model.moc import MocError, MocState
-from mocassino.model.resume import POLL_ATTEMPTS, SEEK_ATTEMPTS, resume_playback
+from mocassino.model.resume import (
+    POLL_ATTEMPTS,
+    SEEK_ATTEMPTS,
+    adopt_playback,
+    resume_playback,
+)
 from mocassino.model.state_file import SavedState
 from tests.model.fake_moc import FakeMoc
 
@@ -35,6 +40,34 @@ def saved(album, track: str = "03.flac", **values) -> SavedState:
     values.setdefault("seek", 95)
     values.setdefault("state", MocState.PLAY)
     return SavedState(directory_path=str(album), file_path=str(album / track), **values)
+
+
+class TestAdoptPlayback:
+    """Tests for the adopt_playback function"""
+
+    def test_moc_playing_from_the_saved_directory(self, album):
+        moc = FakeMoc()
+        moc.play(album)
+        moc.pause()
+        moc.calls.clear()
+        assert adopt_playback(moc, saved(album)) == str(album)
+        assert moc.calls == [("status", None)]
+        assert moc.state is MocState.PAUSE
+
+    def test_moc_playing_something_else(self, album, tmp_path):
+        other = tmp_path / "other.flac"
+        other.touch()
+        moc = FakeMoc()
+        moc.play(other)
+        assert adopt_playback(moc, saved(album)) is None
+
+    def test_moc_stopped(self, album):
+        assert adopt_playback(FakeMoc(), saved(album)) is None
+
+    def test_nothing_saved(self, album):
+        moc = FakeMoc()
+        moc.play(album)
+        assert adopt_playback(moc, SavedState(volume=85)) is None
 
 
 class TestResumePlayback:

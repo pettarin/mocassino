@@ -77,6 +77,21 @@ def _wait_for_track(moc: MocClient, previous: str, sleep: Callable[[float], None
     return status
 
 
+def adopt_playback(moc: MocClient, saved: SavedState) -> str | None:
+    """Tell what MOC is playing from, if it is playing a file inside the saved directory.
+
+    Nothing is asked of MOC other than its status.
+
+    :return: the saved directory path, or None if MOC is stopped or plays something else
+    :raises MocError: if the MOC status cannot be asked
+    """
+    status = moc.status()
+    if status.state is MocState.STOP or saved.directory_path is None:
+        return None
+    inside = Path(status.file_path).is_relative_to(saved.directory_path)
+    return saved.directory_path if inside else None
+
+
 def resume_playback(
     moc: MocClient,
     saved: SavedState,
@@ -98,11 +113,9 @@ def resume_playback(
     directory_path, file_path = saved.directory_path, saved.file_path
     if directory_path is None or file_path is None:
         return None
-    status = moc.status()
-    if status.state is not MocState.STOP:
-        inside = Path(status.file_path).is_relative_to(directory_path)
+    if moc.status().state is not MocState.STOP:
         LOGGER.info("MOC is already playing: the saved playback is not resumed")
-        return directory_path if inside else None
+        return adopt_playback(moc, saved)
     if saved.state is MocState.STOP:
         return None
     if not Path(file_path).is_file() or not Path(file_path).is_relative_to(directory_path):

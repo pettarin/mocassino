@@ -17,7 +17,7 @@ from pathlib import Path
 
 from mocassino.model.host import Host
 from mocassino.model.library import Library
-from mocassino.model.settings import Settings
+from mocassino.model.settings import Settings, StartupPlaylist
 
 
 @dataclass
@@ -45,6 +45,7 @@ class MenuCommand(StrEnum):
     BACK = "back"
     CLOSE = "close"
     PLAY = "play"
+    SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SHUTDOWN = "shutdown"
     TOGGLE_SIDE_ICONS = "toggle_side_icons"
     TOGGLE_USE_SAVED_VOLUME = "toggle_use_saved_volume"
@@ -58,6 +59,7 @@ class MenuItem:
     An item standing for a setting that is either on or off says which, as checked;
     the other items leave it to None.
     The path is the file or directory to play, for the PLAY command.
+    The value is what a setting is set to, for the commands setting one.
     The submenu is a function, so that it is built only when it is opened.
     """
 
@@ -66,6 +68,7 @@ class MenuItem:
     command: MenuCommand | None = None
     path: Path | None = None
     submenu: Callable[[], Menu] | None = None
+    value: str | None = None
 
 
 def _build_shutdown_menu() -> Menu:
@@ -165,10 +168,34 @@ def build_startup_menu(settings: Settings) -> Menu:
     return Menu(
         title="Startup",
         items=(
+            MenuItem(label="Playlist", submenu=partial(build_startup_playlist_menu, settings)),
             MenuItem(
                 label="Use saved volume",
                 checked=settings.use_saved_volume,
                 command=MenuCommand.TOGGLE_USE_SAVED_VOLUME,
             ),
         ),
+    )
+
+
+def build_startup_playlist_menu(settings: Settings) -> Menu:
+    """Build the menu choosing what the service does about the playlist when it starts.
+
+    The choices are in alphabetical order, as the values of the setting are.
+    The current choice is the checked one, and it is the selected item too.
+    Like the startup menu, it has to be built again when the choice changes.
+    """
+    choices = tuple(StartupPlaylist)
+    return Menu(
+        title="Playlist",
+        items=tuple(
+            MenuItem(
+                label=choice.value.replace("_", " ").capitalize(),
+                checked=choice is settings.startup_playlist,
+                command=MenuCommand.SET_STARTUP_PLAYLIST,
+                value=choice.value,
+            )
+            for choice in choices
+        ),
+        selected_index=choices.index(settings.startup_playlist),
     )

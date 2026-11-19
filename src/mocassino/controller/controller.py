@@ -14,11 +14,13 @@ from mocassino.model.library import Library
 from mocassino.model.menu import (
     MenuCommand,
     build_display_menu,
+    build_library_menu,
     build_root_menu,
     build_startup_menu,
+    build_startup_playlist_menu,
 )
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
-from mocassino.model.settings import Settings
+from mocassino.model.settings import Settings, StartupPlaylist
 from mocassino.model.state import AppState
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -98,6 +100,12 @@ class Controller:
             self._state.close_menus()
             self._moc.play(item.path)
             self._state.played_path = str(item.path)
+        elif item.command is MenuCommand.SET_STARTUP_PLAYLIST and item.value is not None:
+            settings = self._state.settings
+            settings.startup_playlist = StartupPlaylist(item.value)
+            self._state.replace_menu(build_startup_playlist_menu(settings))
+            if self._save_settings is not None:
+                self._save_settings(settings)
         elif item.command is MenuCommand.SHUTDOWN:
             self._state.close_menus()
             self._state.shutting_down = True
@@ -160,6 +168,11 @@ class Controller:
     def _volume_up(self) -> None:
         """Turn the volume up."""
         self._change_volume(self._volume_step)
+
+    def choose_folder(self) -> None:
+        """Show the menu of the library, on top of the top level menu, to choose what to play."""
+        self._open_menu()
+        self._state.open_menu(build_library_menu(self._library))
 
     def handle(self, event: ButtonEvent) -> None:
         """Perform the action associated to the given event in the current mode, if any.

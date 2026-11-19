@@ -51,7 +51,7 @@ class TestConfiguration:
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
         assert configuration.playback == PlaybackConfiguration(seek_step=10, volume_step=5)
         assert configuration.startup == StartupConfiguration(
-            fallback_volume=50, use_saved_volume=True
+            fallback_volume=50, playlist="use_saved", use_saved_volume=True
         )
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
@@ -74,7 +74,7 @@ class TestConfiguration:
             },
             "library": {"directory_path": "/music"},
             "playback": {"seek_step": 10, "volume_step": 5},
-            "startup": {"fallback_volume": 50, "use_saved_volume": True},
+            "startup": {"fallback_volume": 50, "playlist": "use_saved", "use_saved_volume": True},
             "system": {
                 "mocp_file_path": "mocp",
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
@@ -196,6 +196,10 @@ class TestLoadConfiguration:
             ("startup", "fallback_volume", 101),
             ("startup", "fallback_volume", 50.5),
             ("startup", "fallback_volume", True),
+            ("startup", "playlist", "shuffle"),
+            ("startup", "playlist", "saved"),
+            ("startup", "playlist", "Use saved"),
+            ("startup", "playlist", 5),
             ("startup", "use_saved_volume", "yes"),
             ("startup", "use_saved_volume", 0),
             ("system", "mocp_file_path", ["mocp"]),
@@ -218,6 +222,11 @@ class TestLoadConfiguration:
     def test_display_targets(self, target):
         configuration = load_configuration(overrides={"display": {"target": target}})
         assert configuration.display.target == target
+
+    @pytest.mark.parametrize("playlist", ["select_from_library", "use_mocp_state", "use_saved"])
+    def test_startup_playlists(self, tmp_path, playlist):
+        path = write_yaml(tmp_path, f"startup:\n  playlist: {playlist}\n")
+        assert load_configuration(path).startup.playlist == playlist
 
     def test_invalid_yaml(self, tmp_path):
         with pytest.raises(ConfigurationError, match="is not valid YAML"):

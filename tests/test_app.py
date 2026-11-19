@@ -25,6 +25,7 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
+from mocassino.model.settings import StartupPlaylist
 from mocassino.model.state import AppState, Mode
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.simulator.tk import TkSimulator
@@ -185,11 +186,12 @@ class TestApp:
         state_file.load.return_value = saved
         resume = mocker.patch("mocassino.app.resume_playback", return_value="/music")
         order = mocker.Mock()
+        order.attach_mock(moc.stop, "stop")
         order.attach_mock(resume, "resume")
         order.attach_mock(moc.set_volume, "set_volume")
         saving_app.start()
         resume.assert_called_once_with(moc, saved)
-        assert [call[0] for call in order.mock_calls] == ["resume", "set_volume"]
+        assert [call[0] for call in order.mock_calls] == ["stop", "resume", "set_volume"]
         moc.set_volume.assert_called_once_with(40)
         assert state.played_path == "/music"
         state_file.save.assert_called_once_with(
@@ -200,6 +202,61 @@ class TestApp:
                 volume=40,
             )
         )
+
+    def test_start_using_the_mocp_state(self, saving_app, state_file, state, moc, mocker):
+        state.settings.startup_playlist = StartupPlaylist.USE_MOCP_STATE
+        saved = SavedState(directory_path="/music", file_path="/music/z.flac", volume=40)
+        state_file.load.return_value = saved
+        resume = mocker.patch("mocassino.app.resume_playback")
+        saving_app.start()
+        moc.stop.assert_not_called()
+        resume.assert_not_called()
+        assert state.played_path == "/music"
+        assert state.mode == Mode.PLAYBACK
+        assert state.status == PLAYING
+        moc.set_volume.assert_called_once_with(40)
+        state_file.save.assert_called_once_with(
+            SavedState(
+                directory_path="/music",
+                file_path="/music/a.flac",
+                state=MocState.PLAY,
+                volume=40,
+            )
+        )
+
+    def test_start_using_the_mocp_state_when_moc_plays_something_else(
+        self, saving_app, state_file, state, moc
+    ):
+        state.settings.startup_playlist = StartupPlaylist.USE_MOCP_STATE
+        state_file.load.return_value = SavedState(
+            directory_path="/other", file_path="/other/z.flac", volume=40
+        )
+        saving_app.start()
+        moc.stop.assert_not_called()
+        assert state.played_path is None
+        assert state.status == PLAYING
+
+    def test_start_selecting_from_the_library(self, saving_app, state_file, state, moc, mocker):
+        state.settings.startup_playlist = StartupPlaylist.SELECT_FROM_LIBRARY
+        state_file.load.return_value = SavedState(
+            directory_path="/music", file_path="/music/a.flac", state=MocState.PLAY, volume=40
+        )
+        resume = mocker.patch("mocassino.app.resume_playback")
+        moc.stop.side_effect = lambda: setattr(moc.status, "return_value", MocStatus())
+        saving_app.start()
+        moc.stop.assert_called_once_with()
+        resume.assert_not_called()
+        assert [menu.title for menu in state.menus] == ["Menu", "Library"]
+        assert state.played_path is None
+        moc.set_volume.assert_called_once_with(40)
+        state_file.save.assert_called_once_with(SavedState(volume=40))
+
+    def test_start_without_state_file(self, app, state, moc, mocker):
+        resume = mocker.patch("mocassino.app.resume_playback", return_value=None)
+        app.start()
+        moc.stop.assert_called_once_with()
+        resume.assert_called_once_with(moc, SavedState())
+        assert state.played_path is None
 
     def test_start_when_nothing_can_be_resumed(self, saving_app, state_file, state, moc, mocker):
         state_file.load.return_value = SavedState(
@@ -216,7 +273,7 @@ class TestApp:
         moc.status.return_value = MocStatus(state=MocState.STOP)
         with caplog.at_level(logging.ERROR):
             saving_app.start()
-        assert "Cannot resume the saved playback: broken" in caplog.text
+        assert "Cannot set up the playlist: broken" in caplog.text
         moc.set_volume.assert_called_once_with(40)
         state_file.save.assert_called_once_with(SavedState(volume=40))
 
@@ -381,6 +438,7 @@ class TestBuildApp:
         assert path.read_text(encoding="utf-8") == (
             "startup:\n"
             "  fallback_volume: 30\n"
+            "  playlist: use_saved\n"
             "  use_saved_volume: true\n"
             "display:\n"
             "  show_side_icons: false\n"
@@ -393,7 +451,11 @@ class TestBuildApp:
             app._controller.handle(event)
         path = tmp_path / ".config" / "mocassino" / "configuration.yaml"
         assert path.read_text(encoding="utf-8") == (
-            "display:\n  show_side_icons: false\nstartup:\n  use_saved_volume: true\n"
+            "display:\n"
+            "  show_side_icons: false\n"
+            "startup:\n"
+            "  playlist: use_saved\n"
+            "  use_saved_volume: true\n"
         )
 
     def test_settings_cannot_be_saved(self, tmp_path, caplog):
@@ -460,6 +522,37 @@ class TestBuildApp:
         assert app._state.volume == 30
         assert app._state.settings.use_saved_volume is False
 
+    def test_startup_playlist_from_the_configuration(self):
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"target": "none"},
+                "startup": {"playlist": "select_from_library"},
+            }
+        )
+        app = build_app(configuration)
+        assert app._state.settings.startup_playlist is StartupPlaylist.SELECT_FROM_LIBRARY
+        default = build_app(self.configuration("none", "none"))
+        assert default._state.settings.startup_playlist is StartupPlaylist.USE_SAVED
+
+    def test_startup_playlist_setting_is_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        app = build_app(self.configuration("none", "none"), path)
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.settings.startup_playlist is StartupPlaylist.USE_MOCP_STATE
+        assert load_configuration(path).startup.playlist == "use_mocp_state"
+
     def test_use_saved_volume_setting_is_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
         app = build_app(self.configuration("none", "none"), path)
@@ -470,6 +563,7 @@ class TestBuildApp:
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
         )
         for event in events:
@@ -523,7 +617,7 @@ class TestBuildApp:
         app.start()
         assert (moc.index, moc.seconds, moc.state) == (2, 95, MocState.PAUSE)
         assert moc.volume == 30
-        assert moc.names()[:2] == ["start_server", "set_volume"]
+        assert moc.names()[:3] == ["start_server", "stop", "set_volume"]
         assert moc.names()[-1] == "set_volume"
         assert app._state.played_path == str(album)
         assert StateFile(state_file_path).load() == saved
@@ -543,7 +637,7 @@ class TestBuildApp:
         )
         app = build_app(self.configuration("none", "none"), state_file_path=state_file_path)
         app.start()
-        assert moc.names() == ["start_server", "set_volume"]
+        assert moc.names() == ["start_server", "stop", "set_volume"]
         assert moc.volume == 70
         assert StateFile(state_file_path).load() == SavedState(volume=70)
 

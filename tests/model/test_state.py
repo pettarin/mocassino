@@ -6,7 +6,7 @@
 
 from mocassino.model.menu import Menu, MenuItem
 from mocassino.model.moc import MocStatus
-from mocassino.model.settings import Settings
+from mocassino.model.settings import Settings, StartupPlaylist
 from mocassino.model.state import AppState, Mode
 
 
@@ -55,7 +55,11 @@ class TestAppState:
     def test_defaults_are_not_shared(self):
         first, second = AppState(), AppState()
         first.settings.show_side_icons = False
-        assert second.settings == Settings(show_side_icons=True, use_saved_volume=True)
+        assert second.settings == Settings(
+            show_side_icons=True,
+            startup_playlist=StartupPlaylist.USE_SAVED,
+            use_saved_volume=True,
+        )
 
     def test_menu_replaced(self):
         items = (MenuItem(label="a"), MenuItem(label="b"), MenuItem(label="c"))

@@ -30,8 +30,8 @@ from mocassino.model.moc import (
     MocState,
     SubprocessMocClient,
 )
-from mocassino.model.resume import resume_playback
-from mocassino.model.settings import Settings
+from mocassino.model.resume import adopt_playback, resume_playback
+from mocassino.model.settings import Settings, StartupPlaylist
 from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.simulator.tk import TkSimulator
@@ -167,20 +167,31 @@ class App:
         return self._simulator
 
     def start(self) -> None:
-        """Start the MOC server, resume the saved playback, and start listening to the buttons.
+        """Start the MOC server, set up the playlist, and start listening to the buttons.
 
-        The saved playback is the one in the state file, if there is one: if it cannot be
-        resumed, nothing is played, and the state file is updated to say so.
-        The volume is set after that, as resuming needs it at zero.
+        What happens to the playlist depends on the startup playlist setting:
+        MOC is stopped, and the playback saved in the state file is resumed (if it cannot be,
+        nothing is played); or MOC is stopped, and the menu of the library is shown;
+        or MOC is left as it is.
+        The state file is then updated to say what is playing.
+        The volume is set after the playlist is set up, as resuming needs it at zero.
 
         :raises MocError: if the MOC server cannot be started or the volume cannot be set
         """
         self._moc.start_server()
-        if self._state_file is not None:
-            try:
-                self._state.played_path = resume_playback(self._moc, self._state_file.load())
-            except MocError as exc:
-                LOGGER.error("Cannot resume the saved playback: %s", exc)
+        saved = SavedState() if self._state_file is None else self._state_file.load()
+        choice = self._state.settings.startup_playlist
+        try:
+            if choice is StartupPlaylist.USE_MOCP_STATE:
+                self._state.played_path = adopt_playback(self._moc, saved)
+            else:
+                self._moc.stop()
+                if choice is StartupPlaylist.USE_SAVED:
+                    self._state.played_path = resume_playback(self._moc, saved)
+                else:
+                    self._controller.choose_folder()
+        except MocError as exc:
+            LOGGER.error("Cannot set up the playlist: %s", exc)
         self._moc.set_volume(self._state.volume)
         self._refresh()
         self._save_state()
@@ -243,9 +254,12 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
 
     An error is logged, not raised: the change still applies until the service stops.
     """
-    updates = {
+    updates: dict[str, dict[str, object]] = {
         "display": {"show_side_icons": settings.show_side_icons},
-        "startup": {"use_saved_volume": settings.use_saved_volume},
+        "startup": {
+            "playlist": settings.startup_playlist.value,
+            "use_saved_volume": settings.use_saved_volume,
+        },
     }
     try:
         path = update_configuration_file(configuration_file_path, updates)
@@ -289,6 +303,7 @@ def build_app(
     state = AppState(
         settings=Settings(
             show_side_icons=configuration.display.show_side_icons,
+            startup_playlist=StartupPlaylist(configuration.startup.playlist),
             use_saved_volume=configuration.startup.use_saved_volume,
         ),
         volume=volume,

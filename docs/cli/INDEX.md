@@ -211,6 +211,7 @@ playback:
   volume_step: 5
 startup:
   fallback_volume: 50
+  playlist: use_saved
   use_saved_volume: true
 system:
   mocp_file_path: mocp
@@ -248,6 +249,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `playback.seek_step` | `10` | The amount of each seek, in seconds |
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100 |
 | `startup.fallback_volume` | `50` | The volume set when the service starts, between 0 and 100, if there is no saved volume or `startup.use_saved_volume` is `false` |
+| `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `select_from_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.use_saved_volume` | `true` | Whether, when the service starts, the volume is the one saved in the state file; if `false`, it is `startup.fallback_volume`; it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list |
@@ -319,13 +321,19 @@ When the service starts:
 - it restores the volume from the state file, if it has one
   and `startup.use_saved_volume` is `true`;
   otherwise, it applies `startup.fallback_volume` from the configuration file;
-- if MOC is not playing anything, and the saved directory and file still exist,
-  it resumes the saved playback: it plays the saved directory from its first track
-  with the volume at zero, skips to the saved track, goes to the saved position,
-  pauses if the saved state was `paused`, and only then sets the volume;
-- if MOC is already playing or paused, it leaves it alone;
-- if the saved playback cannot be resumed (e.g., the file no longer exists),
-  it plays nothing, and blanks the directory, the file, and the position in the state file.
+- it sets up the playlist as `startup.playlist` says:
+
+  | Value | What happens |
+  |---|---|
+  | `select_from_library` | MOC is stopped, and the `Library` menu is shown, to select what to play |
+  | `use_mocp_state` | MOC is left as it is: the display shows whatever it is playing |
+  | `use_saved` | MOC is stopped, and the playback saved in the state file is resumed |
+
+To resume the saved playback, the service plays the saved directory from its first track
+with the volume at zero, skips to the saved track, goes to the saved position,
+pauses if the saved state was `paused`, and only then sets the volume.
+If the saved playback cannot be resumed (e.g., the file no longer exists),
+it plays nothing, and blanks the directory, the file, and the position in the state file.
 
 > [!NOTE]
 > Once the state file has a volume, `startup.fallback_volume` is no longer used,
@@ -438,9 +446,11 @@ The top level menu has the following items:
     - `Show side icons` (`display.show_side_icons`):
       whether the icons of the buttons are shown in playback mode.
   - `Startup`: the settings of what the service does when it starts.
+    They take effect the next time the service starts.
+    - `Playlist` (`startup.playlist`): a menu with the three choices
+      `Select from library`, `Use mocp state`, and `Use saved`; the current one has the solid square.
     - `Use saved volume` (`startup.use_saved_volume`):
       whether the volume is restored from the state file.
-      It takes effect the next time the service starts.
 - `Host`: show the name and the IP address of the host,
   and `Shut down`, which asks for confirmation
   before running `system.shutdown_command`.

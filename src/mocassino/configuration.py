@@ -16,6 +16,7 @@ from typing import Any
 import yaml
 
 from mocassino.controller.actions import resolve_button_map
+from mocassino.model.settings import StartupPlaylist
 
 # "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
@@ -70,6 +71,7 @@ class StartupConfiguration:
     """The settings of what the service does when it starts."""
 
     fallback_volume: int = 50
+    playlist: str = StartupPlaylist.USE_SAVED.value
     use_saved_volume: bool = True
 
 
@@ -131,7 +133,11 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "seek_step": _to_int,
             "volume_step": _to_int,
         },
-        "startup": {"fallback_volume": _to_int, "use_saved_volume": _to_bool},
+        "startup": {
+            "fallback_volume": _to_int,
+            "playlist": _to_str,
+            "use_saved_volume": _to_bool,
+        },
         "system": {"mocp_file_path": _to_str, "shutdown_command": _to_command},
     }
     merged: dict[str, dict[str, Any]] = {section: {} for section in coercers}
@@ -195,6 +201,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "startup.fallback_volume": (
             configuration.startup.fallback_volume,
             0 <= configuration.startup.fallback_volume <= 100,
+        ),
+        "startup.playlist": (
+            configuration.startup.playlist,
+            configuration.startup.playlist in list(StartupPlaylist),
         ),
     }
     for name, (value, valid) in checks.items():
