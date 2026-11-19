@@ -18,6 +18,7 @@ from pathlib import Path
 from mocassino.model.library import Library
 from mocassino.model.settings import (
     ORIENTATIONS,
+    MocStateOnExit,
     Settings,
     StartupPlaylist,
     StartupState,
@@ -66,6 +67,7 @@ class MenuCommand(StrEnum):
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SET_STARTUP_STATE = "set_startup_state"
     SET_STARTUP_VOLUME = "set_startup_volume"
+    SET_SYSTEM_MOC_STATE_ON_EXIT = "set_system_moc_state_on_exit"
     SHUTDOWN = "shutdown"
     TOGGLE_PROGRESS_BAR = "toggle_progress_bar"
     TOGGLE_SIDE_ICONS = "toggle_side_icons"
@@ -322,7 +324,7 @@ def build_root_menu(library: Library, system: System, settings: Settings) -> Men
         items=(
             MenuItem(label="Library", submenu=partial(build_library_menu, library)),
             MenuItem(label="Settings", submenu=partial(build_settings_menu, settings)),
-            MenuItem(label="System", submenu=partial(build_system_menu, system)),
+            MenuItem(label="System", submenu=partial(build_system_menu, system, settings)),
         ),
     )
 
@@ -390,17 +392,35 @@ def build_startup_volume_menu(settings: Settings) -> Menu:
     )
 
 
-def build_system_menu(system: System) -> Menu:
+def build_system_menu(system: System, settings: Settings) -> Menu:
     """Build the menu showing the name and the IP address of the host.
 
-    It also resets the settings, and shuts the host down.
+    It also leads to the setting of what is done to MOC on exit,
+    resets the settings, and shuts the host down.
     """
     return Menu(
         title="System",
         items=(
             MenuItem(label=f"Name: {system.hostname()}"),
             MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
+            MenuItem(
+                label="MOC state on exit",
+                submenu=partial(build_system_moc_state_on_exit_menu, settings),
+            ),
             MenuItem(label="Reset settings", submenu=_build_reset_settings_menu),
             MenuItem(label="Shut down", submenu=_build_shutdown_menu),
         ),
+    )
+
+
+def build_system_moc_state_on_exit_menu(settings: Settings) -> Menu:
+    """Build the menu choosing what the service does to MOC when it exits.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_choice_menu(
+        "MOC state on exit",
+        tuple(MocStateOnExit),
+        settings.system_moc_state_on_exit,
+        MenuCommand.SET_SYSTEM_MOC_STATE_ON_EXIT,
     )

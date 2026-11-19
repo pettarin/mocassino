@@ -37,7 +37,13 @@ from mocassino.model.resume import (
     playing_from,
     resume_playback,
 )
-from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import (
+    MocStateOnExit,
+    Settings,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.model.system import System
@@ -119,6 +125,26 @@ class App:
             self._display.show(image)
             self._last_frame = frame
 
+    def _leave_moc(self) -> None:
+        """Pause, stop, or quit MOC, or leave it as it is, as the settings say.
+
+        An error is logged, not raised, so that the hardware is released anyway.
+        """
+        choice = self._state.settings.system_moc_state_on_exit
+        commands = {
+            MocStateOnExit.PAUSE: self._moc.pause,
+            MocStateOnExit.QUIT: self._moc.exit_server,
+            MocStateOnExit.STOP: self._moc.stop,
+        }
+        command = commands.get(choice)
+        if command is None:
+            return
+        LOGGER.info("Leaving MOC on exit: %s", choice.value)
+        try:
+            command()
+        except MocError as exc:
+            LOGGER.error("Cannot %s MOC on exit: %s", choice.value, exc)
+
     def _refresh(self) -> None:
         """Ask MOC for its status; if the MOC server is not running, start it.
 
@@ -167,8 +193,12 @@ class App:
         return (state.status.file_path, state.volume, astuple(state.settings))
 
     def close(self) -> None:
-        """Save the state, and release the buttons and the display."""
+        """Save the state, leave MOC as the settings say, and release the buttons and the display.
+
+        The state is saved first, so that what was playing can be resumed on the next start.
+        """
         self._save_state()
+        self._leave_moc()
         self._button_source.close()
         self._display.close()
 
@@ -303,6 +333,7 @@ def _build_settings(configuration: Configuration) -> Settings:
         startup_playlist=StartupPlaylist(configuration.startup.playlist),
         startup_state=StartupState(configuration.startup.state),
         startup_volume=StartupVolume(configuration.startup.volume),
+        system_moc_state_on_exit=MocStateOnExit(configuration.system.moc_state_on_exit),
     )
 
 
@@ -354,6 +385,9 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
             "playlist": settings.startup_playlist.value,
             "state": settings.startup_state.value,
             "volume": settings.startup_volume.value,
+        },
+        "system": {
+            "moc_state_on_exit": settings.system_moc_state_on_exit.value,
         },
     }
     try:

@@ -170,6 +170,10 @@ class TestSubprocessMocClient:
         SubprocessMocClient().next()
         assert commands(run) == [["mocp", "--next"]]
 
+    def test_exit_server(self, run):
+        SubprocessMocClient().exit_server()
+        assert commands(run) == [["mocp", "--exit"]]
+
     def test_pause(self, run):
         SubprocessMocClient().pause()
         assert commands(run) == [["mocp", "--pause"]]

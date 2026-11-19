@@ -65,6 +65,11 @@ class FakeMoc:
             state=self.state,
         )
 
+    def exit_server(self) -> None:
+        self._call("exit_server")
+        self.index = None
+        self.state = MocState.STOP
+
     def jump(self, seconds: int) -> None:
         self._call("jump", seconds)
         if self.ignored_jumps > 0:

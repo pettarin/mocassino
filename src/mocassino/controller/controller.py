@@ -24,9 +24,16 @@ from mocassino.model.menu import (
     build_startup_playlist_menu,
     build_startup_state_menu,
     build_startup_volume_menu,
+    build_system_moc_state_on_exit_menu,
 )
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
-from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import (
+    MocStateOnExit,
+    Settings,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.model.state import AppState
 from mocassino.model.system import System, SystemShutdownError
 
@@ -76,6 +83,11 @@ SETTERS: dict[
         "startup_volume",
         StartupVolume,
         build_startup_volume_menu,
+    ),
+    MenuCommand.SET_SYSTEM_MOC_STATE_ON_EXIT: (
+        "system_moc_state_on_exit",
+        MocStateOnExit,
+        build_system_moc_state_on_exit_menu,
     ),
 }
 

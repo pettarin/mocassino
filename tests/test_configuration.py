@@ -65,6 +65,7 @@ class TestConfiguration:
             playlist="use_saved", state="use_saved", volume="use_saved"
         )
         assert configuration.system == SystemConfiguration(
+            moc_state_on_exit="do_nothing",
             mocp_file_path="mocp",
             shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
@@ -96,6 +97,7 @@ class TestConfiguration:
                 "volume": "use_saved",
             },
             "system": {
+                "moc_state_on_exit": "do_nothing",
                 "mocp_file_path": "mocp",
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
             },
@@ -169,6 +171,7 @@ class TestLoadConfiguration:
             "startup:\n"
             "  volume: use_default\n"
             "system:\n"
+            "  moc_state_on_exit: quit\n"
             "  mocp_file_path: /usr/bin/mocp\n"
             "  shutdown_command: [systemctl, poweroff]\n",
         )
@@ -186,6 +189,7 @@ class TestLoadConfiguration:
             run=RunConfiguration(mode="foreground"),
             startup=StartupConfiguration(volume="use_default"),
             system=SystemConfiguration(
+                moc_state_on_exit="quit",
                 mocp_file_path="/usr/bin/mocp",
                 shutdown_command=("systemctl", "poweroff"),
             ),
@@ -246,6 +250,9 @@ class TestLoadConfiguration:
             ("startup", "volume", "use_fallback"),
             ("startup", "volume", "Use saved"),
             ("startup", "volume", True),
+            ("system", "moc_state_on_exit", "exit"),
+            ("system", "moc_state_on_exit", "Do nothing"),
+            ("system", "moc_state_on_exit", True),
             ("system", "mocp_file_path", ["mocp"]),
             ("system", "shutdown_command", "'unbalanced"),
             ("system", "shutdown_command", ""),

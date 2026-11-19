@@ -4,7 +4,13 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
-from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import (
+    MocStateOnExit,
+    Settings,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 
 
 class TestSettings:
@@ -24,6 +30,7 @@ class TestSettings:
             startup_playlist=StartupPlaylist.OPEN_LIBRARY,
             startup_state=StartupState.PLAY,
             startup_volume=StartupVolume.USE_DEFAULT,
+            system_moc_state_on_exit=MocStateOnExit.QUIT,
         )
         same = settings
         settings.update(other)

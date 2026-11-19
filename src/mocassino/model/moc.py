@@ -30,6 +30,9 @@ SERVER_NOT_RUNNING_MESSAGE: str = "The server is not running"
 class MocClient(Protocol):
     """What the service needs from MOC."""
 
+    def exit_server(self) -> None:
+        """Shut the MOC server down."""
+
     def jump(self, seconds: int) -> None:
         """Jump to the given position, in seconds, in the track being played."""
 
@@ -152,6 +155,10 @@ class SubprocessMocClient:
         if SERVER_NOT_RUNNING_MESSAGE in message:
             raise MocServerNotRunningError(message)
         raise MocError(f"Error running {command}: {message}")
+
+    def exit_server(self) -> None:
+        """Shut the MOC server down."""
+        self._run("--exit")
 
     def jump(self, seconds: int) -> None:
         """Jump to the given position, in seconds, in the track being played."""

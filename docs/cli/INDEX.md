@@ -258,6 +258,7 @@ startup:
   state: use_saved
   volume: use_saved
 system:
+  moc_state_on_exit: do_nothing
   mocp_file_path: mocp
   shutdown_command:
   - sudo
@@ -301,6 +302,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `open_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
+| `system.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `System` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
 
@@ -567,7 +569,10 @@ The top level menu has the following items:
     - `Volume` (`startup.volume`): a menu with the two choices
       `Use default` and `Use saved`; the current one has the solid square.
 - `System`: show the name and the IP address of the host,
-  `Reset settings`, and `Shut down`.
+  `MOC state on exit`, `Reset settings`, and `Shut down`.
+  `MOC state on exit` (`system.moc_state_on_exit`) is a menu with the four choices
+  `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
+  The choice applies when the service exits, after its state has been saved.
   `Reset settings` asks for confirmation, then replaces the configuration file
   with one holding all the default values, as `mocassino configuration --default` prints them;
   the defaults of the settings take effect at once, the other values the next time

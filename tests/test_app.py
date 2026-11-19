@@ -24,7 +24,13 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import (
+    MocStateOnExit,
+    Settings,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.model.state import AppState, Mode
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.model.system import System, SystemShutdownError
@@ -325,8 +331,38 @@ class TestApp:
         moc.set_volume.assert_called_once_with(40)
         state_file.save.assert_called_once_with(SavedState(volume=40))
 
-    def test_close(self, app, display, button_source):
+    def test_close(self, app, moc, display, button_source):
         app.close()
+        button_source.close.assert_called_once_with()
+        display.close.assert_called_once_with()
+        moc.pause.assert_not_called()
+        moc.stop.assert_not_called()
+        moc.exit_server.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("choice", "command"),
+        [
+            (MocStateOnExit.PAUSE, "pause"),
+            (MocStateOnExit.QUIT, "exit_server"),
+            (MocStateOnExit.STOP, "stop"),
+        ],
+    )
+    def test_close_leaves_moc(self, mocker, saving_app, state, moc, state_file, choice, command):
+        state.settings.system_moc_state_on_exit = choice
+        calls = mocker.Mock()
+        state_file.save.side_effect = calls.save
+        getattr(moc, command).side_effect = calls.leave
+        saving_app.close()
+        assert [call[0] for call in calls.mock_calls] == ["save", "leave"]
+        others = {"pause", "stop", "exit_server"} - {command}
+        assert all(not getattr(moc, other).called for other in others)
+
+    def test_close_leaves_moc_despite_errors(self, app, state, moc, display, button_source, caplog):
+        state.settings.system_moc_state_on_exit = MocStateOnExit.QUIT
+        moc.exit_server.side_effect = MocError("not running")
+        with caplog.at_level(logging.ERROR):
+            app.close()
+        assert "Cannot quit MOC on exit: not running" in caplog.text
         button_source.close.assert_called_once_with()
         display.close.assert_called_once_with()
 
@@ -544,6 +580,8 @@ class TestBuildApp:
             "  playlist: use_saved\n"
             "  state: use_saved\n"
             "  volume: use_saved\n"
+            "system:\n"
+            "  moc_state_on_exit: do_nothing\n"
         )
         assert load_configuration(path).display.show_side_icons is False
 
@@ -567,6 +605,8 @@ class TestBuildApp:
             "  playlist: use_saved\n"
             "  state: use_saved\n"
             "  volume: use_saved\n"
+            "system:\n"
+            "  moc_state_on_exit: do_nothing\n"
         )
 
     def test_settings_cannot_be_saved(self, tmp_path, caplog):
@@ -708,6 +748,33 @@ class TestBuildApp:
             True,
             False,
         )
+
+    def test_moc_state_on_exit_from_the_configuration_and_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"target": "none"},
+                "system": {"moc_state_on_exit": "pause"},
+            }
+        )
+        app = build_app(configuration, path)
+        assert app._state.settings.system_moc_state_on_exit is MocStateOnExit.PAUSE
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.settings.system_moc_state_on_exit is MocStateOnExit.STOP
+        assert load_configuration(path).system.moc_state_on_exit == "stop"
 
     def test_display_brightness_from_the_configuration(self):
         configuration = load_configuration(

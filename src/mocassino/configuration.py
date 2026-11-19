@@ -18,6 +18,7 @@ import yaml
 from mocassino.controller.actions import resolve_button_map
 from mocassino.model.settings import (
     ORIENTATIONS,
+    MocStateOnExit,
     StartupPlaylist,
     StartupState,
     StartupVolume,
@@ -101,6 +102,7 @@ class StartupConfiguration:
 class SystemConfiguration:
     """The settings of the host system."""
 
+    moc_state_on_exit: str = "do_nothing"
     mocp_file_path: str = "mocp"
     shutdown_command: tuple[str, ...] = ("sudo", "shutdown", "-h", "now")
 
@@ -167,7 +169,11 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "state": _to_str,
             "volume": _to_str,
         },
-        "system": {"mocp_file_path": _to_str, "shutdown_command": _to_command},
+        "system": {
+            "moc_state_on_exit": _to_str,
+            "mocp_file_path": _to_str,
+            "shutdown_command": _to_command,
+        },
     }
     merged: dict[str, dict[str, Any]] = {section: {} for section in coercers}
     unknown: set[str] = set()
@@ -255,6 +261,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "startup.volume": (
             configuration.startup.volume,
             configuration.startup.volume in list(StartupVolume),
+        ),
+        "system.moc_state_on_exit": (
+            configuration.system.moc_state_on_exit,
+            configuration.system.moc_state_on_exit in list(MocStateOnExit),
         ),
     }
     for name, (value, valid) in checks.items():

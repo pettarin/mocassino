@@ -26,8 +26,15 @@ from mocassino.model.menu import (
     build_startup_state_menu,
     build_startup_volume_menu,
     build_system_menu,
+    build_system_moc_state_on_exit_menu,
 )
-from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import (
+    MocStateOnExit,
+    Settings,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.model.system import System
 
 
@@ -437,11 +444,12 @@ class TestBuildSystemMenu:
     """Tests for the build_system_menu function"""
 
     def test_items(self, system):
-        menu = build_system_menu(system)
+        menu = build_system_menu(system, Settings())
         assert menu.title == "System"
         assert [item.label for item in menu.items] == [
             "Name: pirate",
             "IP: 192.168.1.20",
+            "MOC state on exit",
             "Reset settings",
             "Shut down",
         ]
@@ -450,10 +458,20 @@ class TestBuildSystemMenu:
 
     def test_no_ip_address(self, system):
         system.ip_address.return_value = None
-        assert build_system_menu(system).items[1].label == "IP: not available"
+        assert build_system_menu(system, Settings()).items[1].label == "IP: not available"
+
+    def test_moc_state_on_exit_submenu(self, system):
+        settings = Settings()
+        item = build_system_menu(system, settings).items[2]
+        assert item.checked is None
+        assert item.command is None
+        assert item.submenu().title == "MOC state on exit"
+        assert item.submenu().selected.label == "Do nothing"
+        settings.system_moc_state_on_exit = MocStateOnExit.STOP
+        assert item.submenu().selected.label == "Stop"
 
     def test_reset_settings_is_confirmed(self, system):
-        item = build_system_menu(system).items[2]
+        item = build_system_menu(system, Settings()).items[3]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Reset settings?",
@@ -464,7 +482,7 @@ class TestBuildSystemMenu:
         )
 
     def test_shutdown_is_confirmed(self, system):
-        item = build_system_menu(system).items[3]
+        item = build_system_menu(system, Settings()).items[4]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Shut down?",
@@ -474,6 +492,20 @@ class TestBuildSystemMenu:
             ),
         )
         system.shutdown.assert_not_called()
+
+
+class TestBuildSystemMocStateOnExitMenu:
+    """Tests for the build_system_moc_state_on_exit_menu function"""
+
+    @pytest.mark.parametrize("choice", list(MocStateOnExit))
+    def test_choices(self, choice):
+        menu = build_system_moc_state_on_exit_menu(Settings(system_moc_state_on_exit=choice))
+        assert menu.title == "MOC state on exit"
+        assert [item.label for item in menu.items] == ["Do nothing", "Pause", "Quit", "Stop"]
+        assert [item.value for item in menu.items] == ["do_nothing", "pause", "quit", "stop"]
+        assert {item.command for item in menu.items} == {MenuCommand.SET_SYSTEM_MOC_STATE_ON_EXIT}
+        assert [item.value for item in menu.items if item.checked] == [choice.value]
+        assert menu.selected.value == choice.value
 
 
 class TestMenu:

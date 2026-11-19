@@ -13,6 +13,18 @@ from enum import StrEnum
 ORIENTATIONS: tuple[int, ...] = (0, 90, 180, 270)
 
 
+class MocStateOnExit(StrEnum):
+    """What the service does to MOC when it exits.
+
+    Defined before the settings, as they refer to it.
+    """
+
+    DO_NOTHING = "do_nothing"
+    PAUSE = "pause"
+    QUIT = "quit"
+    STOP = "stop"
+
+
 class StartupPlaylist(StrEnum):
     """What the service does about the playlist when it starts.
 
@@ -64,6 +76,7 @@ class Settings:
     startup_playlist: StartupPlaylist = StartupPlaylist.USE_SAVED
     startup_state: StartupState = StartupState.USE_SAVED
     startup_volume: StartupVolume = StartupVolume.USE_SAVED
+    system_moc_state_on_exit: MocStateOnExit = MocStateOnExit.DO_NOTHING
 
     def update(self, other: Settings) -> None:
         """Copy all the values of the other settings into these.

@@ -20,7 +20,13 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import Settings, StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import (
+    MocStateOnExit,
+    Settings,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.model.state import AppState, Mode
 from mocassino.model.system import System, SystemShutdownError
 
@@ -177,6 +183,30 @@ class TestController:
         controller.handle(B)
         moc.play.assert_not_called()
         assert state.current_menu.title == "Above"
+
+    def test_menu_select_moc_state_on_exit(self, mocker, state, moc, library, system):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, Y, B, Y, Y, B):
+            controller.handle(event)
+        titles = ["Menu", "System", "MOC state on exit"]
+        assert [menu.title for menu in state.menus] == titles
+        assert state.current_menu.selected.label == "Do nothing"
+        assert state.current_menu.selected.checked is True
+        for event in (Y, Y, B):
+            controller.handle(event)
+        assert state.settings.system_moc_state_on_exit is MocStateOnExit.QUIT
+        save_settings.assert_called_once_with(state.settings)
+        assert [menu.title for menu in state.menus] == titles
+        assert [item.label for item in state.current_menu.items if item.checked] == ["Quit"]
+        moc.exit_server.assert_not_called()
 
     def test_menu_select_reset_settings(self, mocker, state, moc, library, system):
         defaults = Settings(display_brightness=70)
