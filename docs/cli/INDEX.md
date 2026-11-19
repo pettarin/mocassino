@@ -290,6 +290,17 @@ Every section and every key is optional:
 what is missing takes its default value.
 Unknown sections, unknown keys, and invalid values are reported as errors.
 
+So that the service can always start, `mocassino run` does not stop on a file that is not valid
+(e.g., not valid YAML, or with an unknown key or an invalid value):
+it moves the file to a backup next to it, named after the time,
+e.g., `~/.config/mocassino/configuration.yaml.20261119153005.bak`,
+writes a new file with the default values in its place, logs a warning, and starts.
+The older backups are kept.
+As with `Reset settings`, the new file keeps the simulator for the buttons and the display,
+if the run uses it.
+A file that cannot be read, or that is given with `-c` but does not exist,
+is still reported as an error, and so is any file for `mocassino configuration`.
+
 | Key | Default | Meaning |
 |---|---|---|
 | `buttons.button_map` | see below | The action of each button, in each mode |

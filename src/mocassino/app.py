@@ -14,6 +14,7 @@ from queue import Empty, Queue
 from mocassino.configuration import (
     Configuration,
     ConfigurationError,
+    simulated_defaults,
     update_configuration_file,
     write_configuration_file,
 )
@@ -354,11 +355,10 @@ def _reset_settings(
 
     :param configuration: the configuration of this run
     """
-    defaults = Configuration()
-    if configuration.buttons.origin == "simulator":
-        defaults = replace(defaults, buttons=replace(defaults.buttons, origin="simulator"))
-    if configuration.display.target == "simulator":
-        defaults = replace(defaults, display=replace(defaults.display, target="simulator"))
+    defaults = simulated_defaults(
+        buttons=configuration.buttons.origin == "simulator",
+        display=configuration.display.target == "simulator",
+    )
     try:
         path = write_configuration_file(configuration_file_path, defaults)
     except ConfigurationError as exc:

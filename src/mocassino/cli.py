@@ -26,7 +26,10 @@ from mocassino.configuration import (
     DISPLAY_TARGETS,
     Configuration,
     ConfigurationError,
+    ConfigurationReadError,
     load_configuration,
+    replace_invalid_configuration_file,
+    simulated_defaults,
 )
 from mocassino.model.settings import ORIENTATIONS
 from mocassino.simulator.tk import TkSimulator
@@ -76,8 +79,12 @@ def _daemonize() -> None:
     logging.getLogger().handlers = handlers
 
 
-def _load_configuration(options: GlobalOptions) -> Configuration:
-    """Load the configuration, reporting the errors as command line errors."""
+def _load_configuration(options: GlobalOptions, recover: bool = False) -> Configuration:
+    """Load the configuration, reporting the errors as command line errors.
+
+    :param recover: if True, a configuration file that is not valid is replaced
+                    with one with the default values (see _recover_configuration_file)
+    """
     buttons_origin, display_target = options.buttons_origin, options.display_target
     if options.simulator:
         buttons_origin = buttons_origin or "simulator"
@@ -87,10 +94,58 @@ def _load_configuration(options: GlobalOptions) -> Configuration:
         "display": {"target": display_target},
         "library": {"directory_path": options.library_directory_path},
     }
+    path = options.configuration_file_path
     try:
-        return load_configuration(options.configuration_file_path, overrides)
+        return load_configuration(path, overrides)
+    except ConfigurationError as exc:
+        simulated = (buttons_origin == "simulator", display_target == "simulator")
+        if not (recover and _recover_configuration_file(path, *simulated)):
+            raise click.ClickException(str(exc)) from exc
+    try:
+        return load_configuration(path, overrides)
     except ConfigurationError as exc:
         raise click.ClickException(str(exc)) from exc
+
+
+def _recover_configuration_file(path: Path | None, buttons: bool, display: bool) -> bool:
+    """Replace the configuration file with one with the default values, if it is not valid.
+
+    The file is moved to a backup next to it, and a warning is logged.
+    Nothing is done if there is no file, if it cannot be read, or if it is valid
+    (the error is then in the command line options), or if it cannot be replaced.
+    The new file keeps the simulator for the buttons and the display, if this run uses it.
+
+    :param path: the configuration file; if None, the default one
+    :param buttons: whether this run simulates the buttons
+    :param display: whether this run simulates the display
+    :return: whether the file has been replaced
+    """
+    target = DEFAULT_CONFIGURATION_FILE_PATH.expanduser() if path is None else path
+    if not target.is_file():
+        return False
+    try:
+        load_configuration(target)
+    except ConfigurationReadError:
+        return False
+    except ConfigurationError as exc:
+        error = exc
+    else:
+        return False
+    try:
+        backup = replace_invalid_configuration_file(
+            target, simulated_defaults(buttons=buttons, display=display)
+        )
+    except ConfigurationError as exc:
+        LOGGER.error("Cannot replace the configuration file that is not valid: %s", exc)
+        return False
+    LOGGER.warning(
+        "The configuration file '%s' is not valid (%s): moved to '%s', "
+        "and replaced with the default values",
+        target,
+        error,
+        backup,
+    )
+    return True
 
 
 def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
@@ -258,8 +313,12 @@ def main(
 )
 @click.pass_obj
 def run(options: GlobalOptions, background: bool | None) -> None:
-    """Run the service."""
-    effective = _load_configuration(options)
+    """Run the service.
+
+    A configuration file that is not valid is moved to a backup next to it,
+    and replaced with one with the default values, so that the service can start.
+    """
+    effective = _load_configuration(options, recover=True)
     if background is None:
         background = effective.run.mode == "background"
     if not effective.library.directory_path.is_dir():

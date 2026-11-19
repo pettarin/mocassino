@@ -4,6 +4,7 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,8 @@ from mocassino.configuration import (
     StartupConfiguration,
     SystemConfiguration,
     load_configuration,
+    replace_invalid_configuration_file,
+    simulated_defaults,
     update_configuration_file,
     write_configuration_file,
 )
@@ -441,6 +444,77 @@ class TestLoadConfiguration:
             match="Unknown configuration keys: buttons.zoom, colour, extras",
         ):
             load_configuration(path)
+
+
+class TestReplaceInvalidConfigurationFile:
+    """Tests for the replace_invalid_configuration_file function"""
+
+    NOW = datetime(2026, 11, 19, 15, 30, 5)
+
+    def test_backup_and_defaults(self, tmp_path):
+        path = write_yaml(tmp_path, "display: [unclosed\n")
+        backup = replace_invalid_configuration_file(path, Configuration(), self.NOW)
+        assert backup == tmp_path / "custom.yaml.20261119153005.bak"
+        assert backup.read_text(encoding="utf-8") == "display: [unclosed\n"
+        assert load_configuration(path) == Configuration()
+
+    def test_older_backups_are_kept(self, tmp_path):
+        path = write_yaml(tmp_path, "first: 1\n")
+        first = replace_invalid_configuration_file(path, Configuration(), self.NOW)
+        path.write_text("second: 2\n", encoding="utf-8")
+        second = replace_invalid_configuration_file(path, Configuration(), self.NOW)
+        path.write_text("third: 3\n", encoding="utf-8")
+        third = replace_invalid_configuration_file(path, Configuration(), self.NOW)
+        assert [first.name, second.name, third.name] == [
+            "custom.yaml.20261119153005.bak",
+            "custom.yaml.20261119153005-1.bak",
+            "custom.yaml.20261119153005-2.bak",
+        ]
+        assert [backup.read_text(encoding="utf-8") for backup in (first, second, third)] == [
+            "first: 1\n",
+            "second: 2\n",
+            "third: 3\n",
+        ]
+
+    def test_current_time(self, tmp_path):
+        path = write_yaml(tmp_path, "first: 1\n")
+        before = datetime.now().strftime("%Y%m%d%H%M%S")
+        backup = replace_invalid_configuration_file(path, Configuration())
+        after = datetime.now().strftime("%Y%m%d%H%M%S")
+        stamp = backup.name.removeprefix("custom.yaml.").removesuffix(".bak")
+        assert before <= stamp <= after
+
+    def test_default_file(self, home):
+        path = home / ".config" / "mocassino" / "configuration.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text("first: 1\n", encoding="utf-8")
+        defaults = Configuration(display=DisplayConfiguration(target="simulator"))
+        backup = replace_invalid_configuration_file(None, defaults, self.NOW)
+        assert backup == path.parent / "configuration.yaml.20261119153005.bak"
+        assert load_configuration() == defaults
+
+    def test_file_cannot_be_moved(self, tmp_path):
+        with pytest.raises(ConfigurationError, match="Cannot move configuration file"):
+            replace_invalid_configuration_file(tmp_path / "missing.yaml", Configuration())
+
+
+class TestSimulatedDefaults:
+    """Tests for the simulated_defaults function"""
+
+    @pytest.mark.parametrize(
+        ("buttons", "display", "origin", "target"),
+        [
+            (False, False, "pirateaudio", "pirateaudio"),
+            (True, False, "simulator", "pirateaudio"),
+            (False, True, "pirateaudio", "simulator"),
+            (True, True, "simulator", "simulator"),
+        ],
+    )
+    def test_simulated_defaults(self, buttons, display, origin, target):
+        defaults = simulated_defaults(buttons=buttons, display=display)
+        assert defaults.buttons.origin == origin
+        assert defaults.display.target == target
+        assert defaults.library == Configuration().library
 
 
 class TestUpdateConfigurationFile:

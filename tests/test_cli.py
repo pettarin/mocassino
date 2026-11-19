@@ -16,8 +16,13 @@ from click.testing import CliRunner
 
 import mocassino
 from mocassino.app import App
-from mocassino.cli import _daemonize, _run_with_simulator, main
-from mocassino.configuration import Configuration, load_configuration
+from mocassino.cli import _daemonize, _recover_configuration_file, _run_with_simulator, main
+from mocassino.configuration import (
+    Configuration,
+    ConfigurationError,
+    ConfigurationReadError,
+    load_configuration,
+)
 from mocassino.model.moc import MocError
 from mocassino.simulator.tk import TkSimulator
 
@@ -361,6 +366,37 @@ class TestDaemonize:
         system.closerange.assert_not_called()
 
 
+class TestRecoverConfigurationFile:
+    """Tests for the _recover_configuration_file function"""
+
+    def test_no_file(self, tmp_path):
+        assert _recover_configuration_file(tmp_path / "missing.yaml", False, False) is False
+        assert _recover_configuration_file(None, False, False) is False
+
+    def test_valid_file(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        path.write_text("display:\n  tick: 0.25\n", encoding="utf-8")
+        assert _recover_configuration_file(path, False, False) is False
+        assert list(tmp_path.iterdir()) == [path]
+
+    def test_file_cannot_be_read(self, mocker, tmp_path):
+        path = tmp_path / "custom.yaml"
+        path.write_text("display: [unclosed\n", encoding="utf-8")
+        mocker.patch(
+            "mocassino.cli.load_configuration",
+            side_effect=ConfigurationReadError("Cannot read configuration file"),
+        )
+        assert _recover_configuration_file(path, False, False) is False
+        assert list(tmp_path.iterdir()) == [path]
+
+    def test_invalid_file(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        path.write_text("display: [unclosed\n", encoding="utf-8")
+        assert _recover_configuration_file(path, True, False) is True
+        assert load_configuration(path).buttons.origin == "simulator"
+        assert load_configuration(path).display.target == "pirateaudio"
+
+
 class TestRunWithSimulator:
     """Tests for the _run_with_simulator function"""
 
@@ -519,6 +555,124 @@ class TestRunCommand:
         assert result.exit_code == 0
         daemonize.assert_not_called()
         app.run.assert_called_once_with()
+
+    @pytest.mark.parametrize(
+        ("content", "reason"),
+        [
+            ("display: [unclosed\n", "is not valid YAML"),
+            ("- a\n- b\n", "must contain a mapping"),
+            ("display:\n  zoom: 2\n", "Unknown configuration keys: display.zoom"),
+            ("display:\n  orientation: 45\n", "Invalid value for 'display.orientation'"),
+            ("display:\n  colors:\n    muted: blurple\n", "display.colors.muted"),
+        ],
+    )
+    def test_invalid_configuration_file_is_replaced(
+        self, runner, app, arguments, daemonize, home, caplog, content, reason
+    ):
+        path = home / ".config" / "mocassino" / "configuration.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(content, encoding="utf-8")
+        with caplog.at_level(logging.WARNING):
+            result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        app.run.assert_called_once_with()
+        backups = sorted(path.parent.glob("configuration.yaml.*.bak"))
+        assert len(backups) == 1
+        assert backups[0].read_text(encoding="utf-8") == content
+        assert load_configuration(path) == Configuration()
+        assert f"The configuration file '{path}' is not valid" in caplog.text
+        assert reason in caplog.text
+        assert f"moved to '{backups[0]}', and replaced with the default values" in caplog.text
+
+    def test_invalid_configuration_file_given_is_replaced(
+        self, runner, mocker, arguments, daemonize, tmp_path
+    ):
+        build_app = mocker.patch("mocassino.cli.build_app")
+        build_app.return_value.simulator = None
+        path = tmp_path / "custom.yaml"
+        path.write_text("playback:\n  volume_default: 300\n", encoding="utf-8")
+        result = runner.invoke(main, ["-c", str(path), *arguments])
+        assert result.exit_code == 0
+        assert len(list(tmp_path.glob("custom.yaml.*.bak"))) == 1
+        effective, configuration_file_path = build_app.call_args.args
+        assert configuration_file_path == path
+        assert effective.playback.volume_default == 50
+        assert effective.display.target == "none"
+        assert effective.library.directory_path == tmp_path
+
+    def test_invalid_configuration_file_backups_are_kept(
+        self, runner, app, arguments, daemonize, home
+    ):
+        path = home / ".config" / "mocassino" / "configuration.yaml"
+        path.parent.mkdir(parents=True)
+        for content in ("first: 1\n", "second: 2\n"):
+            path.write_text(content, encoding="utf-8")
+            assert runner.invoke(main, arguments).exit_code == 0
+        backups = sorted(path.parent.glob("configuration.yaml.*.bak"))
+        assert sorted(backup.read_text(encoding="utf-8") for backup in backups) == [
+            "first: 1\n",
+            "second: 2\n",
+        ]
+
+    def test_invalid_configuration_file_keeps_the_simulator(
+        self, runner, app, daemonize, home, tmp_path
+    ):
+        path = home / ".config" / "mocassino" / "configuration.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text("display: [unclosed\n", encoding="utf-8")
+        app.simulator = None
+        result = runner.invoke(main, ["-s", "-l", str(tmp_path), "run", "-f"])
+        assert result.exit_code == 0
+        written = load_configuration(path)
+        assert (written.buttons.origin, written.display.target) == ("simulator", "simulator")
+
+    def test_invalid_configuration_file_cannot_be_replaced(
+        self, runner, mocker, app, arguments, daemonize, home, caplog
+    ):
+        path = home / ".config" / "mocassino" / "configuration.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text("display: [unclosed\n", encoding="utf-8")
+        mocker.patch(
+            "mocassino.cli.replace_invalid_configuration_file",
+            side_effect=ConfigurationError("Cannot move configuration file"),
+        )
+        with caplog.at_level(logging.ERROR):
+            result = runner.invoke(main, arguments)
+        assert result.exit_code == 1
+        assert "is not valid YAML" in result.output
+        assert "Cannot replace the configuration file that is not valid" in caplog.text
+        app.run.assert_not_called()
+        assert path.read_text(encoding="utf-8") == "display: [unclosed\n"
+
+    def test_invalid_configuration_after_the_replacement(
+        self, runner, mocker, app, arguments, daemonize, home
+    ):
+        path = home / ".config" / "mocassino" / "configuration.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text("display: [unclosed\n", encoding="utf-8")
+        mocker.patch(
+            "mocassino.cli.load_configuration",
+            side_effect=[
+                ConfigurationError("first"),
+                ConfigurationError("of the file"),
+                ConfigurationError("still not valid"),
+            ],
+        )
+        replace = mocker.patch("mocassino.cli.replace_invalid_configuration_file")
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 1
+        assert "Error: still not valid" in result.output
+        replace.assert_called_once()
+        app.run.assert_not_called()
+
+    def test_invalid_configuration_file_is_kept_by_the_configuration_command(self, runner, home):
+        path = home / ".config" / "mocassino" / "configuration.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text("display: [unclosed\n", encoding="utf-8")
+        result = runner.invoke(main, ["configuration"])
+        assert result.exit_code == 1
+        assert "is not valid YAML" in result.output
+        assert list(path.parent.iterdir()) == [path]
 
     def test_invalid_configuration(self, runner, app, arguments, daemonize):
         result = runner.invoke(main, ["--configuration-file-path", "missing.yaml", *arguments])

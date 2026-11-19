@@ -9,7 +9,8 @@ buttons, display, library, playback, run, startup, and system.
 
 import shlex
 from collections.abc import Callable, Mapping
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,10 @@ class ButtonsConfiguration:
 
 class ConfigurationError(Exception):
     """Raised when the configuration cannot be read or is not valid."""
+
+
+class ConfigurationReadError(ConfigurationError):
+    """Raised when the configuration file cannot be read (e.g., it does not exist)."""
 
 
 @dataclass(frozen=True)
@@ -298,7 +303,7 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     try:
         content = yaml.safe_load(path.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise ConfigurationError(f"Cannot read configuration file '{path}': {exc}") from exc
+        raise ConfigurationReadError(f"Cannot read configuration file '{path}': {exc}") from exc
     except yaml.YAMLError as exc:
         raise ConfigurationError(f"Configuration file '{path}' is not valid YAML: {exc}") from exc
     if content is None:
@@ -422,6 +427,54 @@ def load_configuration(
     elif DEFAULT_CONFIGURATION_FILE_PATH.expanduser().is_file():
         values = _read_yaml(DEFAULT_CONFIGURATION_FILE_PATH.expanduser())
     return _build(values, overrides or {})
+
+
+def replace_invalid_configuration_file(
+    path: Path | None,
+    defaults: Configuration,
+    now: datetime | None = None,
+) -> Path:
+    """Move the configuration file to a backup next to it, and write the defaults in its place.
+
+    The backup is named after the file and the time, e.g., configuration.yaml.20261119153000.bak,
+    so that the older backups are kept; if one with the same name exists,
+    a counter is added to the time, e.g., configuration.yaml.20261119153000-1.bak.
+
+    :param path: the YAML file; if None, the default one
+    :param defaults: the configuration to write in place of the file
+    :param now: the time of the backup; if None, the current one
+    :return: the backup
+    :raises ConfigurationError: if the file cannot be moved, or the defaults cannot be written
+    """
+    target = DEFAULT_CONFIGURATION_FILE_PATH.expanduser() if path is None else path
+    stamp = (datetime.now() if now is None else now).strftime("%Y%m%d%H%M%S")
+    backup = target.with_name(f"{target.name}.{stamp}.bak")
+    counter = 0
+    while backup.exists():
+        counter += 1
+        backup = target.with_name(f"{target.name}.{stamp}-{counter}.bak")
+    try:
+        target.rename(backup)
+    except OSError as exc:
+        raise ConfigurationError(
+            f"Cannot move configuration file '{target}' to '{backup}': {exc}"
+        ) from exc
+    write_configuration_file(target, defaults)
+    return backup
+
+
+def simulated_defaults(buttons: bool, display: bool) -> Configuration:
+    """Return the default configuration, with the simulator for the buttons and the display.
+
+    :param buttons: whether the buttons are simulated, instead of the default origin
+    :param display: whether the display is simulated, instead of the default target
+    """
+    defaults = Configuration()
+    if buttons:
+        defaults = replace(defaults, buttons=replace(defaults.buttons, origin="simulator"))
+    if display:
+        defaults = replace(defaults, display=replace(defaults.display, target="simulator"))
+    return defaults
 
 
 def update_configuration_file(
