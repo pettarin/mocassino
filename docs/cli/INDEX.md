@@ -61,12 +61,13 @@ that the music root directory exists, and that `mocp` can be found:
 if not, it prints the error and exits.
 
 When it starts, the service starts the MOC server, if it is not already running,
-and sets the MOC volume to `playback.initial_volume`.
+and sets the MOC volume to the one saved in the state file or, if there is none,
+to `playback.fallback_initial_volume`.
 
 > [!NOTE]
 > MOC does not report its volume to command line clients,
 > so `mocassino` keeps track of the volume by itself,
-> starting from `playback.initial_volume`.
+> and saves it in its state file.
 
 #### Background And Foreground
 
@@ -181,7 +182,7 @@ display:
 library:
   directory_path: /music
 playback:
-  initial_volume: 50
+  fallback_initial_volume: 50
   seek_step: 10
   volume_step: 2
 system:
@@ -217,7 +218,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
-| `playback.initial_volume` | `50` | The volume set when the service starts, between 0 and 100 |
+| `playback.fallback_initial_volume` | `50` | The volume set when the service starts, between 0 and 100, if there is no state file |
 | `playback.seek_step` | `10` | The amount of each seek, in seconds |
 | `playback.volume_step` | `2` | The amount of each volume change, between 1 and 100 |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
@@ -252,8 +253,31 @@ display:
 library:
   directory_path: /home/pi/music
 playback:
-  initial_volume: 30
+  fallback_initial_volume: 30
 ```
+
+### State File
+
+The player remembers its state from one run to the next
+in the `~/.config/mocassino/state.yaml` file, which it writes by itself:
+
+```yaml
+playback:
+  volume: 85
+```
+
+For now, the state is the volume only.
+When the service starts, it restores the volume from the state file, if it exists;
+otherwise, it applies `playback.fallback_initial_volume` from the configuration file.
+
+The state is saved when the track changes, when the volume changes,
+when a setting is changed from the menus, and when the service is stopped.
+The file is only written when its content would change.
+
+> [!NOTE]
+> Once the state file exists, `playback.fallback_initial_volume` is no longer used:
+> delete the state file to apply it again.
+
 
 ### Button Map
 

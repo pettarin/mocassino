@@ -61,7 +61,7 @@ class LibraryConfiguration:
 class PlaybackConfiguration:
     """The settings of the playback."""
 
-    initial_volume: int = 50
+    fallback_initial_volume: int = 50
     seek_step: int = 10
     volume_step: int = 2
 
@@ -120,7 +120,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         },
         "library": {"directory_path": _to_path},
         "playback": {
-            "initial_volume": _to_int,
+            "fallback_initial_volume": _to_int,
             "seek_step": _to_int,
             "volume_step": _to_int,
         },
@@ -175,9 +175,9 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             configuration.display.target in DISPLAY_TARGETS,
         ),
         "display.tick": (configuration.display.tick, configuration.display.tick > 0),
-        "playback.initial_volume": (
-            configuration.playback.initial_volume,
-            0 <= configuration.playback.initial_volume <= 100,
+        "playback.fallback_initial_volume": (
+            configuration.playback.fallback_initial_volume,
+            0 <= configuration.playback.fallback_initial_volume <= 100,
         ),
         "playback.seek_step": (
             configuration.playback.seek_step,

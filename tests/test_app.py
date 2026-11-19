@@ -25,6 +25,7 @@ from mocassino.model.moc import (
     SubprocessMocClient,
 )
 from mocassino.model.state import AppState, Mode
+from mocassino.model.state_file import StateFile
 from mocassino.simulator.tk import TkSimulator
 from mocassino.view.display.null import NullDisplay
 from mocassino.view.display.st7789 import St7789Display
@@ -74,6 +75,36 @@ def app(mocker, tmp_path, state, moc, display, button_source):
 
 class TestApp:
     """Tests for the App class"""
+
+    def test_state_is_saved(self, mocker, tmp_path, state, moc, display, button_source):
+        host = mocker.create_autospec(Host, instance=True)
+        controller = Controller(
+            state, moc, Library(tmp_path), host, DEFAULT_BUTTON_MAP, seek_step=10, volume_step=5
+        )
+        state_file = mocker.create_autospec(StateFile, instance=True)
+        app = App(
+            state, controller, moc, Renderer(), display, button_source, TICK, state_file=state_file
+        )
+        app.step()
+        state_file.save.assert_called_once_with(40)
+        app.step()
+        assert state_file.save.call_count == 1
+        app.events.put(ButtonEvent(Button.X))
+        app.step()
+        state_file.save.assert_called_with(45)
+        assert state_file.save.call_count == 2
+        moc.status.return_value = MocStatus(file_path="/music/b.flac", state=MocState.PLAY)
+        app.step()
+        assert state_file.save.call_count == 3
+        for event in TOGGLE_SIDE_ICONS:
+            app.events.put(event)
+        app.step()
+        assert state_file.save.call_count == 4
+        app.step()
+        assert state_file.save.call_count == 4
+        app.close()
+        assert state_file.save.call_count == 5
+        state_file.save.assert_called_with(45)
 
     def test_close(self, app, display, button_source):
         app.close()
@@ -190,7 +221,9 @@ class TestBuildApp:
         assert isinstance(app._display, St7789Display)
 
     def test_no_hardware(self):
-        app = build_app(self.configuration("none", "none", initial_volume=30, volume_step=10))
+        app = build_app(
+            self.configuration("none", "none", fallback_initial_volume=30, volume_step=10)
+        )
         assert isinstance(app._button_source, NullButtonSource)
         assert isinstance(app._display, NullDisplay)
         assert app.simulator is None
@@ -223,7 +256,7 @@ class TestBuildApp:
 
     def test_settings_are_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
-        path.write_text("playback:\n  initial_volume: 30\n", encoding="utf-8")
+        path.write_text("playback:\n  fallback_initial_volume: 30\n", encoding="utf-8")
         configuration = load_configuration(
             path,
             {"buttons": {"origin": "none"}, "display": {"target": "none"}},
@@ -233,7 +266,7 @@ class TestBuildApp:
             app._controller.handle(event)
         assert app._state.settings.show_side_icons is False
         assert path.read_text(encoding="utf-8") == (
-            "playback:\n  initial_volume: 30\ndisplay:\n  show_side_icons: false\n"
+            "playback:\n  fallback_initial_volume: 30\ndisplay:\n  show_side_icons: false\n"
         )
         assert load_configuration(path).display.show_side_icons is False
 
@@ -254,6 +287,50 @@ class TestBuildApp:
         assert "Cannot save the settings: Cannot write configuration file" in caplog.text
         assert app._state.settings.show_side_icons is False
         assert app._state.current_menu.selected.label == "Side icons: off"
+
+    def test_volume_from_the_configuration(self, tmp_path):
+        state_file_path = tmp_path / "state.yaml"
+        app = build_app(
+            self.configuration("none", "none", fallback_initial_volume=30),
+            state_file_path=state_file_path,
+        )
+        assert app._state.volume == 30
+        assert not state_file_path.exists()
+        app.close()
+        assert state_file_path.read_text(encoding="utf-8") == "playback:\n  volume: 30\n"
+
+    def test_volume_from_the_default_state_file(self, tmp_path):
+        directory = tmp_path / ".config" / "mocassino"
+        directory.mkdir(parents=True)
+        (directory / "state.yaml").write_text("playback:\n  volume: 85\n", encoding="utf-8")
+        app = build_app(self.configuration("none", "none", fallback_initial_volume=30))
+        assert app._state.volume == 85
+
+    def test_volume_from_the_state_file(self, mocker, tmp_path):
+        moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
+        moc.status.return_value = PLAYING
+        state_file_path = tmp_path / "state.yaml"
+        state_file_path.write_text("playback:\n  volume: 85\n", encoding="utf-8")
+        app = build_app(
+            self.configuration("none", "none", fallback_initial_volume=30, volume_step=5),
+            state_file_path=state_file_path,
+        )
+        assert app._state.volume == 85
+        app.start()
+        moc.set_volume.assert_called_once_with(85)
+        app.events.put(ButtonEvent(Button.Y))
+        app.step()
+        moc.set_volume.assert_called_with(80)
+        assert state_file_path.read_text(encoding="utf-8") == "playback:\n  volume: 80\n"
+
+    def test_volume_from_the_state_file_not_valid(self, tmp_path):
+        state_file_path = tmp_path / "state.yaml"
+        state_file_path.write_text("playback:\n  volume: 850\n", encoding="utf-8")
+        app = build_app(
+            self.configuration("none", "none", fallback_initial_volume=30),
+            state_file_path=state_file_path,
+        )
+        assert app._state.volume == 30
 
     def test_simulator(self):
         app = build_app(self.configuration("simulator", "simulator"))

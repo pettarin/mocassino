@@ -30,6 +30,7 @@ from mocassino.model.moc import (
 )
 from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
+from mocassino.model.state_file import StateFile
 from mocassino.simulator.tk import TkSimulator
 from mocassino.view.display.base import Display
 from mocassino.view.display.null import NullDisplay
@@ -44,6 +45,9 @@ class App:
 
     At each step, it handles the button events, asks MOC for its status,
     and draws the state on the display, if what is shown would change.
+
+    The state is saved to the state file, if there is one, when the track, the volume,
+    or a setting changes, and when the application is closed.
     """
 
     def __init__(
@@ -56,11 +60,13 @@ class App:
         button_source: ButtonSource,
         tick: float,
         simulator: TkSimulator | None = None,
+        state_file: StateFile | None = None,
     ) -> None:
         """Initialize the application.
 
         :param tick: the maximum duration of a step of the main loop, in seconds
         :param simulator: the simulator used as display or button source, if any
+        :param state_file: the file where the state is saved, if any
         """
         self._button_source = button_source
         self._controller = controller
@@ -72,8 +78,11 @@ class App:
         self._renderer = renderer
         self._simulator = simulator
         self._state = state
+        self._state_file = state_file
         self._stop = threading.Event()
         self._tick = tick
+        # Last, as it needs the state
+        self._saved_signature = self._signature()
 
     def _draw(self) -> None:
         """Draw the state on the display, unless the frame is the one already shown."""
@@ -100,8 +109,23 @@ class App:
                 LOGGER.error("Cannot get the MOC status: %s", exc)
                 self._last_error = str(exc)
 
+    def _save_state(self) -> None:
+        """Save the state to the state file, if there is one."""
+        if self._state_file is not None:
+            self._state_file.save(self._state.volume)
+        self._saved_signature = self._signature()
+
+    def _signature(self) -> tuple[object, ...]:
+        """Return what, when it changes, makes the state be saved.
+
+        That is: the track, the volume, and the settings changed through the menus.
+        """
+        state = self._state
+        return (state.status.file_path, state.volume, state.settings.show_side_icons)
+
     def close(self) -> None:
-        """Release the buttons and the display."""
+        """Save the state, and release the buttons and the display."""
+        self._save_state()
         self._button_source.close()
         self._display.close()
 
@@ -140,7 +164,7 @@ class App:
         """Perform one step of the main loop.
 
         Wait for a button event, for one tick at most; handle all the events in the queue;
-        then update the state from MOC, and draw it.
+        then update the state from MOC, save it if needed, and draw it.
         """
         try:
             self._controller.handle(self._events.get(timeout=self._tick))
@@ -149,6 +173,8 @@ class App:
         except Empty:
             pass
         self._refresh()
+        if self._signature() != self._saved_signature:
+            self._save_state()
         self._draw()
 
     def stop(self) -> None:
@@ -196,14 +222,22 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
         LOGGER.info("Settings saved to '%s'", path)
 
 
-def build_app(configuration: Configuration, configuration_file_path: Path | None = None) -> App:
+def build_app(
+    configuration: Configuration,
+    configuration_file_path: Path | None = None,
+    state_file_path: Path | None = None,
+) -> App:
     """Build the application described by the configuration.
 
     If the buttons or the display are simulated, the application has a simulator,
     which has to be run in the main thread while the application runs in another one.
 
+    The volume is the one saved in the state file, if any;
+    otherwise, the initial volume of the configuration.
+
     :param configuration_file_path: the YAML file where the settings changed from
                                     the settings menu are saved; if None, the default one
+    :param state_file_path: the YAML file where the state is saved; if None, the default one
     :raises OSError: if the font or the display cannot be accessed
     """
     simulator: TkSimulator | None = None
@@ -215,9 +249,13 @@ def build_app(configuration: Configuration, configuration_file_path: Path | None
     host = Host(shutdown_command=configuration.system.shutdown_command)
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
+    state_file = StateFile(state_file_path)
+    volume = state_file.load_volume()
+    if volume is None:
+        volume = configuration.playback.fallback_initial_volume
     state = AppState(
         settings=Settings(show_side_icons=configuration.display.show_side_icons),
-        volume=configuration.playback.initial_volume,
+        volume=volume,
     )
     controller = Controller(
         state,
@@ -241,4 +279,5 @@ def build_app(configuration: Configuration, configuration_file_path: Path | None
         button_source=_build_button_source(configuration, simulator),
         tick=configuration.display.tick,
         simulator=simulator,
+        state_file=state_file,
     )
