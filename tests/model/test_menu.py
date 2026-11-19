@@ -11,6 +11,7 @@ from mocassino.model.menu import (
     Menu,
     MenuCommand,
     MenuItem,
+    _label,
     build_display_brightness_menu,
     build_display_menu,
     build_display_orientation_menu,
@@ -368,8 +369,8 @@ class TestBuildStartupMenu:
         assert item.checked is None
         assert item.command is None
         assert item.submenu().title == "Playlist"
-        settings.startup_playlist = StartupPlaylist.USE_MOCP_STATE
-        assert item.submenu().selected.label == "Use mocp state"
+        settings.startup_playlist = StartupPlaylist.USE_MOC_STATE
+        assert item.submenu().selected.label == "Use MOC state"
 
 
 class TestBuildStartupPlaylistMenu:
@@ -379,7 +380,7 @@ class TestBuildStartupPlaylistMenu:
         ("choice", "index"),
         [
             (StartupPlaylist.OPEN_LIBRARY, 0),
-            (StartupPlaylist.USE_MOCP_STATE, 1),
+            (StartupPlaylist.USE_MOC_STATE, 1),
             (StartupPlaylist.USE_SAVED, 2),
         ],
     )
@@ -388,12 +389,12 @@ class TestBuildStartupPlaylistMenu:
         assert menu.title == "Playlist"
         assert [item.label for item in menu.items] == [
             "Open library",
-            "Use mocp state",
+            "Use MOC state",
             "Use saved",
         ]
         assert [item.value for item in menu.items] == [
             "open_library",
-            "use_mocp_state",
+            "use_moc_state",
             "use_saved",
         ]
         assert [item.checked for item in menu.items] == [position == index for position in range(3)]
@@ -506,6 +507,24 @@ class TestBuildSystemMocStateOnExitMenu:
         assert {item.command for item in menu.items} == {MenuCommand.SET_SYSTEM_MOC_STATE_ON_EXIT}
         assert [item.value for item in menu.items if item.checked] == [choice.value]
         assert menu.selected.value == choice.value
+
+
+class TestLabel:
+    """Tests for the _label function"""
+
+    @pytest.mark.parametrize(
+        ("value", "label"),
+        [
+            ("do_nothing", "Do nothing"),
+            ("moc", "MOC"),
+            ("open_library", "Open library"),
+            ("pause", "Pause"),
+            ("use_moc_state", "Use MOC state"),
+            ("use_saved", "Use saved"),
+        ],
+    )
+    def test_label(self, value, label):
+        assert _label(value) == label
 
 
 class TestMenu:

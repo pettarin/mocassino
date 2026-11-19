@@ -299,7 +299,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `playback.volume_default` | `50` | The default volume, between 0 and 100: the one set when the service starts if `startup.volume` is `use_default`, or if there is no saved volume; it can be changed from the `Settings` menu |
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100; it can be changed from the `Settings` menu |
 | `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
-| `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `open_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
+| `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `open_library`, `use_moc_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `System` menu |
@@ -378,13 +378,13 @@ When the service starts:
   | Value | What happens |
   |---|---|
   | `open_library` | MOC is stopped, and the `Library` menu is shown, to select what to play |
-  | `use_mocp_state` | MOC is left as it is: the display shows whatever it is playing |
+  | `use_moc_state` | MOC is left as it is: the display shows whatever it is playing |
   | `use_saved` | MOC is stopped, and the playback saved in the state file is resumed |
 
 - it sets the playback state as `startup.state` says,
   unless `startup.playlist` is `open_library`, in which case it has no effect:
 
-  | Value | With `startup.playlist: use_saved` | With `startup.playlist: use_mocp_state` |
+  | Value | With `startup.playlist: use_saved` | With `startup.playlist: use_moc_state` |
   |---|---|---|
   | `pause` | The saved track is resumed at the saved position, paused | MOC is paused, if it is playing |
   | `play` | The saved track is resumed at the saved position, playing | MOC is made to play: resumed if paused, started from the first track of its playlist if stopped |
@@ -563,7 +563,7 @@ The top level menu has the following items:
   - `Startup`: the settings of what the service does when it starts.
     They take effect the next time the service starts.
     - `Playlist` (`startup.playlist`): a menu with the three choices
-      `Open library`, `Use mocp state`, and `Use saved`; the current one has the solid square.
+      `Open library`, `Use MOC state`, and `Use saved`; the current one has the solid square.
     - `State` (`startup.state`): a menu with the four choices
       `Pause`, `Play`, `Stop`, and `Use saved`; the current one has the solid square.
     - `Volume` (`startup.volume`): a menu with the two choices

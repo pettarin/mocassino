@@ -664,7 +664,7 @@ class TestController:
         menu = state.current_menu
         assert [item.label for item in menu.items] == [
             "Open library",
-            "Use mocp state",
+            "Use MOC state",
             "Use saved",
         ]
         assert [item.checked for item in menu.items] == [False, False, True]
@@ -673,12 +673,12 @@ class TestController:
         controller.handle(Y)
         controller.handle(Y)
         controller.handle(B)
-        assert state.settings.startup_playlist is StartupPlaylist.USE_MOCP_STATE
+        assert state.settings.startup_playlist is StartupPlaylist.USE_MOC_STATE
         save_settings.assert_called_once_with(state.settings)
         menu = state.current_menu
         assert menu.title == "Playlist"
         assert [item.checked for item in menu.items] == [False, True, False]
-        assert menu.selected.label == "Use mocp state"
+        assert menu.selected.label == "Use MOC state"
         controller.handle(X)
         controller.handle(B)
         assert state.settings.startup_playlist is StartupPlaylist.OPEN_LIBRARY

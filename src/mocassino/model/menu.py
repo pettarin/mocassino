@@ -26,6 +26,8 @@ from mocassino.model.settings import (
 )
 from mocassino.model.system import System
 
+# The words written in capitals in the labels of the choices
+ACRONYMS: dict[str, str] = {"moc": "MOC"}
 # The brightnesses of the display, the seek steps, in seconds, the default volumes,
 # and the volume steps that can be chosen from the menu, all but the seek steps in percent
 BRIGHTNESS_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
@@ -103,14 +105,14 @@ def _build_choice_menu(
     """Build a menu choosing one of the values of a setting.
 
     The choices are in the given order, which is the alphabetical order of the values.
-    Each is labelled with its value, with spaces for the underscores and a capital first letter.
+    Each is labelled with its value: see _label.
     The current choice is the checked one, and it is the selected item too.
     """
     return Menu(
         title=title,
         items=tuple(
             MenuItem(
-                label=choice.value.replace("_", " ").capitalize(),
+                label=_label(choice.value),
                 checked=choice is current,
                 command=command,
                 value=choice.value,
@@ -167,6 +169,17 @@ def _build_shutdown_menu() -> Menu:
             MenuItem(label="Shut down now", command=MenuCommand.SHUTDOWN),
         ),
     )
+
+
+def _label(value: str) -> str:
+    """Return the label of a value of a setting, e.g., "Use MOC state" for "use_moc_state".
+
+    The words are separated by spaces instead of underscores, the first one has
+    a capital first letter, and the acronyms are written in capitals.
+    """
+    words = [ACRONYMS.get(word, word) for word in value.split("_")]
+    words[0] = words[0][:1].upper() + words[0][1:]
+    return " ".join(words)
 
 
 def build_display_brightness_menu(settings: Settings) -> Menu:

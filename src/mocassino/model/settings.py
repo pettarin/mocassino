@@ -32,7 +32,7 @@ class StartupPlaylist(StrEnum):
     """
 
     OPEN_LIBRARY = "open_library"
-    USE_MOCP_STATE = "use_mocp_state"
+    USE_MOC_STATE = "use_moc_state"
     USE_SAVED = "use_saved"
 
 

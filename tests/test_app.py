@@ -257,8 +257,8 @@ class TestApp:
             )
         )
 
-    def test_start_using_the_mocp_state(self, saving_app, state_file, state, moc, mocker):
-        state.settings.startup_playlist = StartupPlaylist.USE_MOCP_STATE
+    def test_start_using_the_moc_state(self, saving_app, state_file, state, moc, mocker):
+        state.settings.startup_playlist = StartupPlaylist.USE_MOC_STATE
         saved = SavedState(directory_path="/music", file_path="/music/z.flac", volume=40)
         state_file.load.return_value = saved
         resume = mocker.patch("mocassino.app.resume_playback")
@@ -278,10 +278,10 @@ class TestApp:
             )
         )
 
-    def test_start_using_the_mocp_state_when_moc_plays_something_else(
+    def test_start_using_the_moc_state_when_moc_plays_something_else(
         self, saving_app, state_file, state, moc
     ):
-        state.settings.startup_playlist = StartupPlaylist.USE_MOCP_STATE
+        state.settings.startup_playlist = StartupPlaylist.USE_MOC_STATE
         state_file.load.return_value = SavedState(
             directory_path="/other", file_path="/other/z.flac", volume=40
         )
@@ -703,8 +703,8 @@ class TestBuildApp:
         )
         for event in events:
             app._controller.handle(event)
-        assert app._state.settings.startup_playlist is StartupPlaylist.USE_MOCP_STATE
-        assert load_configuration(path).startup.playlist == "use_mocp_state"
+        assert app._state.settings.startup_playlist is StartupPlaylist.USE_MOC_STATE
+        assert load_configuration(path).startup.playlist == "use_moc_state"
 
     def test_display_bars_from_the_configuration(self):
         configuration = load_configuration(
@@ -1037,7 +1037,7 @@ class TestBuildApp:
             ("stop", ["stop"], MocState.STOP),
         ],
     )
-    def test_startup_state_with_the_mocp_state(
+    def test_startup_state_with_the_moc_state(
         self, mocker, tmp_path, album, state, commands, expected
     ):
         moc = FakeMoc()
@@ -1045,7 +1045,7 @@ class TestBuildApp:
         moc.next()
         moc.calls.clear()
         app, moc = self.start(
-            mocker, tmp_path, album, "use_mocp_state", state, MocState.PAUSE, moc=moc
+            mocker, tmp_path, album, "use_moc_state", state, MocState.PAUSE, moc=moc
         )
         assert moc.names() == ["start_server", *commands, "set_volume"]
         assert moc.state is expected

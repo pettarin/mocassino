@@ -247,7 +247,7 @@ class App:
             if choice is StartupPlaylist.OPEN_LIBRARY:
                 self._moc.stop()
                 self._controller.choose_folder()
-            elif choice is StartupPlaylist.USE_MOCP_STATE:
+            elif choice is StartupPlaylist.USE_MOC_STATE:
                 if state is not None:
                     apply_state(self._moc, state)
                 self._state.played_path = adopt_playback(self._moc, saved)

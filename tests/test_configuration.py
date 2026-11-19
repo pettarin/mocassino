@@ -274,7 +274,7 @@ class TestLoadConfiguration:
         configuration = load_configuration(overrides={"display": {"target": target}})
         assert configuration.display.target == target
 
-    @pytest.mark.parametrize("playlist", ["open_library", "use_mocp_state", "use_saved"])
+    @pytest.mark.parametrize("playlist", ["open_library", "use_moc_state", "use_saved"])
     def test_startup_playlists(self, tmp_path, playlist):
         path = write_yaml(tmp_path, f"startup:\n  playlist: {playlist}\n")
         assert load_configuration(path).startup.playlist == playlist
