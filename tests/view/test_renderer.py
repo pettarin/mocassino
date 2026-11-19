@@ -291,10 +291,14 @@ class TestRenderer:
         image = renderer.render(AppState(settings=settings, status=status))
         left, right = (CONTENT_LEFT, CONTENT_RIGHT) if show_side_icons else (10, WIDTH - 10)
         if artist:
-            _, artist_top, _, _ = image.crop((left, 0, right, 22)).getbbox()
-            assert artist_top == 2
+            _, artist_top, _, artist_bottom = image.crop((left, 0, right, 38)).getbbox()
+            assert artist_bottom == 26
+            if artist == "ABBA":
+                assert artist_top - 2 == 36 - artist_bottom
         else:
-            assert not has_content(image, (left, 0, right, 22))
+            assert not has_content(image, (left, 0, right, 38))
+        _, title_top, _, _ = image.crop((left, 38, right, 100)).getbbox()
+        assert title_top + 38 == 40
         _, times_top, _, times_bottom = image.crop((left, 218, left + 40, HEIGHT)).getbbox()
         assert times_top + 218 >= 222
         assert times_bottom + 218 == HEIGHT - 2
@@ -401,7 +405,7 @@ class TestRenderer:
     def test_playback_title_falls_back_to_file_name(self, renderer):
         tagged = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Name")
         untagged = MocStatus(file_path="/music/Name.flac", state=MocState.PLAY)
-        box = (CONTENT_LEFT, 24, CONTENT_RIGHT, 150)
+        box = (CONTENT_LEFT, 38, CONTENT_RIGHT, 165)
         first = renderer.render(AppState(status=tagged)).crop(box)
         second = renderer.render(AppState(status=untagged)).crop(box)
         assert has_content(first, (0, 0, CONTENT_RIGHT - CONTENT_LEFT, 40))
@@ -409,10 +413,12 @@ class TestRenderer:
 
     def test_playback_track_is_drawn(self, renderer):
         image = renderer.render(AppState(status=PLAYING))
-        assert has_content(image, (24, 2, 216, 22))
-        assert has_content(image, (24, 24, 216, 54))
-        assert not has_content(image, (24, 56, 216, 170))
-        assert has_content(image, (24, 174, 216, 200))
+        assert not has_content(image, (24, 0, 216, 10))
+        assert has_content(image, (24, 10, 216, 26))
+        assert not has_content(image, (24, 26, 216, 40))
+        assert has_content(image, (24, 40, 216, 62))
+        assert not has_content(image, (24, 62, 216, 184))
+        assert has_content(image, (24, 184, 216, 200))
         assert not has_content(image, (24, 200, 216, 208))
 
     @pytest.mark.parametrize(
@@ -470,21 +476,48 @@ class TestRenderer:
         paused_frame = renderer.render(AppState(status=paused)).crop(box)
         assert playing_frame.tobytes() == paused_frame.tobytes()
 
-    def test_playback_title_on_four_lines(self, renderer):
+    @pytest.mark.parametrize(
+        "title", ["Title", "aceno", "blind fold", "Il Vento Caldo Dell'estate"]
+    )
+    def test_playback_title_starts_at_the_top_of_the_volume_bar(self, renderer, title):
+        status = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title=title)
+        image = renderer.render(AppState(status=status))
+        _, title_top, _, _ = image.crop((CONTENT_LEFT, 0, CONTENT_RIGHT, 170)).getbbox()
+        band = image.crop((WIDTH - BAND_WIDTH + 6, 36, WIDTH - 6, 204))
+        _, volume_bar_top, _, _ = band.getbbox()
+        assert title_top == volume_bar_top + 36 == 40
+
+    def test_playback_title_empty(self, renderer):
+        status = MocStatus(album="Album", artist="Artist", state=MocState.PLAY)
+        image = renderer.render(AppState(status=status))
+        assert not has_content(image, (CONTENT_LEFT, 38, CONTENT_RIGHT, 170))
+
+    def test_playback_title_on_five_lines(self, renderer):
         status = MocStatus(
             album="Album",
             artist="Artist",
             file_path="/music/a.flac",
             state=MocState.PLAY,
-            title="One very long title that needs many more than four lines to be shown in full",
+            title="One very long title that needs many more than five lines to be shown, "
+            "because it goes on and on and on",
         )
         image = renderer.render(AppState(status=status))
-        for top in (24, 54, 84, 114):
+        for top in (38, 68, 98, 128, 158):
             assert has_content(image, (CONTENT_LEFT, top + 4, CONTENT_RIGHT, top + 28))
         album = renderer.render(AppState(status=PLAYING)).crop(
-            (CONTENT_LEFT, 172, CONTENT_RIGHT, 202)
+            (CONTENT_LEFT, 185, CONTENT_RIGHT, 206)
         )
-        assert image.crop((CONTENT_LEFT, 172, CONTENT_RIGHT, 202)).tobytes() == album.tobytes()
+        assert image.crop((CONTENT_LEFT, 185, CONTENT_RIGHT, 206)).tobytes() == album.tobytes()
+        assert not has_content(image, (CONTENT_LEFT, 184, CONTENT_RIGHT, 185))
+
+    @pytest.mark.parametrize("album", ["Album", "ABBA GOLD", "moe."])
+    def test_playback_album_ends_at_the_bottom_of_the_volume_bar(self, renderer, album):
+        status = MocStatus(album=album, file_path="/music/a.flac", state=MocState.PLAY)
+        image = renderer.render(AppState(status=status))
+        _, _, _, album_bottom = image.crop((CONTENT_LEFT, 170, CONTENT_RIGHT, 206)).getbbox()
+        band = image.crop((WIDTH - BAND_WIDTH + 6, 36, WIDTH - 6, 204))
+        _, _, _, volume_bar_bottom = band.getbbox()
+        assert album_bottom + 170 == volume_bar_bottom + 36 == 200
 
     def test_wrap(self, renderer):
         font = ImageFont.load_default(26)

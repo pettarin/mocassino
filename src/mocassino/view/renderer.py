@@ -51,7 +51,12 @@ STATE_MAX_FONT_SIZE: int = 20
 STATE_MIN_FONT_SIZE: int = 8
 TEXT_COLOR: Color = (255, 255, 255)
 TIMES_FONT_SIZE: int = 20
+TITLE_MAX_LINES: int = 5
+# The first row below the two icons of a button at the top of a band
+TOP_ICONS_BOTTOM: int = 2 * (ICON_SIZE + ICON_BORDER)
 TRACK_COLOR: Color = (60, 60, 60)
+# The volume bar leaves twice the border between itself and the icons of the buttons
+VOLUME_BAR_TOP: int = TOP_ICONS_BOTTOM + 2 * ICON_BORDER
 VOLUME_BAR_WIDTH: int = 8
 
 
@@ -158,10 +163,12 @@ class Renderer:
     def _draw_playback(self, draw: ImageDraw.ImageDraw, state: AppState) -> None:
         """Draw the playback: the state, the track, its progress, the volume, and the icons.
 
-        The track takes the top: the artist, the title on up to four lines, and the album.
+        The track takes the top: the artist, the title on up to five lines, and the album.
         At the bottom, the icon of the state followed by the progress bar, with the times.
-        The top of the letters of the artist and the bottom of the digits of the times
-        leave the same border as the icons of the buttons, so that they are level with them.
+        The capital letters of the artist are centred on the icons of the buttons at the top.
+        The title starts where the volume bar starts, and the album sits on the line
+        where the volume bar ends.
+        The bottom of the digits of the times leaves the same border as the icons.
         The bottom is level with the two rows of icons of the buttons there:
         the progress bar is centred on the upper row, and the times, with the state
         written between them, take the lower row.
@@ -189,19 +196,23 @@ class Renderer:
             artist_font = self._font(20)
             title_font = self._font(26)
             album_font = self._font(18)
-            artist = self._fit(status.artist, artist_font, width)
+            capital_height = -int(artist_font.getbbox("A", anchor="ls")[1])
             draw.text(
-                (left, ICON_BORDER - int(artist_font.getbbox(artist)[1])),
-                artist,
+                (left, (ICON_BORDER + TOP_ICONS_BOTTOM + capital_height) // 2),
+                self._fit(status.artist, artist_font, width),
+                anchor="ls",
                 fill=DIM_COLOR,
                 font=artist_font,
             )
             title = status.title or Path(status.file_path).stem
-            for index, line in enumerate(self._wrap(title, title_font, width, 4)):
-                draw.text((left, 24 + 30 * index), line, fill=TEXT_COLOR, font=title_font)
+            lines = self._wrap(title, title_font, width, TITLE_MAX_LINES)
+            title_top = VOLUME_BAR_TOP - int(title_font.getbbox(lines[0])[1]) if lines else 0
+            for index, line in enumerate(lines):
+                draw.text((left, title_top + 30 * index), line, fill=TEXT_COLOR, font=title_font)
             draw.text(
-                (left, 174),
+                (left, HEIGHT - VOLUME_BAR_TOP),
                 self._fit(status.album, album_font, width),
+                anchor="ls",
                 fill=DIM_COLOR,
                 font=album_font,
             )
@@ -249,8 +260,7 @@ class Renderer:
         The bar is between the icons of X (which by default turns the volume up)
         and those of Y (which by default turns it down).
         """
-        reserved = 2 * (ICON_SIZE + ICON_BORDER) + 2 * ICON_BORDER
-        top, bottom = reserved, HEIGHT - reserved - 1
+        top, bottom = VOLUME_BAR_TOP, HEIGHT - VOLUME_BAR_TOP - 1
         right = WIDTH - (BAND_WIDTH - VOLUME_BAR_WIDTH) // 2 - 1
         left = right - VOLUME_BAR_WIDTH + 1
         draw.rectangle((left, top, right, bottom), fill=TRACK_COLOR)
