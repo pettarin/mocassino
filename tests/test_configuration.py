@@ -49,7 +49,7 @@ class TestConfiguration:
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
         assert configuration.playback == PlaybackConfiguration(
-            fallback_initial_volume=50, seek_step=10, volume_step=2
+            fallback_initial_volume=50, seek_step=10, volume_step=5
         )
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
@@ -71,7 +71,7 @@ class TestConfiguration:
                 "tick": 0.5,
             },
             "library": {"directory_path": "/music"},
-            "playback": {"fallback_initial_volume": 50, "seek_step": 10, "volume_step": 2},
+            "playback": {"fallback_initial_volume": 50, "seek_step": 10, "volume_step": 5},
             "system": {
                 "mocp_file_path": "mocp",
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],

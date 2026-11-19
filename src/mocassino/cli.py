@@ -22,6 +22,7 @@ from mocassino import __version__
 from mocassino.app import App, build_app
 from mocassino.configuration import (
     BUTTONS_ORIGINS,
+    DEFAULT_CONFIGURATION_FILE_PATH,
     DISPLAY_TARGETS,
     Configuration,
     ConfigurationError,
@@ -125,11 +126,45 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
     is_flag=True,
     help="Print the default values, ignoring the configuration file and the other options.",
 )
+@click.option(
+    "-o",
+    "--output-file-path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    is_flag=False,
+    flag_value=str(DEFAULT_CONFIGURATION_FILE_PATH),
+    help="Write the configuration to this file instead of printing it; "
+    "without a value, to the default configuration file.",
+)
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    help="Write the output file even if it already exists.",
+)
 @click.pass_obj
-def configuration(options: GlobalOptions, default: bool) -> None:
-    """Print the effective configuration, in YAML format."""
+def configuration(
+    options: GlobalOptions,
+    default: bool,
+    output_file_path: Path | None,
+    yes: bool,
+) -> None:
+    """Print the effective configuration, in YAML format, or write it to a file."""
     effective = Configuration() if default else _load_configuration(options)
-    click.echo(yaml.safe_dump(effective.to_dict(), sort_keys=True), nl=False)
+    content = yaml.safe_dump(effective.to_dict(), sort_keys=True)
+    if output_file_path is None:
+        click.echo(content, nl=False)
+        return
+    output_file_path = output_file_path.expanduser()
+    if output_file_path.exists() and not yes:
+        raise click.ClickException(
+            f"The file '{output_file_path}' already exists: use -y / --yes to write it anyway"
+        )
+    try:
+        output_file_path.parent.mkdir(parents=True, exist_ok=True)
+        output_file_path.write_text(content, encoding="utf-8")
+    except OSError as exc:
+        raise click.ClickException(f"Cannot write '{output_file_path}': {exc}") from exc
+    click.echo(f"Configuration written to '{output_file_path}'")
 
 
 @click.group()

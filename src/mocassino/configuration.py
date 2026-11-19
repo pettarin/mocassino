@@ -63,7 +63,7 @@ class PlaybackConfiguration:
 
     fallback_initial_volume: int = 50
     seek_step: int = 10
-    volume_step: int = 2
+    volume_step: int = 5
 
 
 @dataclass(frozen=True)

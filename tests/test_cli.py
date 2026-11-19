@@ -8,6 +8,7 @@ import logging
 import os
 import signal
 import threading
+from pathlib import Path
 
 import pytest
 import yaml
@@ -16,7 +17,7 @@ from click.testing import CliRunner
 import mocassino
 from mocassino.app import App
 from mocassino.cli import _daemonize, _run_with_simulator, main
-from mocassino.configuration import Configuration
+from mocassino.configuration import Configuration, load_configuration
 from mocassino.model.moc import MocError
 from mocassino.simulator.tk import TkSimulator
 
@@ -82,6 +83,68 @@ class TestConfigurationCommand:
         result = runner.invoke(main, ["configuration"])
         assert result.exit_code == 0
         assert yaml.safe_load(result.output) == Configuration().to_dict()
+
+    def test_output_file(self, runner, tmp_path):
+        path = tmp_path / "new" / "written.yaml"
+        result = runner.invoke(main, ["-s", "-l", "/srv/music", "configuration", "-o", str(path)])
+        assert result.exit_code == 0
+        assert result.output == f"Configuration written to '{path}'\n"
+        written = load_configuration(path)
+        assert written.buttons.origin == "simulator"
+        assert written.display.target == "simulator"
+        assert written.library.directory_path == Path("/srv/music")
+        assert yaml.safe_load(path.read_text(encoding="utf-8")) == written.to_dict()
+
+    def test_output_file_already_exists(self, runner, tmp_path):
+        path = tmp_path / "written.yaml"
+        path.write_text("playback:\n  volume_step: 7\n", encoding="utf-8")
+        result = runner.invoke(main, ["configuration", "--output-file-path", str(path)])
+        assert result.exit_code == 1
+        assert "already exists: use -y / --yes to write it anyway" in result.output
+        assert path.read_text(encoding="utf-8") == "playback:\n  volume_step: 7\n"
+
+    @pytest.mark.parametrize("option", ["-y", "--yes"])
+    def test_output_file_already_exists_with_yes(self, runner, tmp_path, option):
+        path = tmp_path / "written.yaml"
+        path.write_text("playback:\n  volume_step: 7\n", encoding="utf-8")
+        result = runner.invoke(main, ["configuration", "-o", str(path), option])
+        assert result.exit_code == 0
+        assert load_configuration(path) == Configuration()
+
+    def test_output_file_cannot_be_written(self, runner, tmp_path):
+        blocker = tmp_path / "blocker"
+        blocker.touch()
+        path = blocker / "written.yaml"
+        result = runner.invoke(main, ["configuration", "-o", str(path)])
+        assert result.exit_code == 1
+        assert f"Error: Cannot write '{path}'" in result.output
+
+    def test_output_file_default_location(self, runner, home):
+        path = home / ".config" / "mocassino" / "configuration.yaml"
+        result = runner.invoke(main, ["--display-target", "none", "configuration", "-o"])
+        assert result.exit_code == 0
+        assert result.output == f"Configuration written to '{path}'\n"
+        assert load_configuration(path).display.target == "none"
+        result = runner.invoke(main, ["configuration", "-o"])
+        assert result.exit_code == 1
+        assert "already exists" in result.output
+        result = runner.invoke(main, ["-s", "configuration", "-o", "-y"])
+        assert result.exit_code == 0
+        written = load_configuration(path)
+        assert written.buttons.origin == "simulator"
+        assert written.display.target == "simulator"
+
+    def test_output_file_with_default(self, runner, home, tmp_path):
+        directory = home / ".config" / "mocassino"
+        directory.mkdir(parents=True)
+        (directory / "configuration.yaml").write_text(
+            "playback:\n  volume_step: 7\n",
+            encoding="utf-8",
+        )
+        path = tmp_path / "defaults.yaml"
+        result = runner.invoke(main, ["-s", "configuration", "--default", "-o", str(path)])
+        assert result.exit_code == 0
+        assert load_configuration(path) == Configuration()
 
     def test_overrides(self, runner):
         result = runner.invoke(

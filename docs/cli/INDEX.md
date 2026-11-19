@@ -146,9 +146,29 @@ Usage: mocassino configuration [OPTIONS]
   Print the effective configuration, in YAML format.
 
 Options:
-  --default  Print the default values, ignoring the configuration file and the
-             other options.
-  --help     Show this message and exit.
+  --default                    Print the default values, ignoring the
+                               configuration file and the other options.
+  -o, --output-file-path FILE  Write the configuration to this file instead of
+                               printing it; without a value, to the default
+                               configuration file.
+  -y, --yes                    Write the output file even if it already
+                               exists.
+  --help                       Show this message and exit.
+```
+
+With `-o / --output-file-path`, the configuration is written to a file instead of being printed.
+The value is optional: without it, the file is the default configuration file,
+`~/.config/mocassino/configuration.yaml`.
+If the file already exists, the command fails without touching it,
+unless `-y / --yes` is given too:
+
+```bash
+$ # write the effective configuration, with the simulator selected, to a file
+$ mocassino --simulator configuration -o /path/to/configuration.yaml
+Configuration written to '/path/to/configuration.yaml'
+
+$ # write the default values to the default configuration file, replacing it
+$ mocassino configuration --default -o -y
 ```
 
 With `--default`, it prints the default values instead,
@@ -189,7 +209,7 @@ library:
 playback:
   fallback_initial_volume: 50
   seek_step: 10
-  volume_step: 2
+  volume_step: 5
 system:
   mocp_file_path: mocp
   shutdown_command:
@@ -225,7 +245,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `library.directory_path` | `/music` | The music root directory |
 | `playback.fallback_initial_volume` | `50` | The volume set when the service starts, between 0 and 100, if there is no state file |
 | `playback.seek_step` | `10` | The amount of each seek, in seconds |
-| `playback.volume_step` | `2` | The amount of each volume change, between 1 and 100 |
+| `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100 |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list |
 
