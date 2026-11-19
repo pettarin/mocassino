@@ -229,13 +229,16 @@ def main(
 @click.option(
     "-b/-f",
     "--background/--foreground",
-    default=True,
-    help="Run detached from the terminal (default) or attached to it.",
+    default=None,
+    help="Run detached from the terminal or attached to it. "
+    "If neither is given, as run.mode says in the configuration.",
 )
 @click.pass_obj
-def run(options: GlobalOptions, background: bool) -> None:
+def run(options: GlobalOptions, background: bool | None) -> None:
     """Run the service."""
     effective = _load_configuration(options)
+    if background is None:
+        background = effective.run.mode == "background"
     if not effective.library.directory_path.is_dir():
         raise click.ClickException(
             f"The music root directory '{effective.library.directory_path}' does not exist"

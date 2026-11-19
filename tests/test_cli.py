@@ -445,6 +445,28 @@ class TestRunCommand:
         run_with_simulator.assert_called_once_with(app, mocker.sentinel.simulator)
         app.run.assert_not_called()
 
+    @pytest.mark.parametrize(
+        ("mode", "options", "detached"),
+        [
+            ("background", [], True),
+            ("foreground", [], False),
+            ("background", ["-f"], False),
+            ("background", ["--foreground"], False),
+            ("foreground", ["-b"], True),
+            ("foreground", ["--background"], True),
+            ("foreground", ["-f"], False),
+            ("background", ["-b"], True),
+        ],
+    )
+    @pytest.mark.parametrize("simulator", [[], ["-s"]])
+    def test_run_mode(self, runner, app, daemonize, tmp_path, mode, options, detached, simulator):
+        path = tmp_path / "custom.yaml"
+        path.write_text(f"run:\n  mode: {mode}\n", encoding="utf-8")
+        arguments = ["-c", str(path), "-l", str(tmp_path), *simulator, "run", *options]
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        assert daemonize.call_count == (1 if detached else 0)
+
     def test_signals_stop_the_application(self, runner, app, arguments, daemonize, set_signal):
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0

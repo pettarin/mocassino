@@ -15,6 +15,7 @@ from mocassino.configuration import (
     DisplayConfiguration,
     LibraryConfiguration,
     PlaybackConfiguration,
+    RunConfiguration,
     StartupConfiguration,
     SystemConfiguration,
     load_configuration,
@@ -50,6 +51,7 @@ class TestConfiguration:
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
         assert configuration.playback == PlaybackConfiguration(seek_step=10, volume_step=5)
+        assert configuration.run == RunConfiguration(mode="background")
         assert configuration.startup == StartupConfiguration(
             fallback_volume=50, playlist="use_saved", use_saved_volume=True
         )
@@ -74,6 +76,7 @@ class TestConfiguration:
             },
             "library": {"directory_path": "/music"},
             "playback": {"seek_step": 10, "volume_step": 5},
+            "run": {"mode": "background"},
             "startup": {"fallback_volume": 50, "playlist": "use_saved", "use_saved_volume": True},
             "system": {
                 "mocp_file_path": "mocp",
@@ -142,6 +145,8 @@ class TestLoadConfiguration:
             "playback:\n"
             "  seek_step: 30\n"
             "  volume_step: 10\n"
+            "run:\n"
+            "  mode: foreground\n"
             "startup:\n"
             "  fallback_volume: 70\n"
             "  use_saved_volume: false\n"
@@ -159,6 +164,7 @@ class TestLoadConfiguration:
             ),
             library=LibraryConfiguration(directory_path=Path("/srv/music")),
             playback=PlaybackConfiguration(seek_step=30, volume_step=10),
+            run=RunConfiguration(mode="foreground"),
             startup=StartupConfiguration(fallback_volume=70, use_saved_volume=False),
             system=SystemConfiguration(
                 mocp_file_path="/usr/bin/mocp",
@@ -192,6 +198,9 @@ class TestLoadConfiguration:
             ("playback", "seek_step", "far"),
             ("playback", "volume_step", 0),
             ("playback", "volume_step", 101),
+            ("run", "mode", "window"),
+            ("run", "mode", "Foreground"),
+            ("run", "mode", True),
             ("startup", "fallback_volume", -1),
             ("startup", "fallback_volume", 101),
             ("startup", "fallback_volume", 50.5),

@@ -51,8 +51,9 @@ Usage: mocassino run [OPTIONS]
 
 Options:
   -b, --background / -f, --foreground
-                                  Run detached from the terminal (default) or
-                                  attached to it.
+                                  Run detached from the terminal or attached
+                                  to it. If neither is given, as run.mode says
+                                  in the configuration.
   --help                          Show this message and exit.
 ```
 
@@ -71,8 +72,7 @@ to `startup.fallback_volume`.
 
 #### Background And Foreground
 
-With `-b / --background`, which is the default,
-the command prints the identifier of the process running the service, and returns:
+With `-b / --background`, the command prints the identifier of the process running the service, and returns:
 
 ```bash
 $ mocassino run
@@ -94,6 +94,15 @@ $ kill 15875
 
 With `-f / --foreground`, the service stays attached to the terminal,
 where it writes its log messages, until `Ctrl+C` is pressed.
+
+When neither option is given, the `run.mode` setting of the configuration file decides.
+It is `background` by default; on a PC, where the simulator is typically used,
+it can be set to always run in foreground:
+
+```yaml
+run:
+  mode: foreground
+```
 
 #### Running Without The Hardware
 
@@ -209,6 +218,8 @@ library:
 playback:
   seek_step: 10
   volume_step: 5
+run:
+  mode: background
 startup:
   fallback_volume: 50
   playlist: use_saved
@@ -248,6 +259,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `library.directory_path` | `/music` | The music root directory |
 | `playback.seek_step` | `10` | The amount of each seek, in seconds |
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100 |
+| `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
 | `startup.fallback_volume` | `50` | The volume set when the service starts, between 0 and 100, if there is no saved volume or `startup.use_saved_volume` is `false` |
 | `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `select_from_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.use_saved_volume` | `true` | Whether, when the service starts, the volume is the one saved in the state file; if `false`, it is `startup.fallback_volume`; it can be changed from the `Settings` menu |

@@ -1,7 +1,7 @@
 """Configuration of the service: defaults, YAML file, and overrides.
 
 The settings are grouped in sections, one per concern:
-buttons, display, library, playback, startup, and system.
+buttons, display, library, playback, run, startup, and system.
 
 :copyright: Copyright (C) 2026 Alberto Pettarin
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
@@ -22,6 +22,7 @@ from mocassino.model.settings import StartupPlaylist
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
 DEFAULT_CONFIGURATION_FILE_PATH: Path = Path("~/.config/mocassino/configuration.yaml")
 DISPLAY_TARGETS: tuple[str, ...] = ("none", "pirateaudio", "simulator", "st7789")
+RUN_MODES: tuple[str, ...] = ("background", "foreground")
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,17 @@ class PlaybackConfiguration:
 
 
 @dataclass(frozen=True)
+class RunConfiguration:
+    """The settings of how the service is run.
+
+    The mode tells whether the service runs in background or in foreground,
+    unless the command line says otherwise.
+    """
+
+    mode: str = "background"
+
+
+@dataclass(frozen=True)
 class StartupConfiguration:
     """The settings of what the service does when it starts."""
 
@@ -94,6 +106,7 @@ class Configuration:
     display: DisplayConfiguration = field(default_factory=DisplayConfiguration)
     library: LibraryConfiguration = field(default_factory=LibraryConfiguration)
     playback: PlaybackConfiguration = field(default_factory=PlaybackConfiguration)
+    run: RunConfiguration = field(default_factory=RunConfiguration)
     startup: StartupConfiguration = field(default_factory=StartupConfiguration)
     system: SystemConfiguration = field(default_factory=SystemConfiguration)
 
@@ -133,6 +146,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "seek_step": _to_int,
             "volume_step": _to_int,
         },
+        "run": {"mode": _to_str},
         "startup": {
             "fallback_volume": _to_int,
             "playlist": _to_str,
@@ -169,6 +183,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         display=DisplayConfiguration(**merged["display"]),
         library=LibraryConfiguration(**merged["library"]),
         playback=PlaybackConfiguration(**merged["playback"]),
+        run=RunConfiguration(**merged["run"]),
         startup=StartupConfiguration(**merged["startup"]),
         system=SystemConfiguration(**merged["system"]),
     )
@@ -197,6 +212,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "playback.volume_step": (
             configuration.playback.volume_step,
             1 <= configuration.playback.volume_step <= 100,
+        ),
+        "run.mode": (
+            configuration.run.mode,
+            configuration.run.mode in RUN_MODES,
         ),
         "startup.fallback_volume": (
             configuration.startup.fallback_volume,
