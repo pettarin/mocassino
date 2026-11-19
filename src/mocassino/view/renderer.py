@@ -17,7 +17,7 @@ from mocassino.model.menu import Menu
 from mocassino.model.moc import MocState
 from mocassino.model.state import AppState, Mode
 from mocassino.view.display.base import HEIGHT, WIDTH
-from mocassino.view.icons import ICON_SIZE, draw_icon
+from mocassino.view.icons import ICON_SIZE, draw_icon, draw_state_icon
 
 type Box = tuple[int, int, int, int]
 type Color = tuple[int, int, int]
@@ -48,15 +48,6 @@ ROTATIONS: dict[int, Image.Transpose] = {
     270: Image.Transpose.ROTATE_90,
 }
 SCROLLBAR_WIDTH: int = 4
-STATE_LABELS: dict[MocState, str] = {
-    MocState.PAUSE: "Paused",
-    MocState.PLAY: "Playing",
-    MocState.STOP: "Stopped",
-}
-# The label of the state is written with the largest font size, between these two,
-# that makes it as tall as an icon of the buttons at most
-STATE_MAX_FONT_SIZE: int = 20
-STATE_MIN_FONT_SIZE: int = 8
 # What is shown, centred in the frame, when nothing is playing
 STOPPED_HINT: tuple[str, ...] = ("Press Menu to select", "the folder to play")
 STOPPED_HINT_LINE_HEIGHT: int = 26
@@ -195,8 +186,8 @@ class Renderer:
         where the volume bar ends.
         The bottom of the digits of the times leaves the same border as the icons.
         The bottom is level with the two rows of icons of the buttons there:
-        the progress bar is centred on the upper row, and the times, with the state
-        written between them, take the lower row.
+        the progress bar is centred on the upper row, and the times, with the icon
+        of the state between them, take the lower row.
         The icons of the buttons, the progress bar, and the volume bar are drawn only if
         the settings say so. The band on the left is reserved to the icons, when shown;
         the band on the right, to the icons and the volume bar, when either is shown.
@@ -271,21 +262,12 @@ class Renderer:
                     fill=TEXT_COLOR,
                     font=small_font,
                 )
-        self._draw_state_label(draw, status.state)
-
-    def _draw_state_label(self, draw: ImageDraw.ImageDraw, state: MocState) -> None:
-        """Write the playback state at the bottom of the frame, centred, in the accent colour.
-
-        The three labels share the same baseline, placed so that their letters going
-        below it leave the same border as the digits of the times.
-        """
-        font, descent = self._state_font()
-        draw.text(
-            (WIDTH // 2, HEIGHT - ICON_BORDER - descent),
-            STATE_LABELS[state],
-            anchor="ms",
-            fill=ACCENT_COLOR,
-            font=font,
+        draw_state_icon(
+            draw,
+            status.state,
+            (WIDTH - ICON_SIZE) // 2,
+            HEIGHT - ICON_BORDER - ICON_SIZE,
+            ACCENT_COLOR,
         )
 
     def _draw_volume_bar(self, draw: ImageDraw.ImageDraw, volume: int) -> None:
@@ -318,20 +300,6 @@ class Renderer:
             else:
                 self._fonts[size] = ImageFont.truetype(str(self._font_file_path), size)
         return self._fonts[size]
-
-    def _state_font(self, max_height: int = ICON_SIZE) -> tuple[Font, int]:
-        """Return the font for the label of the state, and how far it goes below the baseline.
-
-        :param max_height: the height the labels must fit in
-        """
-        for size in range(STATE_MAX_FONT_SIZE, STATE_MIN_FONT_SIZE - 1, -1):
-            font = self._font(size)
-            boxes = [font.getbbox(label, anchor="ms") for label in STATE_LABELS.values()]
-            ascent = -int(min(box[1] for box in boxes))
-            descent = int(max(box[3] for box in boxes))
-            if ascent + descent <= max_height:
-                break
-        return font, descent
 
     def _wrap(self, text: str, font: Font, max_width: int, max_lines: int) -> list[str]:
         """Split the text in at most the given number of lines, breaking it at the spaces.

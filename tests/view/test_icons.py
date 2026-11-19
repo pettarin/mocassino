@@ -8,7 +8,14 @@ import pytest
 from PIL import Image, ImageDraw
 
 from mocassino.controller.actions import Action
-from mocassino.view.icons import ICON_SIZE, draw_icon, icon_mask
+from mocassino.model.moc import MocState
+from mocassino.view.icons import (
+    ICON_SIZE,
+    draw_icon,
+    draw_state_icon,
+    icon_mask,
+    state_icon_mask,
+)
 
 WITH_ICON = [
     Action.NEXT,
@@ -86,3 +93,45 @@ class TestIconMask:
         assert down.getpixel((12, 7)) and up.getpixel((12, 7))
         assert not down.getpixel((12, 5))
         assert up.getpixel((12, 5))
+
+
+class TestStateIcon:
+    """Tests for the state_icon_mask and draw_state_icon functions"""
+
+    @pytest.mark.parametrize("state", list(MocState))
+    def test_draw(self, state):
+        image = Image.new("RGB", (3 * ICON_SIZE, 3 * ICON_SIZE))
+        draw_state_icon(ImageDraw.Draw(image), state, ICON_SIZE, ICON_SIZE, (1, 2, 3))
+        left, top, right, bottom = image.getbbox()
+        assert ICON_SIZE <= left < right <= 2 * ICON_SIZE
+        assert ICON_SIZE <= top < bottom <= 2 * ICON_SIZE
+        assert {color for _, color in image.getcolors()} == {(0, 0, 0), (1, 2, 3)}
+
+    @pytest.mark.parametrize("state", list(MocState))
+    def test_mask(self, state):
+        mask = state_icon_mask(state)
+        assert mask.mode == "1"
+        assert mask.size == (ICON_SIZE, ICON_SIZE)
+        left, top, right, bottom = mask.getbbox()
+        assert top == ICON_SIZE - bottom
+        assert 2 <= top <= 3
+        assert left == 3
+
+    def test_masks_are_all_different(self):
+        assert len({state_icon_mask(state).tobytes() for state in MocState}) == 3
+
+    def test_pause_has_two_bars(self):
+        mask = state_icon_mask(MocState.PAUSE)
+        row = [bool(mask.getpixel((x, 7))) for x in range(ICON_SIZE)]
+        bars = sum(1 for x in range(1, ICON_SIZE) if row[x] and not row[x - 1]) + row[0]
+        assert bars == 2
+
+    def test_play_points_right(self):
+        mask = state_icon_mask(MocState.PLAY)
+        assert mask.getpixel((3, 2)) and mask.getpixel((3, 13)) and mask.getpixel((13, 7))
+        assert not mask.getpixel((13, 2)) and not mask.getpixel((13, 13))
+
+    def test_stop_is_a_square(self):
+        left, top, right, bottom = state_icon_mask(MocState.STOP).getbbox()
+        assert right - left == bottom - top == 10
+        assert state_icon_mask(MocState.STOP).crop((left, top, right, bottom)).getextrema()[0]

@@ -1,4 +1,5 @@
-"""The icons of the actions, drawn next to the buttons performing them.
+"""The icons: those of the actions, drawn next to the buttons performing them,
+and those of the playback states.
 
 Each icon is a mask of ICON_SIZE x ICON_SIZE pixels, drawn with a few shapes.
 
@@ -12,6 +13,7 @@ from functools import cache
 from PIL import Image, ImageDraw
 
 from mocassino.controller.actions import Action
+from mocassino.model.moc import MocState
 
 ICON_SIZE: int = 16
 
@@ -26,6 +28,17 @@ def _draw_open_menu(draw: ImageDraw.ImageDraw) -> None:
     """Draw three horizontal bars."""
     for top in (3, 7, 11):
         draw.rectangle((1, top, 14, top + 1), fill=1)
+
+
+def _draw_pause(draw: ImageDraw.ImageDraw) -> None:
+    """Draw two bars."""
+    draw.rectangle((3, 2, 6, 13), fill=1)
+    draw.rectangle((9, 2, 12, 13), fill=1)
+
+
+def _draw_play(draw: ImageDraw.ImageDraw) -> None:
+    """Draw a triangle pointing right."""
+    draw.polygon([(3, 2), (13, 7), (13, 8), (3, 13)], fill=1)
 
 
 def _draw_play_pause(draw: ImageDraw.ImageDraw) -> None:
@@ -45,6 +58,11 @@ def _draw_speaker(draw: ImageDraw.ImageDraw) -> None:
     """Draw a speaker, on the left half of the icon."""
     draw.rectangle((0, 5, 3, 10), fill=1)
     draw.polygon([(3, 5), (7, 1), (7, 14), (3, 10)], fill=1)
+
+
+def _draw_stop(draw: ImageDraw.ImageDraw) -> None:
+    """Draw a square."""
+    draw.rectangle((3, 3, 12, 12), fill=1)
 
 
 def _draw_volume_down(draw: ImageDraw.ImageDraw) -> None:
@@ -78,6 +96,17 @@ def draw_icon(
     return True
 
 
+def draw_state_icon(
+    draw: ImageDraw.ImageDraw,
+    state: MocState,
+    left: int,
+    top: int,
+    color: tuple[int, int, int],
+) -> None:
+    """Draw the icon of the given playback state, with its top-left corner at the given position."""
+    draw.bitmap((left, top), state_icon_mask(state), fill=color)
+
+
 @cache
 def icon_mask(action: Action) -> Image.Image | None:
     """Return the icon of the given action, or None if the action has no icon.
@@ -104,4 +133,17 @@ def icon_mask(action: Action) -> Image.Image | None:
     drawer(ImageDraw.Draw(mask))
     if source is not action:
         return mask.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    return mask
+
+
+@cache
+def state_icon_mask(state: MocState) -> Image.Image:
+    """Return the icon of the given playback state: a triangle, two bars, or a square."""
+    drawers: dict[MocState, Callable[[ImageDraw.ImageDraw], None]] = {
+        MocState.PAUSE: _draw_pause,
+        MocState.PLAY: _draw_play,
+        MocState.STOP: _draw_stop,
+    }
+    mask = Image.new("1", (ICON_SIZE, ICON_SIZE), 0)
+    drawers[state](ImageDraw.Draw(mask))
     return mask

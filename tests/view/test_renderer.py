@@ -14,7 +14,7 @@ from mocassino.model.moc import MocState, MocStatus
 from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
 from mocassino.view.display.base import HEIGHT, WIDTH
-from mocassino.view.icons import ICON_SIZE, draw_icon
+from mocassino.view.icons import ICON_SIZE, draw_icon, draw_state_icon
 from mocassino.view.renderer import (
     ACCENT_COLOR,
     BACKGROUND_COLOR,
@@ -424,47 +424,30 @@ class TestRenderer:
         assert times_top + 218 >= 222
         assert times_bottom + 218 == HEIGHT - 2
 
-    @pytest.mark.parametrize(
-        ("state", "label"),
-        [(MocState.PAUSE, "Paused"), (MocState.PLAY, "Playing"), (MocState.STOP, "Stopped")],
-    )
-    def test_playback_state_label(self, renderer, state, label):
+    @pytest.mark.parametrize("state", list(MocState))
+    @pytest.mark.parametrize("show_side_icons", [False, True])
+    def test_playback_state_icon(self, renderer, state, show_side_icons):
+        settings = Settings(show_side_icons=show_side_icons)
         status = MocStatus(file_path="/music/a.flac", state=state)
-        image = renderer.render(AppState(status=status))
-        font, descent = renderer._state_font()
-        expected = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
-        ImageDraw.Draw(expected).text(
-            (WIDTH // 2, HEIGHT - 2 - descent), label, anchor="ms", fill=ACCENT_COLOR, font=font
-        )
-        box = (80, 218, 160, HEIGHT)
-        assert image.crop(box).tobytes() == expected.crop(box).tobytes()
-        left, top, right, bottom = expected.getbbox()
-        assert abs((left + right) / 2 - WIDTH / 2) <= 1
-        assert 222 <= top
-        assert bottom <= HEIGHT - 2
+        image = renderer.render(AppState(settings=settings, status=status))
+        expected = Image.new("RGB", (ICON_SIZE, ICON_SIZE), BACKGROUND_COLOR)
+        draw_state_icon(ImageDraw.Draw(expected), state, 0, 0, ACCENT_COLOR)
+        left, top = (WIDTH - ICON_SIZE) // 2, HEIGHT - 2 - ICON_SIZE
+        box = (left, top, left + ICON_SIZE, top + ICON_SIZE)
+        assert image.crop(box).tobytes() == expected.tobytes()
+        assert ACCENT_COLOR in {color for _, color in image.crop(box).getcolors()}
+        assert not has_content(image, (80, 218, left, HEIGHT))
+        assert not has_content(image, (left + ICON_SIZE, 218, 160, HEIGHT))
 
-    def test_playback_state_label_fits_in_the_height_of_an_icon(self, renderer):
-        font, descent = renderer._state_font()
-        assert font.size == 17
-        boxes = [font.getbbox(label, anchor="ms") for label in ("Paused", "Playing", "Stopped")]
-        assert max(box[3] for box in boxes) == descent
-        assert descent - min(box[1] for box in boxes) <= ICON_SIZE
+    def test_playback_state_icon_is_level_with_the_bottom_button_icons(self, renderer):
+        image = renderer.render(AppState(status=PLAYING))
+        left = (WIDTH - ICON_SIZE) // 2
+        _, top, _, bottom = image.crop((left, 221, left + ICON_SIZE, HEIGHT)).getbbox()
+        _, icon_top, _, icon_bottom = image.crop((0, 221, BAND_WIDTH, HEIGHT)).getbbox()
+        assert (top, bottom) == (icon_top, icon_bottom)
+        assert (top + 221, bottom + 221) == (224, 236)
 
-    def test_playback_state_label_font_sizes(self, renderer):
-        assert renderer._state_font(100)[0].size == 20
-        assert renderer._state_font(13)[0].size == 13
-        assert renderer._state_font(1)[0].size == 8
-
-    def test_playback_state_labels_share_the_baseline(self, renderer):
-        bottoms = {}
-        for state in MocState:
-            status = MocStatus(file_path="/music/a.flac", state=state)
-            image = renderer.render(AppState(status=status))
-            bottoms[state] = image.crop((80, 218, 160, HEIGHT)).getbbox()[3] + 218
-        assert bottoms[MocState.PLAY] == bottoms[MocState.STOP] == HEIGHT - 2
-        assert bottoms[MocState.PAUSE] == HEIGHT - 2 - renderer._state_font()[1]
-
-    def test_playback_has_no_state_icon(self, renderer):
+    def test_playback_state_is_only_shown_by_its_icon(self, renderer):
         frames = []
         for state in (MocState.PAUSE, MocState.PLAY):
             status = MocStatus(
@@ -475,7 +458,13 @@ class TestRenderer:
             )
             frames.append(renderer.render(AppState(status=status)))
         paused, playing = frames
-        for box in ((0, 0, WIDTH, 218), (0, 218, 80, HEIGHT), (160, 218, WIDTH, HEIGHT)):
+        left = (WIDTH - ICON_SIZE) // 2
+        boxes = (
+            (0, 0, WIDTH, 222),
+            (0, 222, left, HEIGHT),
+            (left + ICON_SIZE, 222, WIDTH, HEIGHT),
+        )
+        for box in boxes:
             assert paused.crop(box).tobytes() == playing.crop(box).tobytes()
         assert paused.tobytes() != playing.tobytes()
 
