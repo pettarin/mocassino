@@ -7,6 +7,9 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
+# By how many degrees, clockwise, the display can be rotated
+ORIENTATIONS: tuple[int, ...] = (0, 90, 180, 270)
+
 
 class StartupPlaylist(StrEnum):
     """What the service does about the playlist when it starts.
@@ -36,6 +39,7 @@ class Settings:
     Their initial values come from the configuration; the changes are not saved to it.
     """
 
+    display_orientation: int = 0
     show_side_icons: bool = True
     startup_fixed_volume: int = 50
     startup_playlist: StartupPlaylist = StartupPlaylist.USE_SAVED

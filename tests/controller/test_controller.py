@@ -216,6 +216,8 @@ class TestController:
         assert state.current_menu.selected.label == "Display"
         controller.handle(B)
         assert state.current_menu.title == "Display"
+        assert state.current_menu.selected.label == "Orientation"
+        controller.handle(Y)
         assert state.current_menu.selected.label == "Show side icons"
         assert state.current_menu.selected.checked is True
         controller.handle(B)
@@ -227,7 +229,78 @@ class TestController:
         assert state.current_menu.selected.checked is True
         controller.handle(A)
         controller.handle(B)
+        controller.handle(Y)
         assert state.current_menu.selected.checked is True
+
+    def test_menu_select_display_orientation(self, mocker, state, moc, library, host):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            host,
+            DEFAULT_BUTTON_MAP,
+            seek_step=10,
+            volume_step=5,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, B, B):
+            controller.handle(event)
+        titles = ["Menu", "Settings", "Display", "Orientation"]
+        assert [menu.title for menu in state.menus] == titles
+        menu = state.current_menu
+        assert [item.label for item in menu.items] == ["0", "90", "180", "270"]
+        assert [item.checked for item in menu.items] == [True, False, False, False]
+        save_settings.assert_not_called()
+        controller.handle(Y)
+        controller.handle(Y)
+        controller.handle(B)
+        assert state.settings.display_orientation == 180
+        save_settings.assert_called_once_with(state.settings)
+        assert [menu.title for menu in state.menus] == titles
+        assert [item.checked for item in state.current_menu.items] == [False, False, True, False]
+        assert state.current_menu.selected.label == "180"
+
+    def test_menu_select_display_orientation_without_saving(self, controller, state):
+        for event in (A_LONG, Y, B, B, B, Y, B):
+            controller.handle(event)
+        assert state.settings.display_orientation == 90
+
+    def test_menu_select_display_orientation_without_value(self, controller, state):
+        item = MenuItem(label="Broken", command=MenuCommand.SET_DISPLAY_ORIENTATION)
+        open_single_item_menu(state, item)
+        controller.handle(B)
+        assert state.settings.display_orientation == 0
+        assert state.current_menu.title == "Above"
+
+    @pytest.mark.parametrize(
+        ("orientation", "play_pause", "next_track", "volume_up", "volume_down"),
+        [
+            (0, Button.A, Button.B, Button.X, Button.Y),
+            (90, Button.X, Button.A, Button.Y, Button.B),
+            (180, Button.Y, Button.X, Button.B, Button.A),
+            (270, Button.B, Button.Y, Button.A, Button.X),
+        ],
+    )
+    def test_buttons_follow_the_orientation(
+        self, controller, state, moc, orientation, play_pause, next_track, volume_up, volume_down
+    ):
+        state.settings.display_orientation = orientation
+        controller.handle(ButtonEvent(play_pause))
+        moc.toggle_pause.assert_called_once_with()
+        controller.handle(ButtonEvent(next_track))
+        moc.next.assert_called_once_with()
+        controller.handle(ButtonEvent(volume_up))
+        moc.set_volume.assert_called_with(55)
+        controller.handle(ButtonEvent(volume_down))
+        controller.handle(ButtonEvent(volume_down))
+        moc.set_volume.assert_called_with(45)
+        controller.handle(ButtonEvent(play_pause, Press.LONG))
+        assert state.mode == Mode.MENU
+        controller.handle(ButtonEvent(volume_down))
+        assert state.current_menu.selected.label == "Settings"
+        controller.handle(ButtonEvent(play_pause))
+        assert state.mode == Mode.PLAYBACK
 
     def test_menu_select_startup_fixed_volume(self, mocker, state, moc, library, host):
         save_settings = mocker.Mock()
@@ -392,7 +465,7 @@ class TestController:
             volume_step=5,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, B):
+        for event in (A_LONG, Y, B, B, Y):
             controller.handle(event)
         save_settings.assert_not_called()
         controller.handle(B)

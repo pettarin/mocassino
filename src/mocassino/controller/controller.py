@@ -14,6 +14,7 @@ from mocassino.model.library import Library
 from mocassino.model.menu import (
     MenuCommand,
     build_display_menu,
+    build_display_orientation_menu,
     build_library_menu,
     build_root_menu,
     build_startup_fixed_volume_menu,
@@ -101,6 +102,12 @@ class Controller:
             self._state.close_menus()
             self._moc.play(item.path)
             self._state.played_path = str(item.path)
+        elif item.command is MenuCommand.SET_DISPLAY_ORIENTATION and item.value is not None:
+            settings = self._state.settings
+            settings.display_orientation = int(item.value)
+            self._state.replace_menu(build_display_orientation_menu(settings))
+            if self._save_settings is not None:
+                self._save_settings(settings)
         elif item.command is MenuCommand.SET_STARTUP_FIXED_VOLUME and item.value is not None:
             settings = self._state.settings
             settings.startup_fixed_volume = int(item.value)
@@ -184,9 +191,12 @@ class Controller:
     def handle(self, event: ButtonEvent) -> None:
         """Perform the action associated to the given event in the current mode, if any.
 
+        If what is shown on the display is rotated, the buttons are taken for those
+        at the same corners of what is shown.
         The errors of MOC and of the host are logged, not raised;
         if the MOC server is not running, it is started.
         """
+        event = event.rotated(self._state.settings.display_orientation)
         action = self._button_map.get((self._state.mode, event))
         if action is None:
             return

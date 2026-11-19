@@ -261,7 +261,10 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
     An error is logged, not raised: the change still applies until the service stops.
     """
     updates: dict[str, dict[str, object]] = {
-        "display": {"show_side_icons": settings.show_side_icons},
+        "display": {
+            "orientation": settings.display_orientation,
+            "show_side_icons": settings.show_side_icons,
+        },
         "startup": {
             "fixed_volume": settings.startup_fixed_volume,
             "playlist": settings.startup_playlist.value,
@@ -310,6 +313,7 @@ def build_app(
         volume = configuration.startup.fixed_volume
     state = AppState(
         settings=Settings(
+            display_orientation=configuration.display.orientation,
             show_side_icons=configuration.display.show_side_icons,
             startup_fixed_volume=configuration.startup.fixed_volume,
             startup_playlist=StartupPlaylist(configuration.startup.playlist),

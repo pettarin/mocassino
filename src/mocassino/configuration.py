@@ -16,7 +16,7 @@ from typing import Any
 import yaml
 
 from mocassino.controller.actions import resolve_button_map
-from mocassino.model.settings import StartupPlaylist, StartupVolume
+from mocassino.model.settings import ORIENTATIONS, StartupPlaylist, StartupVolume
 
 # "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
@@ -47,6 +47,7 @@ class DisplayConfiguration:
     """The settings of the display."""
 
     font_file_path: Path | None = None
+    orientation: int = 0
     show_side_icons: bool = True
     target: str = "pirateaudio"
     tick: float = 0.5
@@ -137,6 +138,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         },
         "display": {
             "font_file_path": _to_path,
+            "orientation": _to_int,
             "show_side_icons": _to_bool,
             "target": _to_str,
             "tick": _to_float,
@@ -199,6 +201,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "buttons.repeat_hold_time": (
             configuration.buttons.repeat_hold_time,
             configuration.buttons.repeat_hold_time > 0,
+        ),
+        "display.orientation": (
+            configuration.display.orientation,
+            configuration.display.orientation in ORIENTATIONS,
         ),
         "display.target": (
             configuration.display.target,

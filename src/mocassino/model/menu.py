@@ -17,7 +17,7 @@ from pathlib import Path
 
 from mocassino.model.host import Host
 from mocassino.model.library import Library
-from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
+from mocassino.model.settings import ORIENTATIONS, Settings, StartupPlaylist, StartupVolume
 
 # The fixed volumes that can be chosen from the menu
 FIXED_VOLUME_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
@@ -48,6 +48,7 @@ class MenuCommand(StrEnum):
     BACK = "back"
     CLOSE = "close"
     PLAY = "play"
+    SET_DISPLAY_ORIENTATION = "set_display_orientation"
     SET_STARTUP_FIXED_VOLUME = "set_startup_fixed_volume"
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SET_STARTUP_VOLUME = "set_startup_volume"
@@ -122,11 +123,37 @@ def build_display_menu(settings: Settings) -> Menu:
         title="Display",
         items=(
             MenuItem(
+                label="Orientation",
+                submenu=partial(build_display_orientation_menu, settings),
+            ),
+            MenuItem(
                 label="Show side icons",
                 checked=settings.show_side_icons,
                 command=MenuCommand.TOGGLE_SIDE_ICONS,
             ),
         ),
+    )
+
+
+def build_display_orientation_menu(settings: Settings) -> Menu:
+    """Build the menu choosing by how many degrees what is shown on the display is rotated.
+
+    The current choice is the checked one, and it is the selected item too.
+    It has to be built again when the choice changes.
+    """
+    current = settings.display_orientation
+    return Menu(
+        title="Orientation",
+        items=tuple(
+            MenuItem(
+                label=str(orientation),
+                checked=orientation == current,
+                command=MenuCommand.SET_DISPLAY_ORIENTATION,
+                value=str(orientation),
+            )
+            for orientation in ORIENTATIONS
+        ),
+        selected_index=ORIENTATIONS.index(current) if current in ORIENTATIONS else 0,
     )
 
 

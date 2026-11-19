@@ -47,7 +47,11 @@ class TestConfiguration:
             long_press_time=0.6, origin="pirateaudio", repeat_hold_time=0.3
         )
         assert configuration.display == DisplayConfiguration(
-            font_file_path=None, show_side_icons=True, target="pirateaudio", tick=0.5
+            font_file_path=None,
+            orientation=0,
+            show_side_icons=True,
+            target="pirateaudio",
+            tick=0.5,
         )
         assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
         assert configuration.playback == PlaybackConfiguration(seek_step=10, volume_step=5)
@@ -70,6 +74,7 @@ class TestConfiguration:
             },
             "display": {
                 "font_file_path": None,
+                "orientation": 0,
                 "show_side_icons": True,
                 "target": "pirateaudio",
                 "tick": 0.5,
@@ -189,6 +194,11 @@ class TestLoadConfiguration:
             ("buttons", "repeat_hold_time", 0),
             ("buttons", "repeat_hold_time", "fast"),
             ("display", "font_file_path", 5),
+            ("display", "orientation", 45),
+            ("display", "orientation", 360),
+            ("display", "orientation", -90),
+            ("display", "orientation", "90"),
+            ("display", "orientation", True),
             ("display", "show_side_icons", "yes"),
             ("display", "show_side_icons", 1),
             ("display", "target", "hdmi"),
@@ -247,6 +257,11 @@ class TestLoadConfiguration:
         path = write_yaml(tmp_path, "startup:\n  use_saved_volume: true\n")
         with pytest.raises(ConfigurationError, match="startup.use_saved_volume"):
             load_configuration(path)
+
+    @pytest.mark.parametrize("orientation", [0, 90, 180, 270])
+    def test_display_orientations(self, tmp_path, orientation):
+        path = write_yaml(tmp_path, f"display:\n  orientation: {orientation}\n")
+        assert load_configuration(path).display.orientation == orientation
 
     def test_invalid_yaml(self, tmp_path):
         with pytest.raises(ConfigurationError, match="is not valid YAML"):

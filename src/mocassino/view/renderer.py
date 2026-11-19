@@ -40,6 +40,13 @@ MENU_ROW_HEIGHT: int = 34
 MENU_TITLE_HEIGHT: int = 36
 MENU_VISIBLE_ROWS: int = 6
 PROGRESS_BAR_HEIGHT: int = 8
+# How a frame is rotated clockwise by each orientation other than 0:
+# the names of the transpositions of Pillow count the degrees counter-clockwise
+ROTATIONS: dict[int, Image.Transpose] = {
+    90: Image.Transpose.ROTATE_270,
+    180: Image.Transpose.ROTATE_180,
+    270: Image.Transpose.ROTATE_90,
+}
 SCROLLBAR_WIDTH: int = 4
 STATE_LABELS: dict[MocState, str] = {
     MocState.PAUSE: "Paused",
@@ -340,7 +347,10 @@ class Renderer:
         return [self._fit(line, font, max_width) for line in lines]
 
     def render(self, state: AppState) -> Image.Image:
-        """Draw the given state: the current menu, if any, or the playback."""
+        """Draw the given state: the current menu, if any, or the playback.
+
+        The frame is then rotated clockwise by the orientation of the display in the settings.
+        """
         image = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
         draw = ImageDraw.Draw(image)
         menu = state.current_menu
@@ -348,7 +358,8 @@ class Renderer:
             self._draw_playback(draw, state)
         else:
             self._draw_menu(draw, menu)
-        return image
+        rotation = ROTATIONS.get(state.settings.display_orientation)
+        return image if rotation is None else image.transpose(rotation)
 
 
 def _format_seconds(seconds: int) -> str:

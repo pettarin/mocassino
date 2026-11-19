@@ -128,6 +128,29 @@ class TestRenderer:
         with pytest.raises(OSError, match="cannot open resource"):
             Renderer(font_file_path=tmp_path / "missing.ttf")
 
+    @pytest.mark.parametrize(
+        ("orientation", "volume_bar"),
+        [(90, (139, 229)), (180, (10, 139)), (270, (100, 10))],
+    )
+    @pytest.mark.parametrize("in_menu", [False, True])
+    def test_frame_is_rotated_clockwise(self, renderer, orientation, volume_bar, in_menu):
+        menus = [letters_menu(3)] if in_menu else []
+        upright = renderer.render(AppState(menus=list(menus), status=PLAYING))
+        settings = Settings(display_orientation=orientation)
+        rotated = renderer.render(AppState(menus=list(menus), settings=settings, status=PLAYING))
+        assert rotated.size == (WIDTH, HEIGHT)
+        assert rotated.tobytes() != upright.tobytes()
+        assert rotated.rotate(orientation).tobytes() == upright.tobytes()
+        if not in_menu:
+            # The volume bar, on the right when upright, is where a clockwise turn takes it
+            assert upright.getpixel((229, 100)) in (ACCENT_COLOR, TRACK_COLOR)
+            assert rotated.getpixel(volume_bar) == upright.getpixel((229, 100))
+
+    def test_frame_is_not_rotated_by_default(self, renderer):
+        state = AppState(status=PLAYING)
+        assert state.settings.display_orientation == 0
+        assert renderer.render(state).getpixel((229, 100)) != BACKGROUND_COLOR
+
     def test_frame(self, renderer):
         image = renderer.render(AppState())
         assert image.mode == "RGB"

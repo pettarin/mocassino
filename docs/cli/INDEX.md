@@ -210,6 +210,7 @@ buttons:
   repeat_hold_time: 0.3
 display:
   font_file_path: null
+  orientation: 0
   show_side_icons: true
   target: pirateaudio
   tick: 0.5
@@ -253,6 +254,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `buttons.origin` | `pirateaudio` | Where the button events come from: `pirateaudio` (or its synonym `gpio`), `none`, or `simulator` |
 | `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
+| `display.orientation` | `0` | By how many degrees, clockwise, what is shown on the display is rotated: `0`, `90`, `180`, or `270`; it can be changed from the `Settings` menu |
 | `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode; it can be changed from the `Settings` menu |
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
@@ -441,6 +443,31 @@ the two bands are then used by the playback information.
 The icons can also be shown or hidden while the service runs, from the `Settings` menu.
 
 
+### Orientation
+
+With `display.orientation`, what is shown on the display is rotated clockwise by
+90, 180, or 270 degrees, for a device that is mounted or held turned
+the other way by the same angle.
+
+The buttons follow the rotation: for who looks at the display the right way up,
+the button at each corner keeps doing the same thing.
+For example, with `180` the device is used upside down, and its `Y` button,
+which is then at the top-left, does what `A` does at `0`.
+In the button map, the names of the buttons are then those of the corners
+(`A` top-left, `B` bottom-left, `X` top-right, `Y` bottom-right), not those printed on the hat.
+
+| Orientation | `A` does what is mapped to | `B` | `X` | `Y` |
+|---|---|---|---|---|
+| `0` | `A` | `B` | `X` | `Y` |
+| `90` | `B` | `Y` | `A` | `X` |
+| `180` | `Y` | `X` | `B` | `A` |
+| `270` | `X` | `A` | `Y` | `B` |
+
+With `90` and `270` the buttons of the hat end up above and below the display,
+not at its sides: the icons of the buttons are still drawn in the bands at the sides,
+near the corner of each button.
+
+
 ## Menus
 
 The top level menu has the following items:
@@ -456,6 +483,9 @@ The top level menu has the following items:
   The new value is also saved in the configuration file,
   so that it is kept when the service is started again.
   - `Display`: the settings of the display.
+    - `Orientation` (`display.orientation`): a menu with the four choices
+      `0`, `90`, `180`, and `270`; the current one has the solid square.
+      The change is immediate (see below).
     - `Show side icons` (`display.show_side_icons`):
       whether the icons of the buttons are shown in playback mode.
   - `Startup`: the settings of what the service does when it starts.

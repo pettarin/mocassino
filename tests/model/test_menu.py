@@ -13,6 +13,7 @@ from mocassino.model.menu import (
     MenuCommand,
     MenuItem,
     build_display_menu,
+    build_display_orientation_menu,
     build_host_menu,
     build_library_menu,
     build_root_menu,
@@ -50,16 +51,42 @@ class TestBuildDisplayMenu:
     @pytest.mark.parametrize("show", [True, False])
     def test_side_icons(self, show):
         menu = build_display_menu(Settings(show_side_icons=show))
-        assert menu == Menu(
-            title="Display",
-            items=(
-                MenuItem(
-                    label="Show side icons",
-                    checked=show,
-                    command=MenuCommand.TOGGLE_SIDE_ICONS,
-                ),
-            ),
+        assert menu.title == "Display"
+        assert [item.label for item in menu.items] == ["Orientation", "Show side icons"]
+        assert menu.items[1] == MenuItem(
+            label="Show side icons",
+            checked=show,
+            command=MenuCommand.TOGGLE_SIDE_ICONS,
         )
+
+    def test_orientation_submenu(self):
+        settings = Settings()
+        item = build_display_menu(settings).items[0]
+        assert item.checked is None
+        assert item.command is None
+        assert item.submenu().title == "Orientation"
+        assert item.submenu().selected.label == "0"
+        settings.display_orientation = 270
+        assert item.submenu().selected.label == "270"
+
+
+class TestBuildDisplayOrientationMenu:
+    """Tests for the build_display_orientation_menu function"""
+
+    @pytest.mark.parametrize(("orientation", "index"), [(0, 0), (90, 1), (180, 2), (270, 3)])
+    def test_choices(self, orientation, index):
+        menu = build_display_orientation_menu(Settings(display_orientation=orientation))
+        assert menu.title == "Orientation"
+        assert [item.label for item in menu.items] == ["0", "90", "180", "270"]
+        assert [item.value for item in menu.items] == ["0", "90", "180", "270"]
+        assert [item.checked for item in menu.items] == [position == index for position in range(4)]
+        assert {item.command for item in menu.items} == {MenuCommand.SET_DISPLAY_ORIENTATION}
+        assert menu.selected_index == index
+
+    def test_orientation_not_among_the_choices(self):
+        menu = build_display_orientation_menu(Settings(display_orientation=45))
+        assert menu.selected_index == 0
+        assert [item for item in menu.items if item.checked] == []
 
 
 class TestBuildHostMenu:
@@ -152,9 +179,9 @@ class TestBuildRootMenu:
     def test_settings_menu_shows_the_current_values(self, library, host):
         settings = Settings()
         item = build_root_menu(library, host, settings).items[1]
-        assert item.submenu().items[0].submenu().items[0].checked is True
+        assert item.submenu().items[0].submenu().items[1].checked is True
         settings.show_side_icons = False
-        assert item.submenu().items[0].submenu().items[0].checked is False
+        assert item.submenu().items[0].submenu().items[1].checked is False
 
     def test_submenus_are_built_when_opened(self, library, host):
         build_root_menu(library, host, Settings())
@@ -176,11 +203,11 @@ class TestBuildSettingsMenu:
     def test_submenus_show_the_current_values(self):
         settings = Settings()
         display, startup = build_settings_menu(settings).items
-        assert display.submenu().items[0].checked is True
+        assert display.submenu().items[1].checked is True
         assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
         settings.startup_volume = StartupVolume.USE_FIXED
-        assert display.submenu().items[0].checked is False
+        assert display.submenu().items[1].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use fixed"
 
     def test_other_items_are_not_checkable(self, library, host):
