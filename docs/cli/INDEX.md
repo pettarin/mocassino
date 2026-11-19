@@ -119,6 +119,13 @@ The buttons and the display can be replaced independently, with the global optio
 | `--display-target` | `simulator` | The simulator window |
 | `--display-target` | `none` | No display: no draw action is performed |
 
+The buttons of the Pirate Audio hat are on the GPIO pins 5 (`A`), 6 (`B`), 16 (`X`), and 24 (`Y`),
+except that the boards made before 23 January 2020 have `Y` on pin 20.
+As the board cannot tell which, `Y` is read on both pins: on the later boards,
+pin 20 is used by the audio and cannot be read, so only pin 24 is;
+on the earlier ones, pin 24 is not connected, so it never reports a press.
+If `Y` cannot be read on either pin, the service stops with an error.
+
 The `-s / --simulator` option selects the simulator for both.
 The simulator is a window showing the display, enlarged, and the four buttons:
 
