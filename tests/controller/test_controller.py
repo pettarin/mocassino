@@ -119,7 +119,7 @@ class TestController:
         menu = state.current_menu
         assert menu.selected.label == "Library"
         controller.handle(Y)
-        assert menu.selected.label == "Host"
+        assert menu.selected.label == "Settings"
         controller.handle(X)
         assert menu.selected.label == "Library"
         controller.handle(X)
@@ -174,6 +174,7 @@ class TestController:
     def test_menu_select_shutdown(self, controller, state, host):
         controller.handle(A_LONG)
         controller.handle(Y)
+        controller.handle(Y)
         controller.handle(B)
         assert state.current_menu.title == "Host"
         controller.handle(X)
@@ -184,6 +185,23 @@ class TestController:
         controller.handle(B)
         host.shutdown.assert_called_once_with()
         assert state.mode == Mode.PLAYBACK
+
+    def test_menu_select_toggle_side_icons(self, controller, state):
+        controller.handle(A_LONG)
+        controller.handle(Y)
+        controller.handle(B)
+        assert state.current_menu.title == "Settings"
+        assert state.current_menu.selected.label == "Side icons: on"
+        controller.handle(B)
+        assert state.settings.show_side_icons is False
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings"]
+        assert state.current_menu.selected.label == "Side icons: off"
+        controller.handle(B)
+        assert state.settings.show_side_icons is True
+        assert state.current_menu.selected.label == "Side icons: on"
+        controller.handle(A)
+        controller.handle(B)
+        assert state.current_menu.selected.label == "Side icons: on"
 
     def test_moc_error_is_logged(self, controller, moc, caplog):
         moc.next.side_effect = MocError("broken")

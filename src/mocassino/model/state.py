@@ -11,6 +11,7 @@ from enum import StrEnum
 
 from mocassino.model.menu import Menu
 from mocassino.model.moc import MocStatus
+from mocassino.model.settings import Settings
 
 
 @dataclass
@@ -22,6 +23,7 @@ class AppState:
     """
 
     menus: list[Menu] = field(default_factory=list)
+    settings: Settings = field(default_factory=Settings)
     status: MocStatus = field(default_factory=MocStatus)
     volume: int = 50
 
@@ -52,6 +54,18 @@ class AppState:
         """Go back one level, to the previous menu or to playback mode."""
         if self.menus:
             self.menus.pop()
+
+    def replace_menu(self, menu: Menu) -> None:
+        """Show the given menu in place of the current one, keeping the selection in place.
+
+        If no menu is shown, the given one is shown as the first.
+        """
+        if self.menus:
+            last_index = max(0, len(menu.items) - 1)
+            menu.selected_index = min(self.menus[-1].selected_index, last_index)
+            self.menus[-1] = menu
+        else:
+            self.menus.append(menu)
 
 
 class Mode(StrEnum):

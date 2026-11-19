@@ -22,6 +22,7 @@ from mocassino.model.moc import (
     MocServerNotRunningError,
     SubprocessMocClient,
 )
+from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
 from mocassino.simulator.tk import TkSimulator
 from mocassino.view.display.base import Display
@@ -192,7 +193,10 @@ def build_app(configuration: Configuration) -> App:
     host = Host(shutdown_command=configuration.system.shutdown_command)
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
-    state = AppState(volume=configuration.playback.initial_volume)
+    state = AppState(
+        settings=Settings(show_side_icons=configuration.display.show_side_icons),
+        volume=configuration.playback.initial_volume,
+    )
     controller = Controller(
         state,
         moc,
@@ -209,7 +213,6 @@ def build_app(configuration: Configuration) -> App:
         renderer=Renderer(
             font_file_path=configuration.display.font_file_path,
             button_map=configuration.buttons.button_map,
-            show_side_icons=configuration.display.show_side_icons,
         ),
         display=_build_display(configuration, simulator),
         button_source=_build_button_source(configuration, simulator),

@@ -17,6 +17,7 @@ from pathlib import Path
 
 from mocassino.model.host import Host
 from mocassino.model.library import Library
+from mocassino.model.settings import Settings
 
 
 @dataclass
@@ -45,6 +46,7 @@ class MenuCommand(StrEnum):
     CLOSE = "close"
     PLAY = "play"
     SHUTDOWN = "shutdown"
+    TOGGLE_SIDE_ICONS = "toggle_side_icons"
 
 
 @dataclass(frozen=True)
@@ -109,13 +111,32 @@ def build_library_menu(library: Library, directory_path: Path | None = None) -> 
     return Menu(title="Library" if is_root else directory_path.name, items=tuple(items))
 
 
-def build_root_menu(library: Library, host: Host) -> Menu:
+def build_root_menu(library: Library, host: Host, settings: Settings) -> Menu:
     """Build the top level menu."""
     return Menu(
         title="Menu",
         items=(
             MenuItem(label="Library", submenu=partial(build_library_menu, library)),
+            MenuItem(label="Settings", submenu=partial(build_settings_menu, settings)),
             MenuItem(label="Host", submenu=partial(build_host_menu, host)),
             MenuItem(label="Back to playback", command=MenuCommand.CLOSE),
+        ),
+    )
+
+
+def build_settings_menu(settings: Settings) -> Menu:
+    """Build the menu showing the settings, and changing them.
+
+    The labels show the values at the time the menu is built:
+    the menu has to be built again when a setting changes.
+    """
+    side_icons = "on" if settings.show_side_icons else "off"
+    return Menu(
+        title="Settings",
+        items=(
+            MenuItem(
+                label=f"Side icons: {side_icons}",
+                command=MenuCommand.TOGGLE_SIDE_ICONS,
+            ),
         ),
     )

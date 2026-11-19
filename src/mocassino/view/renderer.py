@@ -56,24 +56,18 @@ class Renderer:
         self,
         font_file_path: Path | None = None,
         button_map: Mapping[str, Mapping[str, str]] | None = None,
-        show_side_icons: bool = True,
     ) -> None:
         """Initialize the renderer.
 
         :param font_file_path: the TrueType font; if None, the font built in Pillow
         :param button_map: the button map, in plain form, whose playback actions are shown
                            as icons next to the buttons; if None, the default button map
-        :param show_side_icons: whether the icons are shown; if not, the playback content
-                                also takes the place of the bands reserved to them
         :raises OSError: if the font cannot be loaded
         :raises ValueError: if the button map is not valid
         """
         if button_map is None:
             button_map = resolve_button_map({})
         self._button_map = parse_button_map(button_map)
-        self._content_left = CONTENT_LEFT if show_side_icons else MARGIN
-        self._content_right = CONTENT_RIGHT if show_side_icons else WIDTH - MARGIN
-        self._show_side_icons = show_side_icons
         self._font_file_path = font_file_path
         self._fonts: dict[int, Font] = {}
         self._font(16)
@@ -154,11 +148,12 @@ class Renderer:
         """Draw the playback: the state, the track, its progress, the volume, and the icons."""
         status = state.status
         small_font = self._font(16)
-        left, right = self._content_left, self._content_right
-        width = right - left
-        if self._show_side_icons:
+        left, right = MARGIN, WIDTH - MARGIN
+        if state.settings.show_side_icons:
+            left, right = CONTENT_LEFT, CONTENT_RIGHT
             self._draw_button_icons(draw)
-        self._draw_state_icon(draw, status.state)
+        width = right - left
+        self._draw_state_icon(draw, status.state, left)
         draw.text(
             (left + 26, 18),
             STATE_LABELS[status.state],
@@ -222,9 +217,9 @@ class Renderer:
         )
         self._draw_bar(draw, (left + 70, 216, right - 1, 223), state.volume / 100)
 
-    def _draw_state_icon(self, draw: ImageDraw.ImageDraw, state: MocState) -> None:
+    def _draw_state_icon(self, draw: ImageDraw.ImageDraw, state: MocState, left: int) -> None:
         """Draw the icon of the playback state: a triangle, two bars, or a square."""
-        box = (self._content_left, 10, self._content_left + 16, 26)
+        box = (left, 10, left + 16, 26)
         left, top, right, bottom = box
         if state is MocState.PLAY:
             draw.polygon(

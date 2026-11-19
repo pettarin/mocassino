@@ -15,7 +15,9 @@ from mocassino.model.menu import (
     build_host_menu,
     build_library_menu,
     build_root_menu,
+    build_settings_menu,
 )
+from mocassino.model.settings import Settings
 
 
 @pytest.fixture
@@ -115,16 +117,42 @@ class TestBuildRootMenu:
     """Tests for the build_root_menu function"""
 
     def test_items(self, library, host):
-        menu = build_root_menu(library, host)
+        menu = build_root_menu(library, host, Settings())
         assert menu.title == "Menu"
-        assert [item.label for item in menu.items] == ["Library", "Host", "Back to playback"]
+        labels = [item.label for item in menu.items]
+        assert labels == ["Library", "Settings", "Host", "Back to playback"]
         assert menu.items[0].submenu().title == "Library"
-        assert menu.items[1].submenu().title == "Host"
-        assert menu.items[2] == MenuItem(label="Back to playback", command=MenuCommand.CLOSE)
+        assert menu.items[1].submenu().title == "Settings"
+        assert menu.items[2].submenu().title == "Host"
+        assert menu.items[3] == MenuItem(label="Back to playback", command=MenuCommand.CLOSE)
+
+    def test_settings_menu_shows_the_current_values(self, library, host):
+        settings = Settings()
+        item = build_root_menu(library, host, settings).items[1]
+        assert item.submenu().items[0].label == "Side icons: on"
+        settings.show_side_icons = False
+        assert item.submenu().items[0].label == "Side icons: off"
 
     def test_submenus_are_built_when_opened(self, library, host):
-        build_root_menu(library, host)
+        build_root_menu(library, host, Settings())
         host.hostname.assert_not_called()
+
+
+class TestBuildSettingsMenu:
+    """Tests for the build_settings_menu function"""
+
+    @pytest.mark.parametrize(("show", "label"), [(True, "on"), (False, "off")])
+    def test_side_icons(self, show, label):
+        menu = build_settings_menu(Settings(show_side_icons=show))
+        assert menu == Menu(
+            title="Settings",
+            items=(
+                MenuItem(
+                    label=f"Side icons: {label}",
+                    command=MenuCommand.TOGGLE_SIDE_ICONS,
+                ),
+            ),
+        )
 
 
 class TestMenu:

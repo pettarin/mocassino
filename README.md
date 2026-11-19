@@ -28,6 +28,7 @@ which it controls by running `mocp` commands.
   and play a directory or a single FLAC, MP3, OGG, or WAV file
 - Menu showing the name and the IP address of the host,
   and shutting it down
+- Menu to change the settings of the running service
 - Settings stored in a YAML configuration file,
   including the action of each button
 - Simulator window replacing the buttons and the display,

@@ -214,7 +214,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `buttons.origin` | `gpio` | Where the button events come from: `gpio`, `none`, or `simulator` |
 | `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
-| `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode |
+| `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode, when the service starts |
 | `display.target` | `st7789` | Where the screen is drawn: `none`, `simulator`, or `st7789` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
@@ -323,6 +323,7 @@ or with an action that has no icon (the `menu_*` actions), shows no icon.
 
 Set `display.show_side_icons` to `false` to hide the icons:
 the two bands are then used by the playback information.
+The icons can also be shown or hidden while the service runs, from the `Settings` menu.
 
 
 ## Menus
@@ -334,6 +335,11 @@ The top level menu has the following items:
   and its audio files (FLAC, MP3, OGG, and WAV).
   Selecting `Play this folder` or an audio file
   replaces the MOC playlist with it, and plays it.
+- `Settings`: change the settings of the running service.
+  For now, it has one item, `Side icons: on` or `Side icons: off`:
+  selecting it shows or hides the icons of the buttons in playback mode.
+  The change lasts until the service is stopped:
+  when it starts, the service takes the value from `display.show_side_icons`.
 - `Host`: show the name and the IP address of the host,
   and `Shut down`, which asks for confirmation
   before running `system.shutdown_command`.

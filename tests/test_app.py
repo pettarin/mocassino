@@ -199,16 +199,16 @@ class TestBuildApp:
         button_map = build_app(configuration)._renderer._button_map
         assert button_map[(Mode.PLAYBACK, ButtonEvent(Button.A))] == Action.NEXT
 
-    def test_renderer_side_icons(self):
+    def test_side_icons_setting(self):
         shown = build_app(self.configuration("none", "none"))
-        assert shown._renderer._show_side_icons is True
+        assert shown._state.settings.show_side_icons is True
         configuration = load_configuration(
             overrides={
                 "buttons": {"origin": "none"},
                 "display": {"show_side_icons": False, "target": "none"},
             }
         )
-        assert build_app(configuration)._renderer._show_side_icons is False
+        assert build_app(configuration)._state.settings.show_side_icons is False
 
     def test_simulator(self):
         app = build_app(self.configuration("simulator", "simulator"))

@@ -11,6 +11,7 @@ from mocassino.controller.actions import Action, resolve_button_map
 from mocassino.controller.events import Button
 from mocassino.model.menu import Menu, MenuCommand, MenuItem
 from mocassino.model.moc import MocState, MocStatus
+from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
 from mocassino.view.display.base import HEIGHT, WIDTH
 from mocassino.view.icons import ICON_SIZE, draw_icon
@@ -231,7 +232,7 @@ class TestRenderer:
         assert renderer.render(state).tobytes() == without_icons.render(state).tobytes()
         assert renderer.render(AppState()).tobytes() != without_icons.render(AppState()).tobytes()
 
-    def test_playback_button_icons_hidden(self):
+    def test_playback_button_icons_hidden(self, renderer):
         text = "A very long text that would never fit in the width of the frame"
         status = MocStatus(
             album=text,
@@ -242,7 +243,8 @@ class TestRenderer:
             title=text,
             total_seconds=205,
         )
-        image = Renderer(show_side_icons=False).render(AppState(status=status, volume=100))
+        settings = Settings(show_side_icons=False)
+        image = renderer.render(AppState(settings=settings, status=status, volume=100))
         defaults = {
             Button.A: (Action.PLAY_PAUSE, Action.OPEN_MENU),
             Button.B: (Action.NEXT, Action.PREVIOUS),

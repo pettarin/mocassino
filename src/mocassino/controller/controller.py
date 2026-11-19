@@ -11,7 +11,7 @@ from mocassino.controller.actions import Action, parse_button_map
 from mocassino.controller.events import ButtonEvent
 from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
-from mocassino.model.menu import MenuCommand, build_root_menu
+from mocassino.model.menu import MenuCommand, build_root_menu, build_settings_menu
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
 from mocassino.model.state import AppState
 
@@ -90,6 +90,10 @@ class Controller:
         elif item.command is MenuCommand.SHUTDOWN:
             self._state.close_menus()
             self._host.shutdown()
+        elif item.command is MenuCommand.TOGGLE_SIDE_ICONS:
+            settings = self._state.settings
+            settings.show_side_icons = not settings.show_side_icons
+            self._state.replace_menu(build_settings_menu(settings))
 
     def _menu_up(self) -> None:
         """Select the previous item of the current menu."""
@@ -108,7 +112,7 @@ class Controller:
     def _open_menu(self) -> None:
         """Show the top level menu."""
         self._state.close_menus()
-        self._state.open_menu(build_root_menu(self._library, self._host))
+        self._state.open_menu(build_root_menu(self._library, self._host, self._state.settings))
 
     def _play_pause(self) -> None:
         """Toggle between playing and paused; if stopped, play the playlist."""
