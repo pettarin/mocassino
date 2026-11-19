@@ -104,6 +104,7 @@ class SystemConfiguration:
 
     moc_state_on_exit: str = "do_nothing"
     mocp_file_path: str = "mocp"
+    reboot_command: tuple[str, ...] = ("sudo", "reboot")
     shutdown_command: tuple[str, ...] = ("sudo", "shutdown", "-h", "now")
 
 
@@ -130,6 +131,7 @@ class Configuration:
             None if font_file_path is None else str(font_file_path)
         )
         values["library"]["directory_path"] = str(self.library.directory_path)
+        values["system"]["reboot_command"] = list(self.system.reboot_command)
         values["system"]["shutdown_command"] = list(self.system.shutdown_command)
         return values
 
@@ -172,6 +174,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "system": {
             "moc_state_on_exit": _to_str,
             "mocp_file_path": _to_str,
+            "reboot_command": _to_command,
             "shutdown_command": _to_command,
         },
     }

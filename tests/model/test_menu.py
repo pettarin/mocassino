@@ -452,6 +452,7 @@ class TestBuildSystemMenu:
             "IP: 192.168.1.20",
             "MOC state on exit",
             "Reset settings",
+            "Reboot",
             "Shut down",
         ]
         assert menu.items[0] == MenuItem(label="Name: pirate")
@@ -482,8 +483,20 @@ class TestBuildSystemMenu:
             ),
         )
 
-    def test_shutdown_is_confirmed(self, system):
+    def test_reboot_is_confirmed(self, system):
         item = build_system_menu(system, Settings()).items[4]
+        assert item.command is None
+        assert item.submenu() == Menu(
+            title="Reboot?",
+            items=(
+                MenuItem(label="Cancel", command=MenuCommand.BACK),
+                MenuItem(label="Reboot now", command=MenuCommand.REBOOT),
+            ),
+        )
+        system.reboot.assert_not_called()
+
+    def test_shutdown_is_confirmed(self, system):
+        item = build_system_menu(system, Settings()).items[5]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Shut down?",

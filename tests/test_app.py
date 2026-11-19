@@ -5,6 +5,7 @@
 """
 
 import logging
+import subprocess
 from dataclasses import replace
 
 import pytest
@@ -52,12 +53,25 @@ SHUT_DOWN = (
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
 )
-# From playback mode: open the menu, go up to System, open it, go up twice to Reset settings,
+# From playback mode: open the menu, go up to System, open it, go up twice to Reboot,
+# open it, go down to Reboot now, and select it
+REBOOT = (
+    ButtonEvent(Button.A, Press.LONG),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.Y),
+    ButtonEvent(Button.B),
+)
+# From playback mode: open the menu, go up to System, open it, go up thrice to Reset settings,
 # open it, go down to Reset now, and select it
 RESET_SETTINGS = (
     ButtonEvent(Button.A, Press.LONG),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
+    ButtonEvent(Button.X),
     ButtonEvent(Button.X),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
@@ -1210,9 +1224,38 @@ class TestBuildApp:
         system_class = mocker.patch("mocassino.app.System", autospec=True)
         build_app(self.configuration(origin, target))
         system_class.assert_called_once_with(
-            shutdown_command=("sudo", "shutdown", "-h", "now"),
             dry_run=dry_run,
+            reboot_command=("sudo", "reboot"),
+            shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
+
+    def test_reboot_with_the_simulator_runs_no_command(self, mocker, caplog):
+        run = mocker.patch("mocassino.model.system.subprocess.run")
+        app = build_app(self.configuration("simulator", "simulator"))
+        with caplog.at_level(logging.WARNING):
+            for event in REBOOT:
+                app._controller.handle(event)
+        run.assert_not_called()
+        assert "Not rebooting the host (dry run)" in caplog.text
+        assert app._state.shutting_down is True
+
+    def test_reboot_without_the_simulator_runs_the_command(self, mocker):
+        run = mocker.patch(
+            "mocassino.model.system.subprocess.run",
+            return_value=subprocess.CompletedProcess([], 0, stdout="", stderr=""),
+        )
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"target": "none"},
+                "system": {"reboot_command": "systemctl reboot"},
+            }
+        )
+        app = build_app(configuration)
+        for event in REBOOT:
+            app._controller.handle(event)
+        assert run.call_args.args[0] == ["systemctl", "reboot"]
+        assert app._display.is_on is False
 
     def test_shutdown_with_the_simulator_runs_no_command(self, mocker):
         run = mocker.patch("mocassino.model.system.subprocess.run")

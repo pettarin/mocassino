@@ -22,7 +22,8 @@ class AppState:
     and the application is in playback mode when the stack is empty.
 
     The played path is what MOC was last given to play (a directory, or a single file),
-    if known. The host is shutting down once its shutdown has been asked from the menu.
+    if known. The host is shutting down once its reboot or its shutdown has been asked
+    from the menu.
     """
 
     menus: list[Menu] = field(default_factory=list)

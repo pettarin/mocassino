@@ -136,8 +136,9 @@ In the simulator window:
   for a short press; with `Shift`, for a long press together with a single hold press;
 - close the window to stop the service.
 
-With the simulator, `Shut down now` in the `System` menu never runs `system.shutdown_command`,
-so that the development machine is not shut down by mistake:
+With the simulator, `Reboot now` and `Shut down now` in the `System` menu never run
+`system.reboot_command` and `system.shutdown_command`,
+so that the development machine is not rebooted or shut down by mistake:
 the command is only logged, and the window goes dark as the display would,
 until the window is closed.
 
@@ -260,6 +261,9 @@ startup:
 system:
   moc_state_on_exit: do_nothing
   mocp_file_path: mocp
+  reboot_command:
+  - sudo
+  - reboot
   shutdown_command:
   - sudo
   - shutdown
@@ -304,6 +308,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `System` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
+| `system.reboot_command` | `sudo reboot` | The command rebooting the host, as a string or as a list; it is never run when the simulator is used |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
 
 > [!NOTE]
@@ -365,7 +370,8 @@ and the state is `stopped`.
 
 The state is saved when the track changes, when the volume changes,
 when a setting is changed from the menus, and when the service is stopped.
-Shutting down the host from the `System` menu saves it too, before the shutdown is asked.
+Rebooting or shutting down the host from the `System` menu saves it too,
+before the reboot or the shutdown is asked.
 The file is only written when its content would change.
 
 When the service starts:
@@ -569,7 +575,7 @@ The top level menu has the following items:
     - `Volume` (`startup.volume`): a menu with the two choices
       `Use default` and `Use saved`; the current one has the solid square.
 - `System`: show the name and the IP address of the host,
-  `MOC state on exit`, `Reset settings`, and `Shut down`.
+  `MOC state on exit`, `Reset settings`, `Reboot`, and `Shut down`.
   `MOC state on exit` (`system.moc_state_on_exit`) is a menu with the four choices
   `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
   The choice applies when the service exits, after its state has been saved.
@@ -578,10 +584,10 @@ The top level menu has the following items:
   the defaults of the settings take effect at once, the other values the next time
   the service starts.
   All the values are reset, not only those of the `Settings` menu
-  (e.g., `library.directory_path` and `system.shutdown_command` too),
+  (e.g., `library.directory_path`, `system.reboot_command`, and `system.shutdown_command` too),
   except that the simulator is kept for the buttons and for the display, if it is in use.
-  `Shut down` asks for confirmation
-  before running `system.shutdown_command`.
+  `Reboot` and `Shut down` ask for confirmation
+  before running `system.reboot_command` and `system.shutdown_command`, respectively.
   The display is turned off before the command is run,
   and turned on again if the command fails.
   With the simulator, the command is only logged, and never run.

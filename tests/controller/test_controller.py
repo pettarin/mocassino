@@ -224,7 +224,7 @@ class TestController:
         settings = state.settings
         settings.playback_seek_step = 30
         settings.show_side_icons = False
-        for event in (A_LONG, Y, Y, B, X, X):
+        for event in (A_LONG, Y, Y, B, X, X, X):
             controller.handle(event)
         assert state.current_menu.selected.label == "Reset settings"
         controller.handle(B)
@@ -242,7 +242,7 @@ class TestController:
 
     def test_menu_select_reset_settings_without_callback(self, controller, state):
         state.settings.show_volume_bar = False
-        for event in (A_LONG, Y, Y, B, X, X, B, Y, B):
+        for event in (A_LONG, Y, Y, B, X, X, X, B, Y, B):
             controller.handle(event)
         assert state.settings == Settings()
         assert [menu.title for menu in state.menus] == ["Menu", "System"]
@@ -253,11 +253,38 @@ class TestController:
             state, moc, library, system, DEFAULT_BUTTON_MAP, reset_settings=reset_settings
         )
         state.settings.show_volume_bar = False
-        for event in (A_LONG, Y, Y, B, X, X, B, B):
+        for event in (A_LONG, Y, Y, B, X, X, X, B, B):
             controller.handle(event)
         reset_settings.assert_not_called()
         assert state.settings.show_volume_bar is False
         assert [menu.title for menu in state.menus] == ["Menu", "System"]
+
+    def test_menu_select_reboot(self, controller, state, system):
+        for event in (A_LONG, Y, Y, B, X, X):
+            controller.handle(event)
+        assert state.current_menu.selected.label == "Reboot"
+        controller.handle(B)
+        assert state.current_menu.title == "Reboot?"
+        assert state.current_menu.selected.label == "Cancel"
+        system.reboot.assert_not_called()
+        controller.handle(Y)
+        controller.handle(B)
+        system.reboot.assert_called_once_with()
+        system.shutdown.assert_not_called()
+        assert state.mode == Mode.PLAYBACK
+        assert state.shutting_down is True
+
+    def test_menu_select_reboot_that_fails(self, mocker, state, moc, library, system):
+        calls = mocker.Mock()
+        system.reboot.side_effect = SystemShutdownError("denied")
+        controller = Controller(
+            state, moc, library, system, DEFAULT_BUTTON_MAP, switch_display=calls.switch_display
+        )
+        for event in (A_LONG, Y, Y, B, X, X, B, Y, B):
+            controller.handle(event)
+        system.reboot.assert_called_once_with()
+        assert [call.args for call in calls.switch_display.call_args_list] == [(False,), (True,)]
+        assert state.shutting_down is False
 
     def test_menu_select_shutdown(self, controller, state, system):
         controller.handle(A_LONG)
@@ -272,6 +299,7 @@ class TestController:
         controller.handle(Y)
         controller.handle(B)
         system.shutdown.assert_called_once_with()
+        system.reboot.assert_not_called()
         assert state.mode == Mode.PLAYBACK
         assert state.shutting_down is True
 

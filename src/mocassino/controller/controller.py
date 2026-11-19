@@ -122,7 +122,7 @@ class Controller:
         :param save_settings: called with the settings when one of them is changed
                               from the settings menu, to make the change permanent
         :param switch_display: called to turn the display off (False) before the host
-                               is shut down, and on (True) again if the shutdown fails
+                               is rebooted or shut down, and on (True) again if that fails
         :raises ValueError: if the button map is not valid
         """
         self._button_map = parse_button_map(button_map)
@@ -151,6 +151,28 @@ class Controller:
     def _change_volume(self, delta: int) -> None:
         """Change the volume by the given amount."""
         self._moc.set_volume(self._state.change_volume(delta))
+
+    def _halt(self, halt: Callable[[], None]) -> None:
+        """Reboot or shut down the host, with the display turned off.
+
+        The display is turned off first, as the host leaves it as it is when it halts.
+        If the host cannot be rebooted or shut down, the display is turned on again,
+        and the player carries on.
+
+        :param halt: the method of the system rebooting or shutting down the host
+        :raises SystemShutdownError: if the host cannot be rebooted or shut down
+        """
+        self._state.close_menus()
+        self._state.shutting_down = True
+        if self._switch_display is not None:
+            self._switch_display(False)
+        try:
+            halt()
+        except SystemShutdownError:
+            self._state.shutting_down = False
+            if self._switch_display is not None:
+                self._switch_display(True)
+            raise
 
     def _menu_back(self) -> None:
         """Go back one level, to the previous menu or to playback mode."""
@@ -181,10 +203,12 @@ class Controller:
             self._state.replace_menu(build_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)
+        elif item.command is MenuCommand.REBOOT:
+            self._halt(self._system.reboot)
         elif item.command is MenuCommand.RESET_SETTINGS:
             self._reset()
         elif item.command is MenuCommand.SHUTDOWN:
-            self._shutdown()
+            self._halt(self._system.shutdown)
         elif item.command in TOGGLES:
             settings = self._state.settings
             attribute = TOGGLES[item.command]
@@ -236,27 +260,6 @@ class Controller:
     def _seek_forward(self) -> None:
         """Seek forward in the current track."""
         self._moc.seek(self._state.settings.playback_seek_step)
-
-    def _shutdown(self) -> None:
-        """Shut down the host, with the display turned off.
-
-        The display is turned off first, as the host leaves it as it is when it halts.
-        If the host cannot be shut down, the display is turned on again,
-        and the player carries on.
-
-        :raises SystemShutdownError: if the host cannot be shut down
-        """
-        self._state.close_menus()
-        self._state.shutting_down = True
-        if self._switch_display is not None:
-            self._switch_display(False)
-        try:
-            self._system.shutdown()
-        except SystemShutdownError:
-            self._state.shutting_down = False
-            if self._switch_display is not None:
-                self._switch_display(True)
-            raise
 
     def _volume_down(self) -> None:
         """Turn the volume down."""

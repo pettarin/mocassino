@@ -60,6 +60,7 @@ class MenuCommand(StrEnum):
 
     BACK = "back"
     PLAY = "play"
+    REBOOT = "reboot"
     RESET_SETTINGS = "reset_settings"
     SET_DISPLAY_BRIGHTNESS = "set_display_brightness"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
@@ -146,6 +147,17 @@ def _build_number_menu(
             for choice in choices
         ),
         selected_index=min(range(len(choices)), key=lambda index: abs(choices[index] - current)),
+    )
+
+
+def _build_reboot_menu() -> Menu:
+    """Build the menu asking to confirm the reboot; the default choice is to cancel."""
+    return Menu(
+        title="Reboot?",
+        items=(
+            MenuItem(label="Cancel", command=MenuCommand.BACK),
+            MenuItem(label="Reboot now", command=MenuCommand.REBOOT),
+        ),
     )
 
 
@@ -409,7 +421,7 @@ def build_system_menu(system: System, settings: Settings) -> Menu:
     """Build the menu showing the name and the IP address of the host.
 
     It also leads to the setting of what is done to MOC on exit,
-    resets the settings, and shuts the host down.
+    resets the settings, and reboots or shuts down the host.
     """
     return Menu(
         title="System",
@@ -421,6 +433,7 @@ def build_system_menu(system: System, settings: Settings) -> Menu:
                 submenu=partial(build_system_moc_state_on_exit_menu, settings),
             ),
             MenuItem(label="Reset settings", submenu=_build_reset_settings_menu),
+            MenuItem(label="Reboot", submenu=_build_reboot_menu),
             MenuItem(label="Shut down", submenu=_build_shutdown_menu),
         ),
     )

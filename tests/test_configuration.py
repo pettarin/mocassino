@@ -67,6 +67,7 @@ class TestConfiguration:
         assert configuration.system == SystemConfiguration(
             moc_state_on_exit="do_nothing",
             mocp_file_path="mocp",
+            reboot_command=("sudo", "reboot"),
             shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
 
@@ -99,6 +100,7 @@ class TestConfiguration:
             "system": {
                 "moc_state_on_exit": "do_nothing",
                 "mocp_file_path": "mocp",
+                "reboot_command": ["sudo", "reboot"],
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
             },
         }
@@ -254,6 +256,7 @@ class TestLoadConfiguration:
             ("system", "moc_state_on_exit", "Do nothing"),
             ("system", "moc_state_on_exit", True),
             ("system", "mocp_file_path", ["mocp"]),
+            ("system", "reboot_command", 5),
             ("system", "shutdown_command", "'unbalanced"),
             ("system", "shutdown_command", ""),
             ("system", "shutdown_command", ["shutdown", 0]),

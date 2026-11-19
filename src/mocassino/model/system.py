@@ -1,4 +1,4 @@
-"""The host running the service: its name, its IP address, and its shutdown.
+"""The host running the service: its name, its IP address, its reboot, and its shutdown.
 
 :copyright: Copyright (C) 2026 Alberto Pettarin
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
@@ -15,15 +15,51 @@ SHUTDOWN_TIMEOUT: float = 30.0
 class System:
     """The host running the service."""
 
-    def __init__(self, shutdown_command: tuple[str, ...], dry_run: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        dry_run: bool = False,
+        reboot_command: tuple[str, ...],
+        shutdown_command: tuple[str, ...],
+    ) -> None:
         """Initialize the host.
 
+        :param dry_run: if True, the reboot and shutdown commands are never run
+                        (e.g., with the simulator, not to reboot or shut down
+                        the development machine)
+        :param reboot_command: the command line rebooting the host
         :param shutdown_command: the command line shutting down the host
-        :param dry_run: if True, the shutdown command is never run
-                        (e.g., with the simulator, not to shut down the development machine)
         """
         self._dry_run = dry_run
+        self._reboot_command = reboot_command
         self._shutdown_command = shutdown_command
+
+    def _run(self, command_line: tuple[str, ...], what: str) -> None:
+        """Run the command line doing what is said; in a dry run, only log it.
+
+        :param what: what the command does, e.g., "shutting down", for the log
+        :raises SystemShutdownError: if the command cannot be run, times out, or fails
+        """
+        command = list(command_line)
+        if self._dry_run:
+            LOGGER.warning("Not %s the host (dry run): would run %s", what, command)
+            return
+        LOGGER.warning("%s the host with %s", what.capitalize(), command)
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=SHUTDOWN_TIMEOUT,
+            )
+        except OSError as exc:
+            raise SystemShutdownError(f"Cannot run {command}: {exc}") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise SystemShutdownError(f"Timeout running {command}") from exc
+        if result.returncode != 0:
+            message = result.stderr.strip() or f"exit status {result.returncode}"
+            raise SystemShutdownError(f"Error running {command}: {message}")
 
     def hostname(self) -> str:
         """Return the name of the host."""
@@ -41,32 +77,20 @@ class System:
         except OSError:
             return None
 
+    def reboot(self) -> None:
+        """Reboot the host; in a dry run, only log the command that would be run.
+
+        :raises SystemShutdownError: if the reboot command cannot be run, times out, or fails
+        """
+        self._run(self._reboot_command, "rebooting")
+
     def shutdown(self) -> None:
         """Shut down the host; in a dry run, only log the command that would be run.
 
         :raises SystemShutdownError: if the shutdown command cannot be run, times out, or fails
         """
-        command = list(self._shutdown_command)
-        if self._dry_run:
-            LOGGER.warning("Not shutting down the host (dry run): would run %s", command)
-            return
-        LOGGER.warning("Shutting down the host with %s", command)
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                check=False,
-                text=True,
-                timeout=SHUTDOWN_TIMEOUT,
-            )
-        except OSError as exc:
-            raise SystemShutdownError(f"Cannot run {command}: {exc}") from exc
-        except subprocess.TimeoutExpired as exc:
-            raise SystemShutdownError(f"Timeout running {command}") from exc
-        if result.returncode != 0:
-            message = result.stderr.strip() or f"exit status {result.returncode}"
-            raise SystemShutdownError(f"Error running {command}: {message}")
+        self._run(self._shutdown_command, "shutting down")
 
 
 class SystemShutdownError(Exception):
-    """Raised when the host cannot be shut down."""
+    """Raised when the host cannot be shut down or rebooted."""
