@@ -55,7 +55,6 @@ class MenuCommand(StrEnum):
     """What the controller is asked to do when an item is selected."""
 
     BACK = "back"
-    CLOSE = "close"
     PLAY = "play"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
     SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
@@ -285,7 +284,6 @@ def build_root_menu(library: Library, host: Host, settings: Settings) -> Menu:
             MenuItem(label="Library", submenu=partial(build_library_menu, library)),
             MenuItem(label="Settings", submenu=partial(build_settings_menu, settings)),
             MenuItem(label="Host", submenu=partial(build_host_menu, host)),
-            MenuItem(label="Back to playback", command=MenuCommand.CLOSE),
         ),
     )
 

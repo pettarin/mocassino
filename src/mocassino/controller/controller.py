@@ -143,8 +143,6 @@ class Controller:
             self._state.open_menu(item.submenu())
         elif item.command is MenuCommand.BACK:
             self._state.pop_menu()
-        elif item.command is MenuCommand.CLOSE:
-            self._state.close_menus()
         elif item.command is MenuCommand.PLAY and item.path is not None:
             self._state.close_menus()
             self._moc.play(item.path)

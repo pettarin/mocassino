@@ -194,11 +194,10 @@ class TestBuildRootMenu:
         menu = build_root_menu(library, host, Settings())
         assert menu.title == "Menu"
         labels = [item.label for item in menu.items]
-        assert labels == ["Library", "Settings", "Host", "Back to playback"]
+        assert labels == ["Library", "Settings", "Host"]
         assert menu.items[0].submenu().title == "Library"
         assert menu.items[1].submenu().title == "Settings"
         assert menu.items[2].submenu().title == "Host"
-        assert menu.items[3] == MenuItem(label="Back to playback", command=MenuCommand.CLOSE)
 
     def test_settings_menu_shows_the_current_values(self, library, host):
         settings = Settings()
@@ -240,7 +239,7 @@ class TestBuildSettingsMenu:
 
     def test_other_items_are_not_checkable(self, library, host):
         menu = build_root_menu(library, host, Settings())
-        assert [item.checked for item in menu.items] == [None] * 4
+        assert [item.checked for item in menu.items] == [None] * 3
 
 
 class TestBuildPlaybackStepMenus:
