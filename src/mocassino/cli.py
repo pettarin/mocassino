@@ -205,7 +205,7 @@ def run(options: GlobalOptions, background: bool) -> None:
     if background:
         _daemonize()
     try:
-        app = build_app(effective)
+        app = build_app(effective, options.configuration_file_path)
 
         def stop(signal_number: int, frame: FrameType | None) -> None:
             app.stop()

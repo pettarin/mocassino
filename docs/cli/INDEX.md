@@ -211,7 +211,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `buttons.origin` | `pirateaudio` | Where the button events come from: `pirateaudio` (or its synonym `gpio`), `none`, or `simulator` |
 | `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
-| `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode, when the service starts |
+| `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode; it can be changed from the `Settings` menu |
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
@@ -234,6 +234,13 @@ The command line options take precedence over the configuration file:
 | `--buttons-origin` | `buttons.origin` |
 | `--display-target` | `display.target` |
 | `-l / --library-directory-path` | `library.directory_path` |
+
+> [!NOTE]
+> A setting changed from the `Settings` menu is saved in the configuration file in use:
+> the one given with `-c / --configuration-file-path`, or the default one,
+> which is created if it does not exist.
+> The other values of the file are kept, but the file is written again as a whole:
+> the comments in it are lost.
 
 An example of configuration file:
 
@@ -335,8 +342,8 @@ The top level menu has the following items:
 - `Settings`: change the settings of the running service.
   For now, it has one item, `Side icons: on` or `Side icons: off`:
   selecting it shows or hides the icons of the buttons in playback mode.
-  The change lasts until the service is stopped:
-  when it starts, the service takes the value from `display.show_side_icons`.
+  The new value is also saved as `display.show_side_icons` in the configuration file,
+  so that it is kept when the service is started again.
 - `Host`: show the name and the IP address of the host,
   and `Shut down`, which asks for confirmation
   before running `system.shutdown_command`.

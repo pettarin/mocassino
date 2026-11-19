@@ -291,9 +291,21 @@ class TestRunCommand:
         build_app.return_value.simulator = None
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0
-        effective = build_app.call_args.args[0]
+        effective, configuration_file_path = build_app.call_args.args
+        assert configuration_file_path is None
         assert effective.display.target == "none"
         assert effective.library.directory_path == tmp_path
+
+    def test_configuration_file_is_passed_on(self, runner, mocker, arguments, daemonize, tmp_path):
+        build_app = mocker.patch("mocassino.cli.build_app")
+        build_app.return_value.simulator = None
+        path = tmp_path / "custom.yaml"
+        path.write_text("playback:\n  initial_volume: 30\n", encoding="utf-8")
+        result = runner.invoke(main, ["-c", str(path), *arguments])
+        assert result.exit_code == 0
+        effective, configuration_file_path = build_app.call_args.args
+        assert effective.playback.initial_volume == 30
+        assert configuration_file_path == path
 
     def test_error_while_building(self, runner, mocker, arguments, daemonize):
         mocker.patch("mocassino.cli.build_app", side_effect=OSError("cannot open resource"))

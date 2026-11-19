@@ -32,6 +32,13 @@ from mocassino.view.renderer import Renderer
 
 PLAYING = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Title")
 TICK = 0.01
+# From playback mode: open the menu, go to Settings, open it, and select its first item
+TOGGLE_SIDE_ICONS = (
+    ButtonEvent(Button.A, Press.LONG),
+    ButtonEvent(Button.Y),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.B),
+)
 
 
 @pytest.fixture
@@ -213,6 +220,40 @@ class TestBuildApp:
             }
         )
         assert build_app(configuration)._state.settings.show_side_icons is False
+
+    def test_settings_are_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        path.write_text("playback:\n  initial_volume: 30\n", encoding="utf-8")
+        configuration = load_configuration(
+            path,
+            {"buttons": {"origin": "none"}, "display": {"target": "none"}},
+        )
+        app = build_app(configuration, path)
+        for event in TOGGLE_SIDE_ICONS:
+            app._controller.handle(event)
+        assert app._state.settings.show_side_icons is False
+        assert path.read_text(encoding="utf-8") == (
+            "playback:\n  initial_volume: 30\ndisplay:\n  show_side_icons: false\n"
+        )
+        assert load_configuration(path).display.show_side_icons is False
+
+    def test_settings_are_saved_to_the_default_file(self, tmp_path):
+        app = build_app(self.configuration("none", "none"))
+        for event in TOGGLE_SIDE_ICONS:
+            app._controller.handle(event)
+        path = tmp_path / ".config" / "mocassino" / "configuration.yaml"
+        assert path.read_text(encoding="utf-8") == "display:\n  show_side_icons: false\n"
+
+    def test_settings_cannot_be_saved(self, tmp_path, caplog):
+        blocker = tmp_path / "blocker"
+        blocker.touch()
+        app = build_app(self.configuration("none", "none"), blocker / "configuration.yaml")
+        with caplog.at_level(logging.ERROR):
+            for event in TOGGLE_SIDE_ICONS:
+                app._controller.handle(event)
+        assert "Cannot save the settings: Cannot write configuration file" in caplog.text
+        assert app._state.settings.show_side_icons is False
+        assert app._state.current_menu.selected.label == "Side icons: off"
 
     def test_simulator(self):
         app = build_app(self.configuration("simulator", "simulator"))

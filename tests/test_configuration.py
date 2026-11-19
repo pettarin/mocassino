@@ -17,6 +17,7 @@ from mocassino.configuration import (
     PlaybackConfiguration,
     SystemConfiguration,
     load_configuration,
+    update_configuration_file,
 )
 from mocassino.controller.actions import DEFAULT_BUTTON_MAP
 
@@ -268,3 +269,63 @@ class TestLoadConfiguration:
             match="Unknown configuration keys: buttons.zoom, colour, extras",
         ):
             load_configuration(path)
+
+
+class TestUpdateConfigurationFile:
+    """Tests for the update_configuration_file function"""
+
+    def test_default_file_is_created(self, home):
+        path = update_configuration_file(None, {"display": {"show_side_icons": False}})
+        assert path == home / ".config" / "mocassino" / "configuration.yaml"
+        assert path.read_text(encoding="utf-8") == "display:\n  show_side_icons: false\n"
+        assert load_configuration().display.show_side_icons is False
+
+    def test_existing_file_is_updated(self, tmp_path):
+        path = write_yaml(
+            tmp_path,
+            "# my settings\n"
+            "playback:\n"
+            "  volume_step: 3\n"
+            "display:\n"
+            "  tick: 0.25\n"
+            "  show_side_icons: true\n"
+            "library:\n"
+            "  directory_path: /srv/musica/Andrè\n",
+        )
+        assert update_configuration_file(path, {"display": {"show_side_icons": False}}) == path
+        assert path.read_text(encoding="utf-8") == (
+            "playback:\n"
+            "  volume_step: 3\n"
+            "display:\n"
+            "  tick: 0.25\n"
+            "  show_side_icons: false\n"
+            "library:\n"
+            "  directory_path: /srv/musica/Andrè\n"
+        )
+        assert list(tmp_path.iterdir()) == [path]
+
+    def test_file_cannot_be_written(self, tmp_path):
+        blocker = tmp_path / "blocker"
+        blocker.touch()
+        with pytest.raises(ConfigurationError, match="Cannot write configuration file"):
+            update_configuration_file(blocker / "configuration.yaml", {"display": {}})
+
+    def test_file_not_valid(self, tmp_path):
+        path = write_yaml(tmp_path, "display: [unclosed\n")
+        with pytest.raises(ConfigurationError, match="is not valid YAML"):
+            update_configuration_file(path, {"display": {"show_side_icons": False}})
+        assert path.read_text(encoding="utf-8") == "display: [unclosed\n"
+
+    def test_section_empty_or_missing(self, tmp_path):
+        path = write_yaml(tmp_path, "display:\n")
+        update_configuration_file(path, {"buttons": {"origin": "none"}, "display": {"tick": 1.0}})
+        assert load_configuration(path) == Configuration(
+            buttons=ButtonsConfiguration(origin="none"),
+            display=DisplayConfiguration(tick=1.0),
+        )
+
+    def test_section_not_a_mapping(self, tmp_path):
+        path = write_yaml(tmp_path, "display: st7789\n")
+        with pytest.raises(ConfigurationError, match="Section 'display' must be a mapping"):
+            update_configuration_file(path, {"display": {"show_side_icons": False}})
+        assert path.read_text(encoding="utf-8") == "display: st7789\n"

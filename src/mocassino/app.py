@@ -6,9 +6,15 @@
 
 import logging
 import threading
+from functools import partial
+from pathlib import Path
 from queue import Empty, Queue
 
-from mocassino.configuration import Configuration
+from mocassino.configuration import (
+    Configuration,
+    ConfigurationError,
+    update_configuration_file,
+)
 from mocassino.controller.buttons.base import ButtonSource
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
@@ -176,12 +182,28 @@ def _build_display(configuration: Configuration, simulator: TkSimulator | None) 
     return NullDisplay()
 
 
-def build_app(configuration: Configuration) -> App:
+def _save_settings(configuration_file_path: Path | None, settings: Settings) -> None:
+    """Write the settings changed from the settings menu to the configuration file.
+
+    An error is logged, not raised: the change still applies until the service stops.
+    """
+    updates = {"display": {"show_side_icons": settings.show_side_icons}}
+    try:
+        path = update_configuration_file(configuration_file_path, updates)
+    except ConfigurationError as exc:
+        LOGGER.error("Cannot save the settings: %s", exc)
+    else:
+        LOGGER.info("Settings saved to '%s'", path)
+
+
+def build_app(configuration: Configuration, configuration_file_path: Path | None = None) -> App:
     """Build the application described by the configuration.
 
     If the buttons or the display are simulated, the application has a simulator,
     which has to be run in the main thread while the application runs in another one.
 
+    :param configuration_file_path: the YAML file where the settings changed from
+                                    the settings menu are saved; if None, the default one
     :raises OSError: if the font or the display cannot be accessed
     """
     simulator: TkSimulator | None = None
@@ -205,6 +227,7 @@ def build_app(configuration: Configuration) -> App:
         button_map=configuration.buttons.button_map,
         seek_step=configuration.playback.seek_step,
         volume_step=configuration.playback.volume_step,
+        save_settings=partial(_save_settings, configuration_file_path),
     )
     return App(
         state,

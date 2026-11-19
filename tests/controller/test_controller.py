@@ -203,6 +203,27 @@ class TestController:
         controller.handle(B)
         assert state.current_menu.selected.label == "Side icons: on"
 
+    def test_menu_select_toggle_side_icons_saves_the_settings(
+        self, mocker, state, moc, library, host
+    ):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            host,
+            DEFAULT_BUTTON_MAP,
+            seek_step=10,
+            volume_step=5,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B):
+            controller.handle(event)
+        save_settings.assert_not_called()
+        controller.handle(B)
+        save_settings.assert_called_once_with(state.settings)
+        assert state.settings.show_side_icons is False
+
     def test_moc_error_is_logged(self, controller, moc, caplog):
         moc.next.side_effect = MocError("broken")
         with caplog.at_level(logging.ERROR):

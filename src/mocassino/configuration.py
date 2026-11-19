@@ -279,3 +279,40 @@ def load_configuration(
     elif DEFAULT_CONFIGURATION_FILE_PATH.expanduser().is_file():
         values = _read_yaml(DEFAULT_CONFIGURATION_FILE_PATH.expanduser())
     return _build(values, overrides or {})
+
+
+def update_configuration_file(
+    path: Path | None,
+    updates: Mapping[str, Mapping[str, Any]],
+) -> Path:
+    """Change some values in the configuration file, keeping the others.
+
+    The file is created if it does not exist. It is written again as a whole:
+    its other values and their order are kept, but its comments are lost.
+    The new content replaces the old one in a single step,
+    so that the file is never left half-written.
+
+    :param path: the YAML file; if None, the default one
+    :param updates: the values to change, with the same nested shape as the YAML file
+    :return: the file that has been written
+    :raises ConfigurationError: if the file cannot be read or written
+    """
+    target = DEFAULT_CONFIGURATION_FILE_PATH.expanduser() if path is None else path
+    content = _read_yaml(target) if target.exists() else {}
+    for section, values in updates.items():
+        if content.get(section) is None:
+            content[section] = {}
+        if not isinstance(content[section], dict):
+            raise ConfigurationError(f"Section '{section}' must be a mapping")
+        content[section].update(values)
+    temporary = target.with_name(f"{target.name}.tmp")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary.write_text(
+            yaml.safe_dump(content, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        temporary.replace(target)
+    except OSError as exc:
+        raise ConfigurationError(f"Cannot write configuration file '{target}': {exc}") from exc
+    return target

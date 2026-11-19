@@ -13,6 +13,7 @@ from mocassino.model.host import Host, HostError
 from mocassino.model.library import Library
 from mocassino.model.menu import MenuCommand, build_root_menu, build_settings_menu
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
+from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -30,12 +31,15 @@ class Controller:
         button_map: Mapping[str, Mapping[str, str]],
         seek_step: int,
         volume_step: int,
+        save_settings: Callable[[Settings], None] | None = None,
     ) -> None:
         """Initialize the controller.
 
         :param button_map: the button map, in plain form
         :param seek_step: the amount of each seek, in seconds
         :param volume_step: the amount of each volume change
+        :param save_settings: called with the settings when one of them is changed
+                              from the settings menu, to make the change permanent
         :raises ValueError: if the button map is not valid
         """
         self._button_map = parse_button_map(button_map)
@@ -56,6 +60,7 @@ class Controller:
         self._host = host
         self._library = library
         self._moc = moc
+        self._save_settings = save_settings
         self._seek_step = seek_step
         self._state = state
         self._volume_step = volume_step
@@ -94,6 +99,8 @@ class Controller:
             settings = self._state.settings
             settings.show_side_icons = not settings.show_side_icons
             self._state.replace_menu(build_settings_menu(settings))
+            if self._save_settings is not None:
+                self._save_settings(settings)
 
     def _menu_up(self) -> None:
         """Select the previous item of the current menu."""
