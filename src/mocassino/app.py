@@ -26,11 +26,13 @@ from mocassino.model.moc import (
     MocClient,
     MocError,
     MocServerNotRunningError,
+    MocState,
     SubprocessMocClient,
 )
+from mocassino.model.resume import resume_playback
 from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
-from mocassino.model.state_file import StateFile
+from mocassino.model.state_file import SavedState, StateFile
 from mocassino.simulator.tk import TkSimulator
 from mocassino.view.display.base import Display
 from mocassino.view.display.null import NullDisplay
@@ -48,6 +50,7 @@ class App:
 
     The state is saved to the state file, if there is one, when the track, the volume,
     or a setting changes, and when the application is closed.
+    When the application starts, the playback saved there is resumed, if possible.
     """
 
     def __init__(
@@ -79,6 +82,7 @@ class App:
         self._simulator = simulator
         self._state = state
         self._state_file = state_file
+        self._state_frozen = False
         self._stop = threading.Event()
         self._tick = tick
         # Last, as it needs the state
@@ -111,8 +115,18 @@ class App:
 
     def _save_state(self) -> None:
         """Save the state to the state file, if there is one."""
-        if self._state_file is not None:
-            self._state_file.save(self._state.volume)
+        if self._state_file is not None and not self._state_frozen:
+            state, status = self._state, self._state.status
+            playing = status.state is not MocState.STOP and status.file_path != ""
+            self._state_file.save(
+                SavedState(
+                    directory_path=state.played_path if playing else None,
+                    file_path=status.file_path if playing else None,
+                    seek=status.current_seconds if playing else 0,
+                    state=status.state if playing else MocState.STOP,
+                    volume=state.volume,
+                )
+            )
         self._saved_signature = self._signature()
 
     def _signature(self) -> tuple[object, ...]:
@@ -152,12 +166,23 @@ class App:
         return self._simulator
 
     def start(self) -> None:
-        """Start the MOC server, set the initial volume, and start listening to the buttons.
+        """Start the MOC server, resume the saved playback, and start listening to the buttons.
+
+        The saved playback is the one in the state file, if there is one: if it cannot be
+        resumed, nothing is played, and the state file is updated to say so.
+        The volume is set after that, as resuming needs it at zero.
 
         :raises MocError: if the MOC server cannot be started or the volume cannot be set
         """
         self._moc.start_server()
+        if self._state_file is not None:
+            try:
+                self._state.played_path = resume_playback(self._moc, self._state_file.load())
+            except MocError as exc:
+                LOGGER.error("Cannot resume the saved playback: %s", exc)
         self._moc.set_volume(self._state.volume)
+        self._refresh()
+        self._save_state()
         self._button_source.start(self._events)
 
     def step(self) -> None:
@@ -172,6 +197,10 @@ class App:
                 self._controller.handle(self._events.get_nowait())
         except Empty:
             pass
+        if self._state.shutting_down and not self._state_frozen:
+            # Save what is playing before the shutdown stops it, and keep it as saved
+            self._save_state()
+            self._state_frozen = True
         self._refresh()
         if self._signature() != self._saved_signature:
             self._save_state()
@@ -250,7 +279,7 @@ def build_app(
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
     state_file = StateFile(state_file_path)
-    volume = state_file.load_volume()
+    volume = state_file.load().volume
     if volume is None:
         volume = configuration.playback.fallback_initial_volume
     state = AppState(

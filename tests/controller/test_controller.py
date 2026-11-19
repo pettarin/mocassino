@@ -163,6 +163,19 @@ class TestController:
         controller.handle(B)
         moc.play.assert_called_once_with(library.directory_path / "Album" / "01.flac")
         assert state.mode == Mode.PLAYBACK
+        assert state.played_path == str(library.directory_path / "Album" / "01.flac")
+
+    def test_menu_select_play_folder(self, controller, state, moc, library):
+        for event in (A_LONG, B, Y, B, B):
+            controller.handle(event)
+        moc.play.assert_called_once_with(library.directory_path / "Album")
+        assert state.played_path == str(library.directory_path / "Album")
+
+    def test_menu_select_play_fails(self, controller, state, moc):
+        moc.play.side_effect = MocError("broken")
+        for event in (A_LONG, B, B):
+            controller.handle(event)
+        assert state.played_path is None
 
     def test_menu_select_play_without_path(self, controller, state, moc):
         open_single_item_menu(state, MenuItem(label="Broken", command=MenuCommand.PLAY))
@@ -184,6 +197,15 @@ class TestController:
         controller.handle(B)
         host.shutdown.assert_called_once_with()
         assert state.mode == Mode.PLAYBACK
+        assert state.shutting_down is True
+
+    def test_menu_select_shutdown_is_flagged_before_it_is_asked(self, controller, state, host):
+        flags = []
+        host.shutdown.side_effect = lambda: flags.append(state.shutting_down)
+        open_single_item_menu(state, MenuItem(label="Off", command=MenuCommand.SHUTDOWN))
+        assert state.shutting_down is False
+        controller.handle(B)
+        assert flags == [True]
 
     def test_menu_select_toggle_side_icons(self, controller, state):
         controller.handle(A_LONG)

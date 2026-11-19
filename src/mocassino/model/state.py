@@ -20,10 +20,15 @@ class AppState:
 
     The menus are a stack: the last one is the menu being shown,
     and the application is in playback mode when the stack is empty.
+
+    The played path is what MOC was last given to play (a directory, or a single file),
+    if known. The host is shutting down once its shutdown has been asked from the menu.
     """
 
     menus: list[Menu] = field(default_factory=list)
+    played_path: str | None = None
     settings: Settings = field(default_factory=Settings)
+    shutting_down: bool = False
     status: MocStatus = field(default_factory=MocStatus)
     volume: int = 50
 

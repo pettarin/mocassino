@@ -92,8 +92,10 @@ class Controller:
         elif item.command is MenuCommand.PLAY and item.path is not None:
             self._state.close_menus()
             self._moc.play(item.path)
+            self._state.played_path = str(item.path)
         elif item.command is MenuCommand.SHUTDOWN:
             self._state.close_menus()
+            self._state.shutting_down = True
             self._host.shutdown()
         elif item.command is MenuCommand.TOGGLE_SIDE_ICONS:
             settings = self._state.settings

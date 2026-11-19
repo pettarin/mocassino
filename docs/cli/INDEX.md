@@ -263,20 +263,49 @@ in the `~/.config/mocassino/state.yaml` file, which it writes by itself:
 
 ```yaml
 playback:
+  directory_path: /music/Artist/Album
+  file_path: /music/Artist/Album/003_Track.flac
+  seek: 95
+  state: playing
   volume: 85
 ```
 
-For now, the state is the volume only.
-When the service starts, it restores the volume from the state file, if it exists;
-otherwise, it applies `playback.fallback_initial_volume` from the configuration file.
+| Key | Meaning |
+|---|---|
+| `playback.directory_path` | What was being played from: the directory selected in the `Library` menu or, if a single file was selected, that file |
+| `playback.file_path` | The track that was playing |
+| `playback.seek` | The position in the track, in seconds |
+| `playback.state` | `playing`, `paused`, or `stopped` |
+| `playback.volume` | The volume, between 0 and 100 |
+
+When nothing is playing, the directory and the file are `null`, the position is `0`,
+and the state is `stopped`.
 
 The state is saved when the track changes, when the volume changes,
 when a setting is changed from the menus, and when the service is stopped.
+Shutting down the host from the `Host` menu saves it too, before the shutdown is asked.
 The file is only written when its content would change.
 
+When the service starts:
+
+- it restores the volume from the state file, if it has one;
+  otherwise, it applies `playback.fallback_initial_volume` from the configuration file;
+- if MOC is not playing anything, and the saved directory and file still exist,
+  it resumes the saved playback: it plays the saved directory from its first track
+  with the volume at zero, skips to the saved track, goes to the saved position,
+  pauses if the saved state was `paused`, and only then sets the volume;
+- if MOC is already playing or paused, it leaves it alone;
+- if the saved playback cannot be resumed (e.g., the file no longer exists),
+  it plays nothing, and blanks the directory, the file, and the position in the state file.
+
 > [!NOTE]
-> Once the state file exists, `playback.fallback_initial_volume` is no longer used:
+> Once the state file has a volume, `playback.fallback_initial_volume` is no longer used:
 > delete the state file to apply it again.
+
+> [!NOTE]
+> The position is saved at the moments listed above, not continuously:
+> if the device loses power while playing, the track is resumed from where it was
+> when the state was last saved, which is usually its start.
 
 
 ### Button Map

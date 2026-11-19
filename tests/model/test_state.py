@@ -30,7 +30,9 @@ class TestAppState:
         assert state.current_menu is None
         assert state.menus == []
         assert state.mode == Mode.PLAYBACK
+        assert state.played_path is None
         assert state.settings == Settings(show_side_icons=True)
+        assert state.shutting_down is False
         assert state.status == MocStatus()
         assert state.volume == 50
 

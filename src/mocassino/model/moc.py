@@ -10,11 +10,17 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import time
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
+# When the MOC server is busy, it may refuse a command: the command is then tried again,
+# for this many times in all, this far apart (in seconds)
+BUSY_ATTEMPTS: int = 3
+BUSY_INTERVAL: float = 0.05
+BUSY_MESSAGE: str = "Can't connect to the server"
 DEFAULT_TIMEOUT: float = 5.0
 LOGGER: logging.Logger = logging.getLogger(__name__)
 SERVER_ALREADY_RUNNING_MESSAGE: str = "Server is already running"
@@ -24,8 +30,14 @@ SERVER_NOT_RUNNING_MESSAGE: str = "The server is not running"
 class MocClient(Protocol):
     """What the service needs from MOC."""
 
+    def jump(self, seconds: int) -> None:
+        """Jump to the given position, in seconds, in the track being played."""
+
     def next(self) -> None:
         """Play the next track of the playlist."""
+
+    def pause(self) -> None:
+        """Pause the playback."""
 
     def play(self, path: Path) -> None:
         """Replace the playlist with the given file or directory, and play it."""
@@ -103,33 +115,49 @@ class SubprocessMocClient:
     def _run(self, *arguments: str) -> str:
         """Run a ``mocp`` command and return its standard output.
 
+        A command refused because the MOC server is busy is tried again a few times.
+
         :raises MocServerNotRunningError: if the MOC server is not running
         :raises MocError: if the command cannot be run, times out, or fails
         """
         command = [self._mocp_file_path, *arguments]
         LOGGER.debug("Running %s", command)
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                check=False,
-                text=True,
-                timeout=self._timeout,
-            )
-        except OSError as exc:
-            raise MocError(f"Cannot run {command}: {exc}") from exc
-        except subprocess.TimeoutExpired as exc:
-            raise MocError(f"Timeout running {command}") from exc
-        if result.returncode != 0:
+        message = ""
+        for attempt in range(BUSY_ATTEMPTS):
+            if attempt > 0:
+                time.sleep(BUSY_INTERVAL)
+            try:
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=self._timeout,
+                )
+            except OSError as exc:
+                raise MocError(f"Cannot run {command}: {exc}") from exc
+            except subprocess.TimeoutExpired as exc:
+                raise MocError(f"Timeout running {command}") from exc
+            if result.returncode == 0:
+                return result.stdout
             message = result.stderr.strip() or f"exit status {result.returncode}"
-            if SERVER_NOT_RUNNING_MESSAGE in message:
-                raise MocServerNotRunningError(message)
-            raise MocError(f"Error running {command}: {message}")
-        return result.stdout
+            if BUSY_MESSAGE not in message:
+                break
+        if SERVER_NOT_RUNNING_MESSAGE in message:
+            raise MocServerNotRunningError(message)
+        raise MocError(f"Error running {command}: {message}")
+
+    def jump(self, seconds: int) -> None:
+        """Jump to the given position, in seconds, in the track being played."""
+        self._run(f"--jump={seconds}s")
 
     def next(self) -> None:
         """Play the next track of the playlist."""
         self._run("--next")
+
+    def pause(self) -> None:
+        """Pause the playback."""
+        self._run("--pause")
 
     def play(self, path: Path) -> None:
         """Replace the playlist with the given file or directory, and play it."""

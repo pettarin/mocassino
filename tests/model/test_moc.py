@@ -139,9 +139,36 @@ class TestSubprocessMocClient:
         with pytest.raises(MocError, match="Timeout running"):
             SubprocessMocClient().stop()
 
+    def test_command_refused_when_busy_is_tried_again(self, run, mocker):
+        sleep = mocker.patch("mocassino.model.moc.time.sleep")
+        busy = completed(returncode=2, stderr="\nFATAL_ERROR: Can't connect to the server!\n")
+        run.side_effect = [busy, busy, completed(stdout=INFO_STOP)]
+        assert SubprocessMocClient().status() == MocStatus(state=MocState.STOP)
+        assert commands(run) == [["mocp", "--info"]] * 3
+        assert sleep.call_count == 2
+
+    def test_command_refused_when_busy_too_many_times(self, run, mocker):
+        mocker.patch("mocassino.model.moc.time.sleep")
+        run.return_value = completed(
+            returncode=2,
+            stderr="\nFATAL_ERROR: Can't connect to the server!\n",
+        )
+        with pytest.raises(MocError, match="Can't connect to the server") as info:
+            SubprocessMocClient().next()
+        assert not isinstance(info.value, MocServerNotRunningError)
+        assert commands(run) == [["mocp", "--next"]] * 3
+
+    def test_jump(self, run):
+        SubprocessMocClient().jump(95)
+        assert commands(run) == [["mocp", "--jump=95s"]]
+
     def test_next(self, run):
         SubprocessMocClient().next()
         assert commands(run) == [["mocp", "--next"]]
+
+    def test_pause(self, run):
+        SubprocessMocClient().pause()
+        assert commands(run) == [["mocp", "--pause"]]
 
     def test_play(self, run):
         SubprocessMocClient().play(Path("/music/Artist/Album"))
