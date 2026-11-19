@@ -1056,6 +1056,31 @@ class TestBuildApp:
         app.step()
         assert app._state_frozen is False
 
+    @pytest.mark.parametrize(
+        ("origin", "target", "dry_run"),
+        [
+            ("none", "none", False),
+            ("simulator", "none", True),
+            ("none", "simulator", True),
+            ("simulator", "simulator", True),
+        ],
+    )
+    def test_shutdown_is_a_dry_run_with_the_simulator(self, mocker, origin, target, dry_run):
+        host_class = mocker.patch("mocassino.app.Host", autospec=True)
+        build_app(self.configuration(origin, target))
+        host_class.assert_called_once_with(
+            shutdown_command=("sudo", "shutdown", "-h", "now"),
+            dry_run=dry_run,
+        )
+
+    def test_shutdown_with_the_simulator_runs_no_command(self, mocker):
+        run = mocker.patch("mocassino.model.host.subprocess.run")
+        app = build_app(self.configuration("simulator", "simulator"))
+        for event in SHUT_DOWN:
+            app._controller.handle(event)
+        run.assert_not_called()
+        assert app._state.shutting_down is True
+
     def test_simulator(self):
         app = build_app(self.configuration("simulator", "simulator"))
         assert isinstance(app.simulator, TkSimulator)

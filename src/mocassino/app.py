@@ -354,7 +354,11 @@ def build_app(
         )
     # First, as building the display blanks it, hiding what it shows after the boot
     display = _build_display(configuration, simulator)
-    host = Host(shutdown_command=configuration.system.shutdown_command)
+    # With the simulator, the service runs on a development machine, which must not shut down
+    host = Host(
+        shutdown_command=configuration.system.shutdown_command,
+        dry_run=simulator is not None,
+    )
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
     state_file = StateFile(state_file_path)

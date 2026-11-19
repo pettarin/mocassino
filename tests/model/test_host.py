@@ -4,6 +4,7 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
+import logging
 import socket
 import subprocess
 
@@ -53,6 +54,13 @@ class TestHost:
             text=True,
             timeout=SHUTDOWN_TIMEOUT,
         )
+
+    def test_shutdown_dry_run(self, run, caplog):
+        with caplog.at_level(logging.WARNING):
+            Host(COMMAND, dry_run=True).shutdown()
+        run.assert_not_called()
+        assert "Not shutting down the host (dry run)" in caplog.text
+        assert "['sudo', 'shutdown', '-h', 'now']" in caplog.text
 
     def test_shutdown_command_not_found(self, run):
         run.side_effect = FileNotFoundError("No such file or directory: 'sudo'")

@@ -15,11 +15,14 @@ SHUTDOWN_TIMEOUT: float = 30.0
 class Host:
     """The host running the service."""
 
-    def __init__(self, shutdown_command: tuple[str, ...]) -> None:
+    def __init__(self, shutdown_command: tuple[str, ...], dry_run: bool = False) -> None:
         """Initialize the host.
 
         :param shutdown_command: the command line shutting down the host
+        :param dry_run: if True, the shutdown command is never run
+                        (e.g., with the simulator, not to shut down the development machine)
         """
+        self._dry_run = dry_run
         self._shutdown_command = shutdown_command
 
     def hostname(self) -> str:
@@ -39,11 +42,14 @@ class Host:
             return None
 
     def shutdown(self) -> None:
-        """Shut down the host.
+        """Shut down the host; in a dry run, only log the command that would be run.
 
         :raises HostError: if the shutdown command cannot be run, times out, or fails
         """
         command = list(self._shutdown_command)
+        if self._dry_run:
+            LOGGER.warning("Not shutting down the host (dry run): would run %s", command)
+            return
         LOGGER.warning("Shutting down the host with %s", command)
         try:
             result = subprocess.run(

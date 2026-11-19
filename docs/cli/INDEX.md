@@ -136,6 +136,11 @@ In the simulator window:
   for a short press; with `Shift`, for a long press together with a single hold press;
 - close the window to stop the service.
 
+With the simulator, `Shut down now` in the `System` menu never runs `system.shutdown_command`,
+so that the development machine is not shut down by mistake:
+the command is only logged, and the window goes dark as the display would,
+until the window is closed.
+
 The simulator requires Tk (the `tkinter` module of the Python standard library),
 which is only loaded when the simulator is used.
 
@@ -297,7 +302,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
-| `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list |
+| `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
 
 > [!NOTE]
 > The font built in Pillow only has the basic Latin letters:
@@ -566,6 +571,7 @@ The top level menu has the following items:
   before running `system.shutdown_command`.
   The display is turned off before the command is run,
   and turned on again if the command fails.
+  With the simulator, the command is only logged, and never run.
 
 To leave the top level menu and go back to the playback, press the back button
 (`A`, with the default button map).
