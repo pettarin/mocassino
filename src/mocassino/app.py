@@ -31,7 +31,7 @@ from mocassino.model.moc import (
     SubprocessMocClient,
 )
 from mocassino.model.resume import adopt_playback, playing_from, resume_playback
-from mocassino.model.settings import Settings, StartupPlaylist
+from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
 from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.simulator.tk import TkSimulator
@@ -264,7 +264,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
         "display": {"show_side_icons": settings.show_side_icons},
         "startup": {
             "playlist": settings.startup_playlist.value,
-            "use_saved_volume": settings.use_saved_volume,
+            "volume": settings.startup_volume.value,
         },
     }
     try:
@@ -286,7 +286,7 @@ def build_app(
     which has to be run in the main thread while the application runs in another one.
 
     The volume is the one saved in the state file, if any and if the configuration says
-    to use it; otherwise, the fallback volume of the configuration.
+    to use it; otherwise, the fixed volume of the configuration.
 
     :param configuration_file_path: the YAML file where the settings changed from
                                     the settings menu are saved; if None, the default one
@@ -303,14 +303,15 @@ def build_app(
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
     state_file = StateFile(state_file_path)
-    volume = state_file.load().volume if configuration.startup.use_saved_volume else None
+    startup_volume = StartupVolume(configuration.startup.volume)
+    volume = state_file.load().volume if startup_volume is StartupVolume.USE_SAVED else None
     if volume is None:
-        volume = configuration.startup.fallback_volume
+        volume = configuration.startup.fixed_volume
     state = AppState(
         settings=Settings(
             show_side_icons=configuration.display.show_side_icons,
             startup_playlist=StartupPlaylist(configuration.startup.playlist),
-            use_saved_volume=configuration.startup.use_saved_volume,
+            startup_volume=startup_volume,
         ),
         volume=volume,
     )

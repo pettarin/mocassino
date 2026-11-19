@@ -43,11 +43,11 @@ class TestConfigurationCommand:
         directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
-            "startup:\n  fallback_volume: 30\n",
+            "startup:\n  fixed_volume: 30\n",
             encoding="utf-8",
         )
         result = runner.invoke(main, ["configuration"])
-        assert yaml.safe_load(result.output)["startup"]["fallback_volume"] == 30
+        assert yaml.safe_load(result.output)["startup"]["fixed_volume"] == 30
         result = runner.invoke(main, ["configuration", "--default"])
         assert result.exit_code == 0
         assert yaml.safe_load(result.output) == Configuration().to_dict()
@@ -67,10 +67,10 @@ class TestConfigurationCommand:
 
     def test_configuration_file(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
-        path.write_text("startup:\n  fallback_volume: 30\n", encoding="utf-8")
+        path.write_text("startup:\n  fixed_volume: 30\n", encoding="utf-8")
         result = runner.invoke(main, ["--configuration-file-path", str(path), "configuration"])
         assert result.exit_code == 0
-        assert yaml.safe_load(result.output)["startup"]["fallback_volume"] == 30
+        assert yaml.safe_load(result.output)["startup"]["fixed_volume"] == 30
 
     def test_configuration_file_invalid(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
@@ -314,14 +314,14 @@ class TestMain:
 
     def test_short_options(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
-        path.write_text("startup:\n  fallback_volume: 30\n", encoding="utf-8")
+        path.write_text("startup:\n  fixed_volume: 30\n", encoding="utf-8")
         result = runner.invoke(main, ["-c", str(path), "-l", "/srv/music", "-s", "configuration"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["buttons"]["origin"] == "simulator"
         assert output["display"]["target"] == "simulator"
         assert output["library"]["directory_path"] == "/srv/music"
-        assert output["startup"]["fallback_volume"] == 30
+        assert output["startup"]["fixed_volume"] == 30
 
     def test_verbose(self, runner):
         result = runner.invoke(main, ["--verbose", "configuration"])
@@ -389,11 +389,11 @@ class TestRunCommand:
         build_app = mocker.patch("mocassino.cli.build_app")
         build_app.return_value.simulator = None
         path = tmp_path / "custom.yaml"
-        path.write_text("startup:\n  fallback_volume: 30\n", encoding="utf-8")
+        path.write_text("startup:\n  fixed_volume: 30\n", encoding="utf-8")
         result = runner.invoke(main, ["-c", str(path), *arguments])
         assert result.exit_code == 0
         effective, configuration_file_path = build_app.call_args.args
-        assert effective.startup.fallback_volume == 30
+        assert effective.startup.fixed_volume == 30
         assert configuration_file_path == path
 
     def test_error_while_building(self, runner, mocker, arguments, daemonize):

@@ -17,7 +17,7 @@ from pathlib import Path
 
 from mocassino.model.host import Host
 from mocassino.model.library import Library
-from mocassino.model.settings import Settings, StartupPlaylist
+from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
 
 
 @dataclass
@@ -46,9 +46,9 @@ class MenuCommand(StrEnum):
     CLOSE = "close"
     PLAY = "play"
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
+    SET_STARTUP_VOLUME = "set_startup_volume"
     SHUTDOWN = "shutdown"
     TOGGLE_SIDE_ICONS = "toggle_side_icons"
-    TOGGLE_USE_SAVED_VOLUME = "toggle_use_saved_volume"
 
 
 @dataclass(frozen=True)
@@ -69,6 +69,33 @@ class MenuItem:
     path: Path | None = None
     submenu: Callable[[], Menu] | None = None
     value: str | None = None
+
+
+def _build_choice_menu(
+    title: str,
+    choices: tuple[StrEnum, ...],
+    current: StrEnum,
+    command: MenuCommand,
+) -> Menu:
+    """Build a menu choosing one of the values of a setting.
+
+    The choices are in the given order, which is the alphabetical order of the values.
+    Each is labelled with its value, with spaces for the underscores and a capital first letter.
+    The current choice is the checked one, and it is the selected item too.
+    """
+    return Menu(
+        title=title,
+        items=tuple(
+            MenuItem(
+                label=choice.value.replace("_", " ").capitalize(),
+                checked=choice is current,
+                command=command,
+                value=choice.value,
+            )
+            for choice in choices
+        ),
+        selected_index=choices.index(current),
+    )
 
 
 def _build_shutdown_menu() -> Menu:
@@ -160,20 +187,12 @@ def build_settings_menu(settings: Settings) -> Menu:
 
 
 def build_startup_menu(settings: Settings) -> Menu:
-    """Build the menu showing the settings of what happens at startup, and changing them.
-
-    The items show the values at the time the menu is built:
-    the menu has to be built again when a setting changes.
-    """
+    """Build the menu leading to the settings of what happens at startup."""
     return Menu(
         title="Startup",
         items=(
             MenuItem(label="Playlist", submenu=partial(build_startup_playlist_menu, settings)),
-            MenuItem(
-                label="Use saved volume",
-                checked=settings.use_saved_volume,
-                command=MenuCommand.TOGGLE_USE_SAVED_VOLUME,
-            ),
+            MenuItem(label="Volume", submenu=partial(build_startup_volume_menu, settings)),
         ),
     )
 
@@ -181,21 +200,24 @@ def build_startup_menu(settings: Settings) -> Menu:
 def build_startup_playlist_menu(settings: Settings) -> Menu:
     """Build the menu choosing what the service does about the playlist when it starts.
 
-    The choices are in alphabetical order, as the values of the setting are.
-    The current choice is the checked one, and it is the selected item too.
-    Like the startup menu, it has to be built again when the choice changes.
+    It has to be built again when the choice changes.
     """
-    choices = tuple(StartupPlaylist)
-    return Menu(
-        title="Playlist",
-        items=tuple(
-            MenuItem(
-                label=choice.value.replace("_", " ").capitalize(),
-                checked=choice is settings.startup_playlist,
-                command=MenuCommand.SET_STARTUP_PLAYLIST,
-                value=choice.value,
-            )
-            for choice in choices
-        ),
-        selected_index=choices.index(settings.startup_playlist),
+    return _build_choice_menu(
+        "Playlist",
+        tuple(StartupPlaylist),
+        settings.startup_playlist,
+        MenuCommand.SET_STARTUP_PLAYLIST,
+    )
+
+
+def build_startup_volume_menu(settings: Settings) -> Menu:
+    """Build the menu choosing what volume the service sets when it starts.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_choice_menu(
+        "Volume",
+        tuple(StartupVolume),
+        settings.startup_volume,
+        MenuCommand.SET_STARTUP_VOLUME,
     )

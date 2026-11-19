@@ -21,7 +21,7 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import StartupPlaylist
+from mocassino.model.settings import StartupPlaylist, StartupVolume
 from mocassino.model.state import AppState, Mode
 
 A = ButtonEvent(Button.A)
@@ -229,7 +229,7 @@ class TestController:
         controller.handle(B)
         assert state.current_menu.selected.checked is True
 
-    def test_menu_select_toggle_use_saved_volume(self, mocker, state, moc, library, host):
+    def test_menu_select_startup_volume(self, mocker, state, moc, library, host):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
@@ -241,26 +241,39 @@ class TestController:
             volume_step=5,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, B, Y):
-            controller.handle(event)
-        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup"]
-        assert state.current_menu.selected.label == "Use saved volume"
-        assert state.current_menu.selected.checked is True
-        save_settings.assert_not_called()
-        controller.handle(B)
-        assert state.settings.use_saved_volume is False
-        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup"]
-        assert state.current_menu.selected.checked is False
-        save_settings.assert_called_once_with(state.settings)
-        assert state.settings.show_side_icons is True
-        controller.handle(B)
-        assert state.settings.use_saved_volume is True
-        assert state.current_menu.selected.checked is True
-
-    def test_menu_select_toggle_use_saved_volume_without_saving(self, controller, state):
         for event in (A_LONG, Y, B, Y, B, Y, B):
             controller.handle(event)
-        assert state.settings.use_saved_volume is False
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Volume"]
+        menu = state.current_menu
+        assert [item.label for item in menu.items] == ["Use fixed", "Use saved"]
+        assert [item.checked for item in menu.items] == [False, True]
+        assert menu.selected.label == "Use saved"
+        save_settings.assert_not_called()
+        controller.handle(X)
+        controller.handle(B)
+        assert state.settings.startup_volume is StartupVolume.USE_FIXED
+        save_settings.assert_called_once_with(state.settings)
+        menu = state.current_menu
+        assert menu.title == "Volume"
+        assert [item.checked for item in menu.items] == [True, False]
+        assert menu.selected.label == "Use fixed"
+        assert state.settings.show_side_icons is True
+        controller.handle(Y)
+        controller.handle(B)
+        assert state.settings.startup_volume is StartupVolume.USE_SAVED
+        assert [item.checked for item in state.current_menu.items] == [False, True]
+
+    def test_menu_select_startup_volume_without_saving(self, controller, state):
+        for event in (A_LONG, Y, B, Y, B, Y, B, X, B):
+            controller.handle(event)
+        assert state.settings.startup_volume is StartupVolume.USE_FIXED
+
+    def test_menu_select_startup_volume_without_value(self, controller, state):
+        item = MenuItem(label="Broken", command=MenuCommand.SET_STARTUP_VOLUME)
+        open_single_item_menu(state, item)
+        controller.handle(B)
+        assert state.settings.startup_volume is StartupVolume.USE_SAVED
+        assert state.current_menu.title == "Above"
 
     def test_menu_select_startup_playlist(self, mocker, state, moc, library, host):
         save_settings = mocker.Mock()

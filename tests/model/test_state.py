@@ -6,7 +6,7 @@
 
 from mocassino.model.menu import Menu, MenuItem
 from mocassino.model.moc import MocStatus
-from mocassino.model.settings import Settings, StartupPlaylist
+from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
 from mocassino.model.state import AppState, Mode
 
 
@@ -58,7 +58,7 @@ class TestAppState:
         assert second.settings == Settings(
             show_side_icons=True,
             startup_playlist=StartupPlaylist.USE_SAVED,
-            use_saved_volume=True,
+            startup_volume=StartupVolume.USE_SAVED,
         )
 
     def test_menu_replaced(self):

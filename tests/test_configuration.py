@@ -53,7 +53,7 @@ class TestConfiguration:
         assert configuration.playback == PlaybackConfiguration(seek_step=10, volume_step=5)
         assert configuration.run == RunConfiguration(mode="background")
         assert configuration.startup == StartupConfiguration(
-            fallback_volume=50, playlist="use_saved", use_saved_volume=True
+            fixed_volume=50, playlist="use_saved", volume="use_saved"
         )
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
@@ -77,7 +77,7 @@ class TestConfiguration:
             "library": {"directory_path": "/music"},
             "playback": {"seek_step": 10, "volume_step": 5},
             "run": {"mode": "background"},
-            "startup": {"fallback_volume": 50, "playlist": "use_saved", "use_saved_volume": True},
+            "startup": {"fixed_volume": 50, "playlist": "use_saved", "volume": "use_saved"},
             "system": {
                 "mocp_file_path": "mocp",
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
@@ -115,10 +115,10 @@ class TestLoadConfiguration:
         directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
-            "startup:\n  fallback_volume: 30\n",
+            "startup:\n  fixed_volume: 30\n",
             encoding="utf-8",
         )
-        assert load_configuration().startup.fallback_volume == 30
+        assert load_configuration().startup.fixed_volume == 30
 
     def test_empty_file(self, tmp_path):
         assert load_configuration(write_yaml(tmp_path, "")) == Configuration()
@@ -148,8 +148,8 @@ class TestLoadConfiguration:
             "run:\n"
             "  mode: foreground\n"
             "startup:\n"
-            "  fallback_volume: 70\n"
-            "  use_saved_volume: false\n"
+            "  fixed_volume: 70\n"
+            "  volume: use_fixed\n"
             "system:\n"
             "  mocp_file_path: /usr/bin/mocp\n"
             "  shutdown_command: [systemctl, poweroff]\n",
@@ -165,7 +165,7 @@ class TestLoadConfiguration:
             library=LibraryConfiguration(directory_path=Path("/srv/music")),
             playback=PlaybackConfiguration(seek_step=30, volume_step=10),
             run=RunConfiguration(mode="foreground"),
-            startup=StartupConfiguration(fallback_volume=70, use_saved_volume=False),
+            startup=StartupConfiguration(fixed_volume=70, volume="use_fixed"),
             system=SystemConfiguration(
                 mocp_file_path="/usr/bin/mocp",
                 shutdown_command=("systemctl", "poweroff"),
@@ -201,16 +201,17 @@ class TestLoadConfiguration:
             ("run", "mode", "window"),
             ("run", "mode", "Foreground"),
             ("run", "mode", True),
-            ("startup", "fallback_volume", -1),
-            ("startup", "fallback_volume", 101),
-            ("startup", "fallback_volume", 50.5),
-            ("startup", "fallback_volume", True),
+            ("startup", "fixed_volume", -1),
+            ("startup", "fixed_volume", 101),
+            ("startup", "fixed_volume", 50.5),
+            ("startup", "fixed_volume", True),
             ("startup", "playlist", "shuffle"),
             ("startup", "playlist", "saved"),
             ("startup", "playlist", "Use saved"),
             ("startup", "playlist", 5),
-            ("startup", "use_saved_volume", "yes"),
-            ("startup", "use_saved_volume", 0),
+            ("startup", "volume", "use_fallback"),
+            ("startup", "volume", "Use saved"),
+            ("startup", "volume", True),
             ("system", "mocp_file_path", ["mocp"]),
             ("system", "shutdown_command", "'unbalanced"),
             ("system", "shutdown_command", ""),
@@ -237,6 +238,16 @@ class TestLoadConfiguration:
         path = write_yaml(tmp_path, f"startup:\n  playlist: {playlist}\n")
         assert load_configuration(path).startup.playlist == playlist
 
+    @pytest.mark.parametrize("volume", ["use_fixed", "use_saved"])
+    def test_startup_volumes(self, tmp_path, volume):
+        path = write_yaml(tmp_path, f"startup:\n  volume: {volume}\n")
+        assert load_configuration(path).startup.volume == volume
+
+    def test_startup_use_saved_volume_is_no_longer_a_key(self, tmp_path):
+        path = write_yaml(tmp_path, "startup:\n  use_saved_volume: true\n")
+        with pytest.raises(ConfigurationError, match="startup.use_saved_volume"):
+            load_configuration(path)
+
     def test_invalid_yaml(self, tmp_path):
         with pytest.raises(ConfigurationError, match="is not valid YAML"):
             load_configuration(write_yaml(tmp_path, "library: [unclosed\n"))
@@ -247,11 +258,11 @@ class TestLoadConfiguration:
     def test_none_values_are_ignored(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "display:\n  font_file_path: null\nstartup:\n  fallback_volume: 30\n",
+            "display:\n  font_file_path: null\nstartup:\n  fixed_volume: 30\n",
         )
-        overrides = {"display": {"tick": None}, "startup": {"fallback_volume": None}}
+        overrides = {"display": {"tick": None}, "startup": {"fixed_volume": None}}
         assert load_configuration(path, overrides) == Configuration(
-            startup=StartupConfiguration(fallback_volume=30),
+            startup=StartupConfiguration(fixed_volume=30),
         )
 
     def test_not_a_mapping(self, tmp_path):
@@ -274,9 +285,9 @@ class TestLoadConfiguration:
         )
 
     def test_partial_section(self, tmp_path):
-        path = write_yaml(tmp_path, "startup:\n  fallback_volume: 30\n")
+        path = write_yaml(tmp_path, "startup:\n  fixed_volume: 30\n")
         assert load_configuration(path) == Configuration(
-            startup=StartupConfiguration(fallback_volume=30)
+            startup=StartupConfiguration(fixed_volume=30)
         )
 
     def test_section_not_a_mapping(self, tmp_path):

@@ -16,7 +16,7 @@ from typing import Any
 import yaml
 
 from mocassino.controller.actions import resolve_button_map
-from mocassino.model.settings import StartupPlaylist
+from mocassino.model.settings import StartupPlaylist, StartupVolume
 
 # "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
@@ -82,9 +82,9 @@ class RunConfiguration:
 class StartupConfiguration:
     """The settings of what the service does when it starts."""
 
-    fallback_volume: int = 50
+    fixed_volume: int = 50
     playlist: str = StartupPlaylist.USE_SAVED.value
-    use_saved_volume: bool = True
+    volume: str = StartupVolume.USE_SAVED.value
 
 
 @dataclass(frozen=True)
@@ -148,9 +148,9 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         },
         "run": {"mode": _to_str},
         "startup": {
-            "fallback_volume": _to_int,
+            "fixed_volume": _to_int,
             "playlist": _to_str,
-            "use_saved_volume": _to_bool,
+            "volume": _to_str,
         },
         "system": {"mocp_file_path": _to_str, "shutdown_command": _to_command},
     }
@@ -217,13 +217,17 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             configuration.run.mode,
             configuration.run.mode in RUN_MODES,
         ),
-        "startup.fallback_volume": (
-            configuration.startup.fallback_volume,
-            0 <= configuration.startup.fallback_volume <= 100,
+        "startup.fixed_volume": (
+            configuration.startup.fixed_volume,
+            0 <= configuration.startup.fixed_volume <= 100,
         ),
         "startup.playlist": (
             configuration.startup.playlist,
             configuration.startup.playlist in list(StartupPlaylist),
+        ),
+        "startup.volume": (
+            configuration.startup.volume,
+            configuration.startup.volume in list(StartupVolume),
         ),
     }
     for name, (value, valid) in checks.items():

@@ -63,7 +63,7 @@ if not, it prints the error and exits.
 
 When it starts, the service starts the MOC server, if it is not already running,
 and sets the MOC volume to the one saved in the state file or, if there is none,
-to `startup.fallback_volume`.
+to `startup.fixed_volume`.
 
 > [!NOTE]
 > MOC does not report its volume to command line clients,
@@ -221,9 +221,9 @@ playback:
 run:
   mode: background
 startup:
-  fallback_volume: 50
+  fixed_volume: 50
   playlist: use_saved
-  use_saved_volume: true
+  volume: use_saved
 system:
   mocp_file_path: mocp
   shutdown_command:
@@ -260,9 +260,9 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `playback.seek_step` | `10` | The amount of each seek, in seconds |
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100 |
 | `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
-| `startup.fallback_volume` | `50` | The volume set when the service starts, between 0 and 100, if there is no saved volume or `startup.use_saved_volume` is `false` |
+| `startup.fixed_volume` | `50` | The volume set when the service starts, between 0 and 100, if `startup.volume` is `use_fixed`, or if there is no saved volume |
 | `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `select_from_library`, `use_mocp_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
-| `startup.use_saved_volume` | `true` | Whether, when the service starts, the volume is the one saved in the state file; if `false`, it is `startup.fallback_volume`; it can be changed from the `Settings` menu |
+| `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_fixed` (the one in `startup.fixed_volume`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list |
 
@@ -295,7 +295,7 @@ display:
 library:
   directory_path: /home/pi/music
 startup:
-  fallback_volume: 30
+  fixed_volume: 30
 ```
 
 ### State File
@@ -331,8 +331,8 @@ The file is only written when its content would change.
 When the service starts:
 
 - it restores the volume from the state file, if it has one
-  and `startup.use_saved_volume` is `true`;
-  otherwise, it applies `startup.fallback_volume` from the configuration file;
+  and `startup.volume` is `use_saved`;
+  otherwise, it applies `startup.fixed_volume` from the configuration file;
 - it sets up the playlist as `startup.playlist` says:
 
   | Value | What happens |
@@ -349,8 +349,8 @@ If the saved playback cannot be resumed (e.g., the file no longer exists),
 it plays nothing, and blanks the directory, the file, and the position in the state file.
 
 > [!NOTE]
-> Once the state file has a volume, `startup.fallback_volume` is no longer used,
-> unless `startup.use_saved_volume` is set to `false`.
+> Once the state file has a volume, `startup.fixed_volume` is no longer used,
+> unless `startup.volume` is set to `use_fixed`.
 
 > [!NOTE]
 > The position is saved at the moments listed above, not continuously:
@@ -462,8 +462,8 @@ The top level menu has the following items:
     They take effect the next time the service starts.
     - `Playlist` (`startup.playlist`): a menu with the three choices
       `Select from library`, `Use mocp state`, and `Use saved`; the current one has the solid square.
-    - `Use saved volume` (`startup.use_saved_volume`):
-      whether the volume is restored from the state file.
+    - `Volume` (`startup.volume`): a menu with the two choices
+      `Use fixed` and `Use saved`; the current one has the solid square.
 - `Host`: show the name and the IP address of the host,
   and `Shut down`, which asks for confirmation
   before running `system.shutdown_command`.

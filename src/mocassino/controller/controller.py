@@ -16,11 +16,11 @@ from mocassino.model.menu import (
     build_display_menu,
     build_library_menu,
     build_root_menu,
-    build_startup_menu,
     build_startup_playlist_menu,
+    build_startup_volume_menu,
 )
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
-from mocassino.model.settings import Settings, StartupPlaylist
+from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
 from mocassino.model.state import AppState
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -106,6 +106,12 @@ class Controller:
             self._state.replace_menu(build_startup_playlist_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)
+        elif item.command is MenuCommand.SET_STARTUP_VOLUME and item.value is not None:
+            settings = self._state.settings
+            settings.startup_volume = StartupVolume(item.value)
+            self._state.replace_menu(build_startup_volume_menu(settings))
+            if self._save_settings is not None:
+                self._save_settings(settings)
         elif item.command is MenuCommand.SHUTDOWN:
             self._state.close_menus()
             self._state.shutting_down = True
@@ -114,12 +120,6 @@ class Controller:
             settings = self._state.settings
             settings.show_side_icons = not settings.show_side_icons
             self._state.replace_menu(build_display_menu(settings))
-            if self._save_settings is not None:
-                self._save_settings(settings)
-        elif item.command is MenuCommand.TOGGLE_USE_SAVED_VOLUME:
-            settings = self._state.settings
-            settings.use_saved_volume = not settings.use_saved_volume
-            self._state.replace_menu(build_startup_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)
 

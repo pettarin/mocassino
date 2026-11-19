@@ -19,6 +19,16 @@ class StartupPlaylist(StrEnum):
     USE_SAVED = "use_saved"
 
 
+class StartupVolume(StrEnum):
+    """What volume the service sets when it starts.
+
+    Defined before the settings, as they refer to it.
+    """
+
+    USE_FIXED = "use_fixed"
+    USE_SAVED = "use_saved"
+
+
 @dataclass
 class Settings:
     """The settings that can be changed while the service runs.
@@ -28,4 +38,4 @@ class Settings:
 
     show_side_icons: bool = True
     startup_playlist: StartupPlaylist = StartupPlaylist.USE_SAVED
-    use_saved_volume: bool = True
+    startup_volume: StartupVolume = StartupVolume.USE_SAVED
