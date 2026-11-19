@@ -184,29 +184,6 @@ class TestController:
         moc.play.assert_not_called()
         assert state.current_menu.title == "Above"
 
-    def test_menu_select_pin_button_y(self, mocker, state, moc, library, system):
-        save_settings = mocker.Mock()
-        controller = Controller(
-            state,
-            moc,
-            library,
-            system,
-            DEFAULT_BUTTON_MAP,
-            save_settings=save_settings,
-        )
-        for event in (A_LONG, Y, B, Y, Y, Y, B):
-            controller.handle(event)
-        titles = ["Menu", "Settings", "Pin button Y"]
-        assert [menu.title for menu in state.menus] == titles
-        assert state.current_menu.selected.label == "24"
-        assert state.current_menu.selected.checked is True
-        for event in (X, B):
-            controller.handle(event)
-        assert state.settings.system_pin_button_y == 20
-        save_settings.assert_called_once_with(state.settings)
-        assert [menu.title for menu in state.menus] == titles
-        assert [item.label for item in state.current_menu.items if item.checked] == ["20"]
-
     def test_menu_select_moc_state_on_exit(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(

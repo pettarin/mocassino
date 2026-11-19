@@ -28,7 +28,6 @@ from mocassino.model.menu import (
     build_startup_state_menu,
     build_startup_volume_menu,
     build_system_moc_state_on_exit_menu,
-    build_system_pin_button_y_menu,
 )
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
 from mocassino.model.settings import (
@@ -100,11 +99,6 @@ SETTERS: dict[
         "system_moc_state_on_exit",
         MocStateOnExit,
         build_system_moc_state_on_exit_menu,
-    ),
-    MenuCommand.SET_SYSTEM_PIN_BUTTON_Y: (
-        "system_pin_button_y",
-        int,
-        build_system_pin_button_y_menu,
     ),
 }
 

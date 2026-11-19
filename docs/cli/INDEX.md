@@ -269,7 +269,6 @@ startup:
 system:
   moc_state_on_exit: do_nothing
   mocp_file_path: mocp
-  pin_button_y: 24
   reboot_command:
   - sudo
   - reboot
@@ -334,7 +333,6 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
-| `system.pin_button_y` | `24` | The GPIO pin of the `Y` button of the Pirate Audio hat: `24`, or `20` on the boards made before 23 January 2020; it has no effect on the simulator; it can be changed from the `Settings` menu |
 | `system.reboot_command` | `sudo reboot` | The command rebooting the host, as a string or as a list; it is never run when the simulator is used |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
 
@@ -639,11 +637,6 @@ The top level menu has the following items:
   - `MOC state on exit` (`system.moc_state_on_exit`): a menu with the four choices
     `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
     The choice applies when the service exits, after its state has been saved.
-  - `Pin button Y` (`system.pin_button_y`): a menu with the two choices `20` and `24`,
-    the GPIO pin the `Y` button is read on; the current one has the solid square.
-    The change is immediate: if `Y` does not work, try the other choice
-    (the menu can still be navigated with `X` to move up and `B` to select).
-    It has no effect on the simulator.
   - `Startup`: the settings of what the service does when it starts.
     They take effect the next time the service starts.
     - `Playlist` (`startup.playlist`): a menu with the three choices

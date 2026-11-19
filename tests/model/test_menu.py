@@ -32,7 +32,6 @@ from mocassino.model.menu import (
     build_startup_volume_menu,
     build_system_menu,
     build_system_moc_state_on_exit_menu,
-    build_system_pin_button_y_menu,
 )
 from mocassino.model.settings import (
     MocStateOnExit,
@@ -341,24 +340,15 @@ class TestBuildSettingsMenu:
             "Display",
             "Playback",
             "MOC state on exit",
-            "Pin button Y",
             "Startup",
             "Reset all settings",
         ]
-        assert [item.checked for item in menu.items] == [None] * 6
-        assert [item.command for item in menu.items] == [None] * 6
+        assert [item.checked for item in menu.items] == [None] * 5
+        assert [item.command for item in menu.items] == [None] * 5
         assert menu.items[0].submenu().title == "Display"
         assert menu.items[1].submenu().title == "Playback"
         assert menu.items[2].submenu().title == "MOC state on exit"
-        assert menu.items[3].submenu().title == "Pin button Y"
-        assert menu.items[4].submenu().title == "Startup"
-
-    def test_pin_button_y_submenu(self):
-        settings = Settings()
-        item = build_settings_menu(settings).items[3]
-        assert item.submenu().selected.label == "24"
-        settings.system_pin_button_y = 20
-        assert item.submenu().selected.label == "20"
+        assert menu.items[3].submenu().title == "Startup"
 
     def test_moc_state_on_exit_submenu(self):
         settings = Settings()
@@ -368,7 +358,7 @@ class TestBuildSettingsMenu:
         assert item.submenu().selected.label == "Stop"
 
     def test_reset_all_settings_is_confirmed(self):
-        item = build_settings_menu(Settings()).items[5]
+        item = build_settings_menu(Settings()).items[4]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Reset all settings?",
@@ -380,7 +370,7 @@ class TestBuildSettingsMenu:
 
     def test_submenus_show_the_current_values(self):
         settings = Settings()
-        display, playback, _, _, startup, _ = build_settings_menu(settings).items
+        display, playback, _, startup, _ = build_settings_menu(settings).items
         assert playback.submenu().items[0].submenu().selected.label == "10"
         settings.playback_seek_step = 30
         assert playback.submenu().items[0].submenu().selected.label == "30"
@@ -660,20 +650,6 @@ class TestLabel:
     )
     def test_label(self, value, label):
         assert _label(value) == label
-
-
-class TestBuildSystemPinButtonYMenu:
-    """Tests for the build_system_pin_button_y_menu function"""
-
-    @pytest.mark.parametrize(("pin", "checked"), [(20, [True, False]), (24, [False, True])])
-    def test_choices(self, pin, checked):
-        menu = build_system_pin_button_y_menu(Settings(system_pin_button_y=pin))
-        assert menu.title == "Pin button Y"
-        assert [item.label for item in menu.items] == ["20", "24"]
-        assert [item.value for item in menu.items] == ["20", "24"]
-        assert {item.command for item in menu.items} == {MenuCommand.SET_SYSTEM_PIN_BUTTON_Y}
-        assert [item.checked for item in menu.items] == checked
-        assert menu.selected.label == str(pin)
 
 
 class TestMenu:

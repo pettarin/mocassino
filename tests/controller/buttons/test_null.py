@@ -16,6 +16,5 @@ class TestNullButtonSource:
         events = Queue()
         source = NullButtonSource()
         source.start(events)
-        source.set_pin_button_y(20)
         source.close()
         assert events.empty()
