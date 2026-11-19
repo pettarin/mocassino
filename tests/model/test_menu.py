@@ -129,9 +129,9 @@ class TestBuildRootMenu:
     def test_settings_menu_shows_the_current_values(self, library, host):
         settings = Settings()
         item = build_root_menu(library, host, settings).items[1]
-        assert item.submenu().items[0].label == "Side icons: on"
+        assert item.submenu().items[0].checked is True
         settings.show_side_icons = False
-        assert item.submenu().items[0].label == "Side icons: off"
+        assert item.submenu().items[0].checked is False
 
     def test_submenus_are_built_when_opened(self, library, host):
         build_root_menu(library, host, Settings())
@@ -141,18 +141,23 @@ class TestBuildRootMenu:
 class TestBuildSettingsMenu:
     """Tests for the build_settings_menu function"""
 
-    @pytest.mark.parametrize(("show", "label"), [(True, "on"), (False, "off")])
-    def test_side_icons(self, show, label):
+    @pytest.mark.parametrize("show", [True, False])
+    def test_side_icons(self, show):
         menu = build_settings_menu(Settings(show_side_icons=show))
         assert menu == Menu(
             title="Settings",
             items=(
                 MenuItem(
-                    label=f"Side icons: {label}",
+                    label="Side icons",
+                    checked=show,
                     command=MenuCommand.TOGGLE_SIDE_ICONS,
                 ),
             ),
         )
+
+    def test_other_items_are_not_checkable(self, library, host):
+        menu = build_root_menu(library, host, Settings())
+        assert [item.checked for item in menu.items] == [None] * 4
 
 
 class TestMenu:

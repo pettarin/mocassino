@@ -35,6 +35,7 @@ ELLIPSIS: str = "..."
 # The space around the icons of the buttons, and between them
 ICON_BORDER: int = 2
 MARGIN: int = 10
+MENU_CHECK_SIZE: int = 14
 MENU_ROW_HEIGHT: int = 34
 MENU_TITLE_HEIGHT: int = 36
 MENU_VISIBLE_ROWS: int = 6
@@ -121,7 +122,11 @@ class Renderer:
                 draw_icon(draw, held, left, outer, DIM_COLOR)
 
     def _draw_menu(self, draw: ImageDraw.ImageDraw, menu: Menu) -> None:
-        """Draw a menu: its title, the items around the selected one, and a scrollbar."""
+        """Draw a menu: its title, the items around the selected one, and a scrollbar.
+
+        On the right of its row, an item with a submenu has an arrow, and an item standing for
+        a setting that is on or off has a square: solid if on, empty if off.
+        """
         font = self._font(20)
         draw.rectangle((0, 0, WIDTH - 1, MENU_TITLE_HEIGHT - 1), fill=TRACK_COLOR)
         draw.text(
@@ -148,6 +153,16 @@ class Renderer:
             if item.submenu is not None:
                 draw.text((right - MARGIN, middle), ">", anchor="rm", fill=color, font=font)
                 label_width -= 2 * MARGIN
+            if item.checked is not None:
+                box_top = middle - MENU_CHECK_SIZE // 2
+                box = (
+                    right - MARGIN - MENU_CHECK_SIZE + 1,
+                    box_top,
+                    right - MARGIN,
+                    box_top + MENU_CHECK_SIZE - 1,
+                )
+                draw.rectangle(box, fill=color if item.checked else None, outline=color, width=2)
+                label_width -= MENU_CHECK_SIZE + MARGIN
             draw.text(
                 (MARGIN, middle),
                 self._fit(item.label, font, label_width),

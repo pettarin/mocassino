@@ -286,7 +286,7 @@ class TestBuildApp:
                 app._controller.handle(event)
         assert "Cannot save the settings: Cannot write configuration file" in caplog.text
         assert app._state.settings.show_side_icons is False
-        assert app._state.current_menu.selected.label == "Side icons: off"
+        assert app._state.current_menu.selected.checked is False
 
     def test_volume_from_the_configuration(self, tmp_path):
         state_file_path = tmp_path / "state.yaml"

@@ -54,11 +54,14 @@ class MenuItem:
     """An item of a menu.
 
     An item with neither a command nor a submenu only shows information.
+    An item standing for a setting that is either on or off says which, as checked;
+    the other items leave it to None.
     The path is the file or directory to play, for the PLAY command.
     The submenu is a function, so that it is built only when it is opened.
     """
 
     label: str
+    checked: bool | None = None
     command: MenuCommand | None = None
     path: Path | None = None
     submenu: Callable[[], Menu] | None = None
@@ -127,15 +130,15 @@ def build_root_menu(library: Library, host: Host, settings: Settings) -> Menu:
 def build_settings_menu(settings: Settings) -> Menu:
     """Build the menu showing the settings, and changing them.
 
-    The labels show the values at the time the menu is built:
+    The items show the values at the time the menu is built:
     the menu has to be built again when a setting changes.
     """
-    side_icons = "on" if settings.show_side_icons else "off"
     return Menu(
         title="Settings",
         items=(
             MenuItem(
-                label=f"Side icons: {side_icons}",
+                label="Side icons",
+                checked=settings.show_side_icons,
                 command=MenuCommand.TOGGLE_SIDE_ICONS,
             ),
         ),

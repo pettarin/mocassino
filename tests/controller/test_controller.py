@@ -191,17 +191,18 @@ class TestController:
         controller.handle(Y)
         controller.handle(B)
         assert state.current_menu.title == "Settings"
-        assert state.current_menu.selected.label == "Side icons: on"
+        assert state.current_menu.selected.label == "Side icons"
+        assert state.current_menu.selected.checked is True
         controller.handle(B)
         assert state.settings.show_side_icons is False
         assert [menu.title for menu in state.menus] == ["Menu", "Settings"]
-        assert state.current_menu.selected.label == "Side icons: off"
+        assert state.current_menu.selected.checked is False
         controller.handle(B)
         assert state.settings.show_side_icons is True
-        assert state.current_menu.selected.label == "Side icons: on"
+        assert state.current_menu.selected.checked is True
         controller.handle(A)
         controller.handle(B)
-        assert state.current_menu.selected.label == "Side icons: on"
+        assert state.current_menu.selected.checked is True
 
     def test_menu_select_toggle_side_icons_saves_the_settings(
         self, mocker, state, moc, library, host

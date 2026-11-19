@@ -372,8 +372,9 @@ The top level menu has the following items:
   Selecting `Play this folder` or an audio file
   replaces the MOC playlist with it, and plays it.
 - `Settings`: change the settings of the running service.
-  For now, it has one item, `Side icons: on` or `Side icons: off`:
-  selecting it shows or hides the icons of the buttons in playback mode.
+  For now, it has one item, `Side icons`, with a square on its right:
+  solid when the icons of the buttons are shown in playback mode, empty when they are hidden.
+  Selecting the item shows or hides them.
   The new value is also saved as `display.show_side_icons` in the configuration file,
   so that it is kept when the service is started again.
 - `Host`: show the name and the IP address of the host,

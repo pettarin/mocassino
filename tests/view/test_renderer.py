@@ -153,6 +153,40 @@ class TestRenderer:
         assert not has_content(image, (205, row_top(1), 231, row_top(2)))
         assert has_content(image, (205, row_top(2), 231, row_top(3)))
 
+    @pytest.mark.parametrize("selected", [False, True])
+    def test_menu_checkable_items(self, renderer, selected):
+        items = (
+            MenuItem(label="Other", command=MenuCommand.BACK),
+            MenuItem(label="On", checked=True, command=MenuCommand.TOGGLE_SIDE_ICONS),
+            MenuItem(label="Off", checked=False, command=MenuCommand.TOGGLE_SIDE_ICONS),
+        )
+        frames = {}
+        for row in (1, 2):
+            menu = Menu(title="Settings", items=items, selected_index=row if selected else 0)
+            frames[row] = renderer.render(AppState(menus=[menu]))
+        ink, paper = (BACKGROUND_COLOR, ACCENT_COLOR) if selected else ((255, 255, 255), (0, 0, 0))
+        left, right = 209, 222
+        for row, solid in ((1, True), (2, False)):
+            image = frames[row]
+            top = row_top(row) + 17 - 7
+            for corner in ((left, top), (right, top), (left, top + 13), (right, top + 13)):
+                assert image.getpixel(corner) == ink
+            assert image.getpixel((left + 1, top + 1)) == ink
+            assert image.getpixel((left + 6, top + 6)) == (ink if solid else paper)
+            assert image.getpixel((left + 2, top + 2)) == (ink if solid else paper)
+            assert image.getpixel((left - 1, top + 6)) == paper
+            assert image.getpixel((right + 1, top + 6)) == paper
+        plain_row = frames[1].crop((205, row_top(0), 231, row_top(1)))
+        assert len(plain_row.getcolors()) == 1
+
+    def test_menu_checkable_item_label_leaves_room_for_the_square(self, renderer):
+        label = "A very long label that cannot possibly fit in a row"
+        item = MenuItem(label=label, checked=False, command=MenuCommand.TOGGLE_SIDE_ICONS)
+        other = MenuItem(label="Other", command=MenuCommand.BACK)
+        image = renderer.render(AppState(menus=[Menu(title="Settings", items=(other, item))]))
+        assert has_content(image, (10, row_top(1), 190, row_top(2)))
+        assert not has_content(image, (199, row_top(1), 209, row_top(2)))
+
     def test_menu_scrolls_to_the_selected_item(self, renderer):
         image = renderer.render(AppState(menus=[letters_menu(10, selected_index=9)]))
         assert image.getpixel((2, row_top(5) + 2)) == ACCENT_COLOR
