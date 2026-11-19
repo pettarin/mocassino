@@ -10,11 +10,10 @@ import shutil
 import signal
 import sys
 import threading
-from collections.abc import Callable
+from dataclasses import dataclass
 from logging.handlers import SysLogHandler
 from pathlib import Path
 from types import FrameType
-from typing import Any
 
 import click
 import yaml
@@ -34,38 +33,18 @@ LOGGER: logging.Logger = logging.getLogger(__name__)
 SYSLOG_SOCKET_PATH: Path = Path("/dev/log")
 
 
-def _configuration_options(function: Callable[..., Any]) -> Callable[..., Any]:
-    """Add the options selecting and overriding the configuration to a command."""
-    options = [
-        click.option(
-            "--buttons-origin",
-            type=click.Choice(BUTTONS_ORIGINS),
-            help="Where the button events come from (buttons.origin).",
-        ),
-        click.option(
-            "--configuration-file-path",
-            type=click.Path(dir_okay=False, path_type=Path),
-            help="YAML configuration file.",
-        ),
-        click.option(
-            "--display-target",
-            type=click.Choice(DISPLAY_TARGETS),
-            help="Where the screen is drawn (display.target).",
-        ),
-        click.option(
-            "--library-directory-path",
-            type=click.Path(file_okay=False, path_type=Path),
-            help="Music root directory (library.directory_path).",
-        ),
-        click.option(
-            "--simulator",
-            is_flag=True,
-            help="Shortcut for '--buttons-origin simulator --display-target simulator'.",
-        ),
-    ]
-    for option in reversed(options):
-        function = option(function)
-    return function
+@dataclass(frozen=True)
+class GlobalOptions:
+    """The options given before the command, shared by all the commands.
+
+    They select and override the configuration.
+    """
+
+    buttons_origin: str | None
+    configuration_file_path: Path | None
+    display_target: str | None
+    library_directory_path: Path | None
+    simulator: bool
 
 
 def _daemonize() -> None:
@@ -95,24 +74,19 @@ def _daemonize() -> None:
     logging.getLogger().handlers = handlers
 
 
-def _load_configuration(
-    buttons_origin: str | None,
-    configuration_file_path: Path | None,
-    display_target: str | None,
-    library_directory_path: Path | None,
-    simulator: bool,
-) -> Configuration:
+def _load_configuration(options: GlobalOptions) -> Configuration:
     """Load the configuration, reporting the errors as command line errors."""
-    if simulator:
+    buttons_origin, display_target = options.buttons_origin, options.display_target
+    if options.simulator:
         buttons_origin = buttons_origin or "simulator"
         display_target = display_target or "simulator"
     overrides = {
         "buttons": {"origin": buttons_origin},
         "display": {"target": display_target},
-        "library": {"directory_path": library_directory_path},
+        "library": {"directory_path": options.library_directory_path},
     }
     try:
-        return load_configuration(configuration_file_path, overrides)
+        return load_configuration(options.configuration_file_path, overrides)
     except ConfigurationError as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -146,26 +120,65 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 
 
 @click.command()
-@_configuration_options
-def configuration(
+@click.pass_obj
+def configuration(options: GlobalOptions) -> None:
+    """Print the effective configuration, in YAML format."""
+    effective = _load_configuration(options)
+    click.echo(yaml.safe_dump(effective.to_dict(), sort_keys=True), nl=False)
+
+
+@click.group()
+@click.option(
+    "--buttons-origin",
+    type=click.Choice(BUTTONS_ORIGINS),
+    help="Where the button events come from (buttons.origin).",
+)
+@click.option(
+    "-c",
+    "--configuration-file-path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="YAML configuration file.",
+)
+@click.option(
+    "--display-target",
+    type=click.Choice(DISPLAY_TARGETS),
+    help="Where the screen is drawn (display.target).",
+)
+@click.option(
+    "-l",
+    "--library-directory-path",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Music root directory (library.directory_path).",
+)
+@click.option(
+    "-s",
+    "--simulator",
+    is_flag=True,
+    help="Shortcut for '--buttons-origin simulator --display-target simulator'.",
+)
+@click.option("-v", "--verbose", is_flag=True, help="Log debug messages.")
+@click.version_option(__version__, "-V", "--version", prog_name="mocassino")
+@click.pass_context
+def main(
+    context: click.Context,
     buttons_origin: str | None,
     configuration_file_path: Path | None,
     display_target: str | None,
     library_directory_path: Path | None,
     simulator: bool,
+    verbose: bool,
 ) -> None:
-    """Print the effective configuration, in YAML format."""
-    effective = _load_configuration(
-        buttons_origin, configuration_file_path, display_target, library_directory_path, simulator
+    """Lightweight audio player based on MOC for Pirate Audio hats.
+
+    The options go before the command, and are shared by all the commands.
+    """
+    context.obj = GlobalOptions(
+        buttons_origin=buttons_origin,
+        configuration_file_path=configuration_file_path,
+        display_target=display_target,
+        library_directory_path=library_directory_path,
+        simulator=simulator,
     )
-    click.echo(yaml.safe_dump(effective.to_dict(), sort_keys=True), nl=False)
-
-
-@click.group()
-@click.option("-v", "--verbose", is_flag=True, help="Log debug messages.")
-@click.version_option(__version__, prog_name="mocassino")
-def main(verbose: bool) -> None:
-    """Lightweight audio player based on MOC for Pirate Audio hats."""
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         level=logging.DEBUG if verbose else logging.INFO,
@@ -174,23 +187,15 @@ def main(verbose: bool) -> None:
 
 @click.command()
 @click.option(
+    "-b/-f",
     "--background/--foreground",
     default=True,
     help="Run detached from the terminal (default) or attached to it.",
 )
-@_configuration_options
-def run(
-    background: bool,
-    buttons_origin: str | None,
-    configuration_file_path: Path | None,
-    display_target: str | None,
-    library_directory_path: Path | None,
-    simulator: bool,
-) -> None:
+@click.pass_obj
+def run(options: GlobalOptions, background: bool) -> None:
     """Run the service."""
-    effective = _load_configuration(
-        buttons_origin, configuration_file_path, display_target, library_directory_path, simulator
-    )
+    effective = _load_configuration(options)
     if not effective.library.directory_path.is_dir():
         raise click.ClickException(
             f"The music root directory '{effective.library.directory_path}' does not exist"

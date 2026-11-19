@@ -114,7 +114,7 @@ Run the service with the `mocassino run` command.
 By default it runs in background, detached from the terminal:
 
 ```bash
-$ mocassino run --library-directory-path /home/pi/music
+$ mocassino --library-directory-path /home/pi/music run
 mocassino is running in background (PID 15875)
 ```
 
@@ -154,7 +154,7 @@ To try the service on a PC without the hardware,
 run it in foreground with the simulator window:
 
 ```bash
-$ mocassino run --foreground --simulator --library-directory-path ~/music
+$ mocassino --simulator --library-directory-path ~/music run --foreground
 ```
 
 ### CLI Usage
@@ -188,13 +188,13 @@ $ # run the service in foreground, logging debug messages
 $ mocassino --verbose run --foreground
 
 $ # run the service with a given configuration file
-$ mocassino run --configuration-file-path /path/to/configuration.yaml
+$ mocassino --configuration-file-path /path/to/configuration.yaml run
 
 $ # run the service on a PC, with the simulator window
-$ mocassino run --foreground --simulator --library-directory-path ~/music
+$ mocassino --simulator --library-directory-path ~/music run --foreground
 
 $ # run the service with the buttons of the hat, but without drawing on its display
-$ mocassino run --display-target none
+$ mocassino --display-target none run
 
 $ # print the effective configuration
 $ mocassino configuration

@@ -41,14 +41,14 @@ class TestConfigurationCommand:
     def test_configuration_file(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
         path.write_text("playback:\n  initial_volume: 30\n", encoding="utf-8")
-        result = runner.invoke(main, ["configuration", "--configuration-file-path", str(path)])
+        result = runner.invoke(main, ["--configuration-file-path", str(path), "configuration"])
         assert result.exit_code == 0
         assert yaml.safe_load(result.output)["playback"]["initial_volume"] == 30
 
     def test_configuration_file_invalid(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
         path.write_text("zoom: 2\n", encoding="utf-8")
-        result = runner.invoke(main, ["configuration", "--configuration-file-path", str(path)])
+        result = runner.invoke(main, ["--configuration-file-path", str(path), "configuration"])
         assert result.exit_code == 1
         assert "Error: Unknown configuration keys: zoom" in result.output
 
@@ -61,13 +61,13 @@ class TestConfigurationCommand:
         result = runner.invoke(
             main,
             [
-                "configuration",
                 "--buttons-origin",
                 "none",
                 "--display-target",
                 "none",
                 "--library-directory-path",
                 "/srv/music",
+                "configuration",
             ],
         )
         assert result.exit_code == 0
@@ -77,14 +77,14 @@ class TestConfigurationCommand:
         assert output["library"]["directory_path"] == "/srv/music"
 
     def test_simulator(self, runner):
-        result = runner.invoke(main, ["configuration", "--simulator"])
+        result = runner.invoke(main, ["--simulator", "configuration"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["buttons"]["origin"] == "simulator"
         assert output["display"]["target"] == "simulator"
 
     def test_simulator_does_not_override_explicit_options(self, runner):
-        result = runner.invoke(main, ["configuration", "--simulator", "--display-target", "none"])
+        result = runner.invoke(main, ["--simulator", "--display-target", "none", "configuration"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["buttons"]["origin"] == "simulator"
@@ -212,12 +212,35 @@ class TestMain:
         assert result.exit_code == 0
         assert "configuration" in result.output
 
+    def test_options_go_before_the_command(self, runner):
+        result = runner.invoke(main, ["configuration", "--simulator"])
+        assert result.exit_code == 2
+        assert "No such option '--simulator'" in result.output
+
+    def test_subcommand_help_does_not_load_the_configuration(self, runner):
+        arguments = ["--configuration-file-path", "missing.yaml", "run", "--help"]
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        assert "--background" in result.output
+
+    def test_short_options(self, runner, tmp_path):
+        path = tmp_path / "custom.yaml"
+        path.write_text("playback:\n  initial_volume: 30\n", encoding="utf-8")
+        result = runner.invoke(main, ["-c", str(path), "-l", "/srv/music", "-s", "configuration"])
+        assert result.exit_code == 0
+        output = yaml.safe_load(result.output)
+        assert output["buttons"]["origin"] == "simulator"
+        assert output["display"]["target"] == "simulator"
+        assert output["library"]["directory_path"] == "/srv/music"
+        assert output["playback"]["initial_volume"] == 30
+
     def test_verbose(self, runner):
         result = runner.invoke(main, ["--verbose", "configuration"])
         assert result.exit_code == 0
 
-    def test_version(self, runner):
-        result = runner.invoke(main, ["--version"])
+    @pytest.mark.parametrize("option", ["-V", "--version"])
+    def test_version(self, runner, option):
+        result = runner.invoke(main, [option])
         assert result.exit_code == 0
         assert result.output == f"mocassino, version {mocassino.__version__}\n"
 
@@ -235,7 +258,7 @@ class TestRunCommand:
     @pytest.fixture
     def arguments(self, tmp_path):
         """The arguments running the service on an existing directory with an existing mocp."""
-        return ["run", "--library-directory-path", str(tmp_path), "--display-target", "none"]
+        return ["--library-directory-path", str(tmp_path), "--display-target", "none", "run"]
 
     @pytest.fixture
     def daemonize(self, mocker):
@@ -250,8 +273,9 @@ class TestRunCommand:
     def which(self, mocker):
         return mocker.patch("mocassino.cli.shutil.which", return_value="/usr/bin/mocp")
 
-    def test_background(self, runner, app, arguments, daemonize):
-        result = runner.invoke(main, [*arguments, "--background"])
+    @pytest.mark.parametrize("option", ["-b", "--background"])
+    def test_background(self, runner, app, arguments, daemonize, option):
+        result = runner.invoke(main, [*arguments, option])
         assert result.exit_code == 0
         daemonize.assert_called_once_with()
         app.run.assert_called_once_with()
@@ -283,14 +307,15 @@ class TestRunCommand:
         assert result.exit_code == 1
         assert "Error: Stopped by an error: Server exited!" in result.output
 
-    def test_foreground(self, runner, app, arguments, daemonize):
-        result = runner.invoke(main, [*arguments, "--foreground"])
+    @pytest.mark.parametrize("option", ["-f", "--foreground"])
+    def test_foreground(self, runner, app, arguments, daemonize, option):
+        result = runner.invoke(main, [*arguments, option])
         assert result.exit_code == 0
         daemonize.assert_not_called()
         app.run.assert_called_once_with()
 
     def test_invalid_configuration(self, runner, app, arguments, daemonize):
-        result = runner.invoke(main, [*arguments, "--configuration-file-path", "missing.yaml"])
+        result = runner.invoke(main, ["--configuration-file-path", "missing.yaml", *arguments])
         assert result.exit_code == 1
         assert "Error: Cannot read configuration file" in result.output
         daemonize.assert_not_called()
@@ -305,7 +330,7 @@ class TestRunCommand:
 
     def test_music_root_directory_missing(self, runner, app, daemonize, tmp_path):
         missing = tmp_path / "missing"
-        result = runner.invoke(main, ["run", "--library-directory-path", str(missing)])
+        result = runner.invoke(main, ["--library-directory-path", str(missing), "run"])
         assert result.exit_code == 1
         assert f"Error: The music root directory '{missing}' does not exist" in result.output
         daemonize.assert_not_called()

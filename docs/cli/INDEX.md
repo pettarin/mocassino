@@ -8,18 +8,33 @@ Usage: mocassino [OPTIONS] COMMAND [ARGS]...
 
   Lightweight audio player based on MOC for Pirate Audio hats.
 
+  The options go before the command, and are shared by all the commands.
+
 Options:
-  -v, --verbose  Log debug messages.
-  --version      Show the version and exit.
-  --help         Show this message and exit.
+  --buttons-origin [gpio|none|pirateaudio|simulator]
+                                  Where the button events come from
+                                  (buttons.origin).
+  -c, --configuration-file-path FILE
+                                  YAML configuration file.
+  --display-target [none|pirateaudio|simulator|st7789]
+                                  Where the screen is drawn (display.target).
+  -l, --library-directory-path DIRECTORY
+                                  Music root directory
+                                  (library.directory_path).
+  -s, --simulator                 Shortcut for '--buttons-origin simulator
+                                  --display-target simulator'.
+  -v, --verbose                   Log debug messages.
+  -V, --version                   Show the version and exit.
+  --help                          Show this message and exit.
 
 Commands:
   configuration  Print the effective configuration, in YAML format.
   run            Run the service.
 ```
 
-The `-v / --verbose` option goes before the command
-(e.g., `mocassino --verbose run --foreground`).
+The options above are global: they go before the command, and are shared by all the commands
+(e.g., `mocassino --verbose --simulator run --foreground`).
+The options of a command go after it.
 
 
 ## Commands
@@ -35,19 +50,9 @@ Usage: mocassino run [OPTIONS]
   Run the service.
 
 Options:
-  --background / --foreground     Run detached from the terminal (default) or
+  -b, --background / -f, --foreground
+                                  Run detached from the terminal (default) or
                                   attached to it.
-  --buttons-origin [gpio|none|pirateaudio|simulator]
-                                  Where the button events come from
-                                  (buttons.origin).
-  --configuration-file-path FILE  YAML configuration file.
-  --display-target [none|pirateaudio|simulator|st7789]
-                                  Where the screen is drawn (display.target).
-  --library-directory-path DIRECTORY
-                                  Music root directory
-                                  (library.directory_path).
-  --simulator                     Shortcut for '--buttons-origin simulator
-                                  --display-target simulator'.
   --help                          Show this message and exit.
 ```
 
@@ -65,7 +70,7 @@ and sets the MOC volume to `playback.initial_volume`.
 
 #### Background And Foreground
 
-With `--background`, which is the default,
+With `-b / --background`, which is the default,
 the command prints the identifier of the process running the service, and returns:
 
 ```bash
@@ -86,12 +91,12 @@ To stop the service, send it the `SIGTERM` signal:
 $ kill 15875
 ```
 
-With `--foreground`, the service stays attached to the terminal,
+With `-f / --foreground`, the service stays attached to the terminal,
 where it writes its log messages, until `Ctrl+C` is pressed.
 
 #### Running Without The Hardware
 
-The buttons and the display can be replaced independently:
+The buttons and the display can be replaced independently, with the global options:
 
 | Option | Value | Meaning |
 |---|---|---|
@@ -104,11 +109,11 @@ The buttons and the display can be replaced independently:
 | `--display-target` | `simulator` | The simulator window |
 | `--display-target` | `none` | No display: no draw action is performed |
 
-The `--simulator` option selects the simulator for both.
+The `-s / --simulator` option selects the simulator for both.
 The simulator is a window showing the display, enlarged, and the four buttons:
 
 ```bash
-$ mocassino run --foreground --simulator --library-directory-path ~/music
+$ mocassino --simulator --library-directory-path ~/music run --foreground
 ```
 
 In the simulator window:
@@ -128,8 +133,9 @@ which is only loaded when the simulator is used.
 Print the effective configuration, in YAML format,
 that is, the default values changed by the configuration file
 and by the command line options.
-The command accepts the same configuration options of `mocassino run`,
-so it can be used to check what the service would run with.
+The command uses the same global options of `mocassino run`,
+so it can be used to check what the service would run with
+(e.g., `mocassino --simulator configuration`).
 
 ```text
 Usage: mocassino configuration [OPTIONS]
@@ -137,18 +143,7 @@ Usage: mocassino configuration [OPTIONS]
   Print the effective configuration, in YAML format.
 
 Options:
-  --buttons-origin [gpio|none|pirateaudio|simulator]
-                                  Where the button events come from
-                                  (buttons.origin).
-  --configuration-file-path FILE  YAML configuration file.
-  --display-target [none|pirateaudio|simulator|st7789]
-                                  Where the screen is drawn (display.target).
-  --library-directory-path DIRECTORY
-                                  Music root directory
-                                  (library.directory_path).
-  --simulator                     Shortcut for '--buttons-origin simulator
-                                  --display-target simulator'.
-  --help                          Show this message and exit.
+  --help  Show this message and exit.
 ```
 
 Without options and without a configuration file, it prints the default values:
@@ -200,7 +195,7 @@ system:
 ## Configuration File
 
 The permanent settings are read from a YAML file:
-the one given with `--configuration-file-path`, or,
+the one given with `-c / --configuration-file-path`, or,
 if the option is not given and the file exists,
 `~/.config/mocassino/configuration.yaml`.
 
@@ -238,7 +233,7 @@ The command line options take precedence over the configuration file:
 |---|---|
 | `--buttons-origin` | `buttons.origin` |
 | `--display-target` | `display.target` |
-| `--library-directory-path` | `library.directory_path` |
+| `-l / --library-directory-path` | `library.directory_path` |
 
 An example of configuration file:
 
