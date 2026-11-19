@@ -38,11 +38,7 @@ BUTTON_CELLS: dict[Button, tuple[int, int]] = {
     Button.X: (0, 2),
     Button.Y: (1, 2),
 }
-HINT: str = (
-    "Click a button, or keep it pressed for a long press, repeated while pressed.\n"
-    "Keys: a b x y, or the arrows (left=A, right=B, up=X, down=Y), for a short press;\n"
-    "with Shift, for a long press."
-)
+HINT: str = "Keys: a/left, b/right, x/up, y/down. Use shift for long/hold."
 PADDING: int = 8
 POLL_INTERVAL_MS: int = 30
 SCALE: int = 2
