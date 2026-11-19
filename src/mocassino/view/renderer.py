@@ -38,8 +38,19 @@ MARGIN: int = 10
 MENU_ROW_HEIGHT: int = 34
 MENU_TITLE_HEIGHT: int = 36
 MENU_VISIBLE_ROWS: int = 6
+PROGRESS_BAR_HEIGHT: int = 8
 SCROLLBAR_WIDTH: int = 4
+STATE_LABELS: dict[MocState, str] = {
+    MocState.PAUSE: "Paused",
+    MocState.PLAY: "Playing",
+    MocState.STOP: "Stopped",
+}
+# The label of the state is written with the largest font size, between these two,
+# that makes it as tall as an icon of the buttons at most
+STATE_MAX_FONT_SIZE: int = 20
+STATE_MIN_FONT_SIZE: int = 8
 TEXT_COLOR: Color = (255, 255, 255)
+TIMES_FONT_SIZE: int = 20
 TRACK_COLOR: Color = (60, 60, 60)
 VOLUME_BAR_WIDTH: int = 8
 
@@ -65,7 +76,7 @@ class Renderer:
         self._button_map = parse_button_map(button_map)
         self._font_file_path = font_file_path
         self._fonts: dict[int, Font] = {}
-        self._font(16)
+        self._font(TIMES_FONT_SIZE)
 
     def _draw_bar(self, draw: ImageDraw.ImageDraw, box: Box, fraction: float) -> None:
         """Draw a horizontal bar, filled from the left for the given fraction."""
@@ -149,16 +160,22 @@ class Renderer:
 
         The track takes the top: the artist, the title on up to four lines, and the album.
         At the bottom, the icon of the state followed by the progress bar, with the times.
+        The top of the letters of the artist and the bottom of the digits of the times
+        leave the same border as the icons of the buttons, so that they are level with them.
+        The bottom is level with the two rows of icons of the buttons there:
+        the progress bar is centred on the upper row, and the times, with the state
+        written between them, take the lower row.
         The icons of the buttons and the volume bar, at the sides, are drawn only if shown.
         """
         status = state.status
-        small_font = self._font(16)
+        small_font = self._font(TIMES_FONT_SIZE)
+        upper_icon_top = HEIGHT - 2 * (ICON_SIZE + ICON_BORDER)
+        bar_top = upper_icon_top + (ICON_SIZE - PROGRESS_BAR_HEIGHT) // 2
         left, right = MARGIN, WIDTH - MARGIN
         if state.settings.show_side_icons:
             left, right = CONTENT_LEFT, CONTENT_RIGHT
             self._draw_button_icons(draw)
             self._draw_volume_bar(draw, state.volume)
-        bar_left = left + ICON_SIZE + 8
         width = right - left
         if status.state is MocState.STOP:
             draw.text(
@@ -172,17 +189,18 @@ class Renderer:
             artist_font = self._font(20)
             title_font = self._font(26)
             album_font = self._font(18)
+            artist = self._fit(status.artist, artist_font, width)
             draw.text(
-                (left, 10),
-                self._fit(status.artist, artist_font, width),
+                (left, ICON_BORDER - int(artist_font.getbbox(artist)[1])),
+                artist,
                 fill=DIM_COLOR,
                 font=artist_font,
             )
             title = status.title or Path(status.file_path).stem
             for index, line in enumerate(self._wrap(title, title_font, width, 4)):
-                draw.text((left, 38 + 30 * index), line, fill=TEXT_COLOR, font=title_font)
+                draw.text((left, 24 + 30 * index), line, fill=TEXT_COLOR, font=title_font)
             draw.text(
-                (left, 164),
+                (left, 174),
                 self._fit(status.album, album_font, width),
                 fill=DIM_COLOR,
                 font=album_font,
@@ -190,39 +208,40 @@ class Renderer:
             total = status.total_seconds
             self._draw_bar(
                 draw,
-                (bar_left, 200, right - 1, 207),
+                (left, bar_top, right - 1, bar_top + PROGRESS_BAR_HEIGHT - 1),
                 status.current_seconds / total if total else 0.0,
             )
             draw.text(
-                (bar_left, 212),
+                (left, HEIGHT - ICON_BORDER),
                 _format_seconds(status.current_seconds),
+                anchor="ls",
                 fill=TEXT_COLOR,
                 font=small_font,
             )
             if total is not None:
                 draw.text(
-                    (right, 212),
+                    (right, HEIGHT - ICON_BORDER),
                     _format_seconds(total),
-                    anchor="ra",
+                    anchor="rs",
                     fill=TEXT_COLOR,
                     font=small_font,
                 )
-        self._draw_state_icon(draw, status.state, left)
+        self._draw_state_label(draw, status.state)
 
-    def _draw_state_icon(self, draw: ImageDraw.ImageDraw, state: MocState, left: int) -> None:
-        """Draw the icon of the playback state: a triangle, two bars, or a square."""
-        box = (left, 196, left + ICON_SIZE, 196 + ICON_SIZE)
-        left, top, right, bottom = box
-        if state is MocState.PLAY:
-            draw.polygon(
-                [(left, top), (right, (top + bottom) // 2), (left, bottom)],
-                fill=ACCENT_COLOR,
-            )
-        elif state is MocState.PAUSE:
-            draw.rectangle((left, top, left + 5, bottom), fill=ACCENT_COLOR)
-            draw.rectangle((right - 5, top, right, bottom), fill=ACCENT_COLOR)
-        else:
-            draw.rectangle(box, fill=ACCENT_COLOR)
+    def _draw_state_label(self, draw: ImageDraw.ImageDraw, state: MocState) -> None:
+        """Write the playback state at the bottom of the frame, centred, in the accent colour.
+
+        The three labels share the same baseline, placed so that their letters going
+        below it leave the same border as the digits of the times.
+        """
+        font, descent = self._state_font()
+        draw.text(
+            (WIDTH // 2, HEIGHT - ICON_BORDER - descent),
+            STATE_LABELS[state],
+            anchor="ms",
+            fill=ACCENT_COLOR,
+            font=font,
+        )
 
     def _draw_volume_bar(self, draw: ImageDraw.ImageDraw, volume: int) -> None:
         """Draw the volume as a vertical bar in the band on the right, filled from the bottom.
@@ -255,6 +274,20 @@ class Renderer:
             else:
                 self._fonts[size] = ImageFont.truetype(str(self._font_file_path), size)
         return self._fonts[size]
+
+    def _state_font(self, max_height: int = ICON_SIZE) -> tuple[Font, int]:
+        """Return the font for the label of the state, and how far it goes below the baseline.
+
+        :param max_height: the height the labels must fit in
+        """
+        for size in range(STATE_MAX_FONT_SIZE, STATE_MIN_FONT_SIZE - 1, -1):
+            font = self._font(size)
+            boxes = [font.getbbox(label, anchor="ms") for label in STATE_LABELS.values()]
+            ascent = -int(min(box[1] for box in boxes))
+            descent = int(max(box[3] for box in boxes))
+            if ascent + descent <= max_height:
+                break
+        return font, descent
 
     def _wrap(self, text: str, font: Font, max_width: int, max_lines: int) -> list[str]:
         """Split the text in at most the given number of lines, breaking it at the spaces.

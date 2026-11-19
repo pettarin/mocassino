@@ -122,7 +122,7 @@ class TestRenderer:
         path = tmp_path / "font.ttf"
         renderer = Renderer(font_file_path=path)
         renderer.render(AppState())
-        assert truetype.call_args_list[0].args == (str(path), 16)
+        assert truetype.call_args_list[0].args == (str(path), 20)
 
     def test_font_file_missing(self, tmp_path):
         with pytest.raises(OSError, match="cannot open resource"):
@@ -262,8 +262,8 @@ class TestRenderer:
             assert icon_slot(image, button, held=True) != icon(held)
         assert not has_content(image, (0, 0, 10, HEIGHT))
         assert not has_content(image, (WIDTH - 10, 0, WIDTH, HEIGHT))
-        assert image.getpixel((12, 203)) == ACCENT_COLOR
-        assert image.getpixel((WIDTH - 12, 203)) == TRACK_COLOR
+        assert image.getpixel((12, 211)) == ACCENT_COLOR
+        assert image.getpixel((WIDTH - 12, 211)) == TRACK_COLOR
         assert has_content(image, (10, 10, 24, 190))
         assert has_content(image, (216, 10, 230, 190))
 
@@ -273,26 +273,111 @@ class TestRenderer:
         loud = renderer.render(AppState(settings=settings, status=PLAYING, volume=100))
         assert quiet.tobytes() == loud.tobytes()
 
-    def test_playback_pause_icon(self, renderer):
-        status = MocStatus(file_path="/music/a.flac", state=MocState.PAUSE)
-        image = renderer.render(AppState(status=status))
-        assert image.getpixel((26, 204)) == ACCENT_COLOR
-        assert image.getpixel((32, 204)) == BACKGROUND_COLOR
-        assert image.getpixel((38, 204)) == ACCENT_COLOR
+    @pytest.mark.parametrize("artist", ["ABBA", "Fabrizio De Andre", "moe.", ""])
+    @pytest.mark.parametrize("show_side_icons", [False, True])
+    def test_playback_content_is_level_with_the_button_icons(
+        self, renderer, show_side_icons, artist
+    ):
+        settings = Settings(show_side_icons=show_side_icons)
+        status = MocStatus(
+            album="Album",
+            artist=artist,
+            current_seconds=70,
+            file_path="/music/a.flac",
+            state=MocState.PLAY,
+            title="Title",
+            total_seconds=205,
+        )
+        image = renderer.render(AppState(settings=settings, status=status))
+        left, right = (CONTENT_LEFT, CONTENT_RIGHT) if show_side_icons else (10, WIDTH - 10)
+        if artist:
+            _, artist_top, _, _ = image.crop((left, 0, right, 22)).getbbox()
+            assert artist_top == 2
+        else:
+            assert not has_content(image, (left, 0, right, 22))
+        _, times_top, _, times_bottom = image.crop((left, 218, left + 40, HEIGHT)).getbbox()
+        assert times_top + 218 >= 222
+        assert times_bottom + 218 == HEIGHT - 2
 
-    def test_playback_play_icon(self, renderer):
-        image = renderer.render(AppState(status=PLAYING))
-        assert image.getpixel((26, 204)) == ACCENT_COLOR
-        assert image.getpixel((38, 197)) == BACKGROUND_COLOR
+    @pytest.mark.parametrize(
+        ("state", "label"),
+        [(MocState.PAUSE, "Paused"), (MocState.PLAY, "Playing"), (MocState.STOP, "Stopped")],
+    )
+    def test_playback_state_label(self, renderer, state, label):
+        status = MocStatus(file_path="/music/a.flac", state=state)
+        image = renderer.render(AppState(status=status))
+        font, descent = renderer._state_font()
+        expected = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
+        ImageDraw.Draw(expected).text(
+            (WIDTH // 2, HEIGHT - 2 - descent), label, anchor="ms", fill=ACCENT_COLOR, font=font
+        )
+        box = (80, 218, 160, HEIGHT)
+        assert image.crop(box).tobytes() == expected.crop(box).tobytes()
+        left, top, right, bottom = expected.getbbox()
+        assert abs((left + right) / 2 - WIDTH / 2) <= 1
+        assert 222 <= top
+        assert bottom <= HEIGHT - 2
+
+    def test_playback_state_label_fits_in_the_height_of_an_icon(self, renderer):
+        font, descent = renderer._state_font()
+        assert font.size == 17
+        boxes = [font.getbbox(label, anchor="ms") for label in ("Paused", "Playing", "Stopped")]
+        assert max(box[3] for box in boxes) == descent
+        assert descent - min(box[1] for box in boxes) <= ICON_SIZE
+
+    def test_playback_state_label_font_sizes(self, renderer):
+        assert renderer._state_font(100)[0].size == 20
+        assert renderer._state_font(13)[0].size == 13
+        assert renderer._state_font(1)[0].size == 8
+
+    def test_playback_state_labels_share_the_baseline(self, renderer):
+        bottoms = {}
+        for state in MocState:
+            status = MocStatus(file_path="/music/a.flac", state=state)
+            image = renderer.render(AppState(status=status))
+            bottoms[state] = image.crop((80, 218, 160, HEIGHT)).getbbox()[3] + 218
+        assert bottoms[MocState.PLAY] == bottoms[MocState.STOP] == HEIGHT - 2
+        assert bottoms[MocState.PAUSE] == HEIGHT - 2 - renderer._state_font()[1]
+
+    def test_playback_has_no_state_icon(self, renderer):
+        frames = []
+        for state in (MocState.PAUSE, MocState.PLAY):
+            status = MocStatus(
+                current_seconds=70,
+                file_path="/music/a.flac",
+                state=state,
+                total_seconds=205,
+            )
+            frames.append(renderer.render(AppState(status=status)))
+        paused, playing = frames
+        for box in ((0, 0, WIDTH, 218), (0, 218, 80, HEIGHT), (160, 218, WIDTH, HEIGHT)):
+            assert paused.crop(box).tobytes() == playing.crop(box).tobytes()
+        assert paused.tobytes() != playing.tobytes()
 
     def test_playback_progress(self, renderer):
         image = renderer.render(AppState(status=PLAYING))
-        assert image.getpixel((60, 203)) == ACCENT_COLOR
-        assert image.getpixel((200, 203)) == TRACK_COLOR
-        assert not has_content(image, (24, 214, 48, 232))
-        assert has_content(image, (48, 212, 98, 232))
-        assert has_content(image, (166, 212, 216, 232))
-        assert not has_content(image, (24, 234, 216, HEIGHT))
+        assert image.getpixel((24, 211)) == ACCENT_COLOR
+        assert image.getpixel((60, 211)) == ACCENT_COLOR
+        assert image.getpixel((200, 211)) == TRACK_COLOR
+        assert image.getpixel((215, 211)) == TRACK_COLOR
+        assert not has_content(image, (24, 238, 216, HEIGHT))
+        assert has_content(image, (24, 222, 70, 238))
+        assert has_content(image, (170, 222, 216, 238))
+
+    @pytest.mark.parametrize("show_side_icons", [False, True])
+    def test_playback_progress_rows_are_level_with_the_bottom_icons(
+        self, renderer, show_side_icons
+    ):
+        settings = Settings(show_side_icons=show_side_icons)
+        image = renderer.render(AppState(settings=settings, status=PLAYING))
+        left = CONTENT_LEFT if show_side_icons else 10
+        rows = [has_content(image, (left, y, left + 40, y + 1)) for y in range(200, HEIGHT)]
+        bar = [y + 200 for y in range(18) if rows[y]]
+        assert bar == list(range(208, 216))
+        assert bar[0] - 204 == 219 - bar[-1]
+        text = [y + 200 for y in range(18, 40) if rows[y]]
+        assert 222 <= text[0]
+        assert text[-1] == 237
 
     def test_playback_progress_without_total(self, renderer):
         status = MocStatus(
@@ -301,20 +386,22 @@ class TestRenderer:
             state=MocState.PLAY,
         )
         image = renderer.render(AppState(status=status))
-        assert image.getpixel((60, 203)) == TRACK_COLOR
-        assert has_content(image, (48, 212, 98, 232))
-        assert not has_content(image, (166, 212, 216, 232))
+        assert image.getpixel((60, 211)) == TRACK_COLOR
+        assert has_content(image, (24, 222, 70, 238))
+        assert not has_content(image, (160, 218, 216, HEIGHT))
 
     def test_playback_stop(self, renderer):
         image = renderer.render(AppState())
-        assert image.getpixel((38, 197)) == ACCENT_COLOR
         assert has_content(image, (40, 95, 200, 125))
-        assert not has_content(image, (CONTENT_LEFT + 17, 130, WIDTH - BAND_WIDTH, HEIGHT))
+        assert not has_content(image, (CONTENT_LEFT, 130, WIDTH - BAND_WIDTH, 218))
+        assert not has_content(image, (CONTENT_LEFT, 218, 80, HEIGHT))
+        assert not has_content(image, (160, 218, WIDTH - BAND_WIDTH, HEIGHT))
+        assert has_content(image, (80, 218, 160, HEIGHT))
 
     def test_playback_title_falls_back_to_file_name(self, renderer):
         tagged = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Name")
         untagged = MocStatus(file_path="/music/Name.flac", state=MocState.PLAY)
-        box = (CONTENT_LEFT, 36, CONTENT_RIGHT, 160)
+        box = (CONTENT_LEFT, 24, CONTENT_RIGHT, 150)
         first = renderer.render(AppState(status=tagged)).crop(box)
         second = renderer.render(AppState(status=untagged)).crop(box)
         assert has_content(first, (0, 0, CONTENT_RIGHT - CONTENT_LEFT, 40))
@@ -322,11 +409,11 @@ class TestRenderer:
 
     def test_playback_track_is_drawn(self, renderer):
         image = renderer.render(AppState(status=PLAYING))
-        assert has_content(image, (24, 10, 216, 34))
-        assert has_content(image, (24, 38, 216, 68))
-        assert not has_content(image, (24, 70, 216, 160))
-        assert has_content(image, (24, 164, 216, 190))
-        assert not has_content(image, (24, 190, 216, 196))
+        assert has_content(image, (24, 2, 216, 22))
+        assert has_content(image, (24, 24, 216, 54))
+        assert not has_content(image, (24, 56, 216, 170))
+        assert has_content(image, (24, 174, 216, 200))
+        assert not has_content(image, (24, 200, 216, 208))
 
     @pytest.mark.parametrize(
         ("volume", "bottom_color", "top_color"),
@@ -368,7 +455,7 @@ class TestRenderer:
         box = (0, 0, WIDTH - BAND_WIDTH, HEIGHT)
         assert quiet.crop(box).tobytes() == loud.crop(box).tobytes()
 
-    def test_playback_state_has_no_label(self, renderer):
+    def test_playback_state_does_not_change_the_track_area(self, renderer):
         paused = MocStatus(
             album="Album",
             artist="Artist",
@@ -378,7 +465,7 @@ class TestRenderer:
             title="Title",
             total_seconds=205,
         )
-        box = (0, 0, WIDTH, 192)
+        box = (0, 0, WIDTH, 205)
         playing_frame = renderer.render(AppState(status=PLAYING)).crop(box)
         paused_frame = renderer.render(AppState(status=paused)).crop(box)
         assert playing_frame.tobytes() == paused_frame.tobytes()
@@ -392,12 +479,12 @@ class TestRenderer:
             title="One very long title that needs many more than four lines to be shown in full",
         )
         image = renderer.render(AppState(status=status))
-        for top in (38, 68, 98, 128):
+        for top in (24, 54, 84, 114):
             assert has_content(image, (CONTENT_LEFT, top + 4, CONTENT_RIGHT, top + 28))
         album = renderer.render(AppState(status=PLAYING)).crop(
-            (CONTENT_LEFT, 162, CONTENT_RIGHT, 192)
+            (CONTENT_LEFT, 172, CONTENT_RIGHT, 202)
         )
-        assert image.crop((CONTENT_LEFT, 162, CONTENT_RIGHT, 192)).tobytes() == album.tobytes()
+        assert image.crop((CONTENT_LEFT, 172, CONTENT_RIGHT, 202)).tobytes() == album.tobytes()
 
     def test_wrap(self, renderer):
         font = ImageFont.load_default(26)
