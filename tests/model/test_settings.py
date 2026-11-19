@@ -16,6 +16,18 @@ from mocassino.model.settings import (
 class TestSettings:
     """Tests for the Settings class"""
 
+    def test_reset_colors(self):
+        settings = Settings(
+            display_brightness=40,
+            display_colors_accented="red",
+            display_colors_background="#123456",
+            display_colors_muted="navy",
+            display_colors_normal="black",
+            display_colors_track="gold",
+        )
+        settings.reset_colors()
+        assert settings == Settings(display_brightness=40)
+
     def test_update(self):
         settings = Settings()
         other = Settings(

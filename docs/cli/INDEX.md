@@ -573,8 +573,8 @@ The top level menu has the following items:
       At `0` the backlight is off, and the display is dark:
       the brightness can be raised again from the same menu, without seeing it,
       or by editing the configuration file.
-    - `Colors`: a menu with `Accented`, `Background`, `Muted`, `Normal`, and `Track`
-      (`display.colors.accented`, etc.), each a menu with the
+    - `Colors`: a menu with `Accented`, `Background`, `Muted`, `Normal`, `Track`, and `Reset colors`;
+      the first five (`display.colors.accented`, etc.) are each a menu with the
       [140 color names of CSS3](https://www.w3.org/TR/css-color-3/#svg-color),
       in alphabetical order, with the `gray` spelling only (e.g., `darkgray`, not `darkgrey`).
       Each name has a square filled with its color, with a black border, on the right;
@@ -583,6 +583,8 @@ The top level menu has the following items:
       and it cannot be selected; a name spelled with `grey`, or an HTML code
       with the color of a name (e.g., `#696969`), counts as that name (e.g., `dimgray`).
       The change is immediate.
+      The last item, `Reset colors`, asks for confirmation,
+      then sets the five colors back to their defaults, leaving the other settings as they are.
     - `Orientation` (`display.orientation`): a menu with the four choices
       `0`, `90`, `180`, and `270`; the current one has the solid square.
       The change is immediate (see below).

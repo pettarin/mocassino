@@ -11,7 +11,7 @@ from dataclasses import replace
 import pytest
 
 from mocassino.app import App, build_app
-from mocassino.configuration import Configuration, load_configuration
+from mocassino.configuration import ColorsConfiguration, Configuration, load_configuration
 from mocassino.controller.actions import DEFAULT_BUTTON_MAP, Action
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
@@ -36,6 +36,7 @@ from mocassino.model.state import AppState, Mode
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.model.system import System, SystemShutdownError
 from mocassino.simulator.tk import TkSimulator
+from mocassino.view.colors import DEFAULT_COLORS
 from mocassino.view.display.null import NullDisplay
 from mocassino.view.display.st7789 import St7789Display
 from mocassino.view.renderer import Renderer
@@ -857,6 +858,43 @@ class TestBuildApp:
         assert app._renderer._colors.accented == (250, 240, 230)
         saved = load_configuration(path).display.colors
         assert (saved.accented, saved.muted, saved.track) == ("linen", "#123456", "dimgray")
+
+    def test_reset_colors_is_applied_and_saved(self, mocker, tmp_path):
+        moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
+        moc.status.return_value = PLAYING
+        path = tmp_path / "custom.yaml"
+        path.write_text(
+            "display:\n"
+            "  brightness: 0.5\n"
+            "  colors:\n"
+            "    accented: red\n"
+            "    background: '#123456'\n",
+            encoding="utf-8",
+        )
+        configuration = load_configuration(
+            path,
+            {"buttons": {"origin": "none"}, "display": {"target": "none"}},
+        )
+        app = build_app(configuration, path)
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app.events.put(event)
+        app.step()
+        assert app._renderer._colors == DEFAULT_COLORS
+        saved = load_configuration(path).display
+        assert saved.colors == ColorsConfiguration()
+        assert saved.brightness == 0.5
 
     def test_display_brightness_setting_is_applied_and_saved(self, mocker, tmp_path):
         moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value

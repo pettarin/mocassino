@@ -432,9 +432,56 @@ class TestController:
         assert state.current_menu.selected.label == "linen [X]"
         assert "limegreen" in [item.label for item in state.current_menu.items]
 
+    def test_menu_select_reset_colors(self, mocker, state, moc, library, system):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        settings = state.settings
+        settings.display_colors_accented = "red"
+        settings.display_colors_track = "#123456"
+        settings.display_brightness = 40
+        for event in (A_LONG, Y, B, B, Y, B, X):
+            controller.handle(event)
+        assert state.current_menu.selected.label == "Reset colors"
+        controller.handle(B)
+        assert state.current_menu.title == "Reset colors?"
+        assert state.current_menu.selected.label == "Cancel"
+        save_settings.assert_not_called()
+        controller.handle(Y)
+        controller.handle(B)
+        assert settings.color_specs() == Settings().color_specs()
+        assert settings.display_brightness == 40
+        save_settings.assert_called_once_with(settings)
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Display", "Colors"]
+        assert state.current_menu.selected.label == "Reset colors"
+
+    def test_menu_select_reset_colors_cancelled(self, mocker, state, moc, library, system):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state, moc, library, system, DEFAULT_BUTTON_MAP, save_settings=save_settings
+        )
+        state.settings.display_colors_accented = "red"
+        for event in (A_LONG, Y, B, B, Y, B, X, B, B):
+            controller.handle(event)
+        assert state.settings.display_colors_accented == "red"
+        save_settings.assert_not_called()
+        assert state.current_menu.title == "Colors"
+
+    def test_menu_select_reset_colors_without_saving(self, controller, state):
+        state.settings.display_colors_muted = "navy"
+        for event in (A_LONG, Y, B, B, Y, B, X, B, Y, B):
+            controller.handle(event)
+        assert state.settings.display_colors_muted == "silver"
+
     def test_menu_select_display_color_unnamed_does_nothing(self, controller, state):
         state.settings.display_colors_track = "#123456"
-        for event in (A_LONG, Y, B, B, Y, B, X, B):
+        for event in (A_LONG, Y, B, B, Y, B, X, X, B):
             controller.handle(event)
         assert state.current_menu.title == "Track"
         assert state.current_menu.selected.label == "#123456 [X]"

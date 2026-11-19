@@ -64,6 +64,7 @@ class MenuCommand(StrEnum):
     BACK = "back"
     PLAY = "play"
     REBOOT = "reboot"
+    RESET_COLORS = "reset_colors"
     RESET_SETTINGS = "reset_settings"
     SET_DISPLAY_BRIGHTNESS = "set_display_brightness"
     SET_DISPLAY_COLORS_ACCENTED = "set_display_colors_accented"
@@ -171,6 +172,17 @@ def _build_reboot_menu() -> Menu:
     )
 
 
+def _build_reset_colors_menu() -> Menu:
+    """Build the menu asking to confirm the reset of the colors; the default is to cancel."""
+    return Menu(
+        title="Reset colors?",
+        items=(
+            MenuItem(label="Cancel", command=MenuCommand.BACK),
+            MenuItem(label="Reset now", command=MenuCommand.RESET_COLORS),
+        ),
+    )
+
+
 def _build_reset_settings_menu() -> Menu:
     """Build the menu asking to confirm the reset of the settings; the default is to cancel."""
     return Menu(
@@ -246,17 +258,19 @@ def build_display_color_menu(settings: Settings, role: str) -> Menu:
 
 
 def build_display_colors_menu(settings: Settings) -> Menu:
-    """Build the menu leading to the menus choosing the colors of the display, one per role."""
-    return Menu(
-        title="Colors",
-        items=tuple(
-            MenuItem(
-                label=role.capitalize(),
-                submenu=partial(build_display_color_menu, settings, role),
-            )
-            for role in COLOR_ROLES
-        ),
-    )
+    """Build the menu leading to the menus choosing the colors of the display, one per role.
+
+    It also resets the colors to the default ones, after a confirmation.
+    """
+    items = [
+        MenuItem(
+            label=role.capitalize(),
+            submenu=partial(build_display_color_menu, settings, role),
+        )
+        for role in COLOR_ROLES
+    ]
+    items.append(MenuItem(label="Reset colors", submenu=_build_reset_colors_menu))
+    return Menu(title="Colors", items=tuple(items))
 
 
 def build_display_menu(settings: Settings) -> Menu:

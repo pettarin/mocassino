@@ -216,6 +216,8 @@ class Controller:
                 self._save_settings(settings)
         elif item.command is MenuCommand.REBOOT:
             self._halt(self._system.reboot)
+        elif item.command is MenuCommand.RESET_COLORS:
+            self._reset_colors()
         elif item.command is MenuCommand.RESET_SETTINGS:
             self._reset()
         elif item.command is MenuCommand.SHUTDOWN:
@@ -263,6 +265,17 @@ class Controller:
         defaults = Settings() if self._reset_settings is None else self._reset_settings()
         self._state.settings.update(defaults)
         self._state.pop_menu()
+
+    def _reset_colors(self) -> None:
+        """Reset the colors to the default ones, at once, and go back from the confirmation.
+
+        The change is saved, as any other change of the settings.
+        """
+        settings = self._state.settings
+        settings.reset_colors()
+        self._state.pop_menu()
+        if self._save_settings is not None:
+            self._save_settings(settings)
 
     def _seek_backward(self) -> None:
         """Seek backward in the current track."""

@@ -183,11 +183,21 @@ class TestBuildDisplayColorsMenu:
         menu = build_display_colors_menu(settings)
         assert menu.title == "Colors"
         labels = ["Accented", "Background", "Muted", "Normal", "Track"]
-        assert [item.label for item in menu.items] == labels
-        assert [item.submenu().title for item in menu.items] == labels
+        assert [item.label for item in menu.items] == [*labels, "Reset colors"]
+        assert [item.submenu().title for item in menu.items[:5]] == labels
         assert all(item.command is None and item.checked is None for item in menu.items)
         settings.display_colors_normal = "gold"
         assert menu.items[3].submenu().selected.label == "gold [X]"
+
+    def test_reset_colors_is_confirmed(self):
+        item = build_display_colors_menu(Settings()).items[5]
+        assert item.submenu() == Menu(
+            title="Reset colors?",
+            items=(
+                MenuItem(label="Cancel", command=MenuCommand.BACK),
+                MenuItem(label="Reset now", command=MenuCommand.RESET_COLORS),
+            ),
+        )
 
 
 class TestBuildDisplayBrightnessMenu:
