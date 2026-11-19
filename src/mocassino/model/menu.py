@@ -19,6 +19,9 @@ from mocassino.model.host import Host
 from mocassino.model.library import Library
 from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
 
+# The fixed volumes that can be chosen from the menu
+FIXED_VOLUME_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
+
 
 @dataclass
 class Menu:
@@ -45,6 +48,7 @@ class MenuCommand(StrEnum):
     BACK = "back"
     CLOSE = "close"
     PLAY = "play"
+    SET_STARTUP_FIXED_VOLUME = "set_startup_fixed_volume"
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SET_STARTUP_VOLUME = "set_startup_volume"
     SHUTDOWN = "shutdown"
@@ -186,11 +190,42 @@ def build_settings_menu(settings: Settings) -> Menu:
     )
 
 
+def build_startup_fixed_volume_menu(settings: Settings) -> Menu:
+    """Build the menu choosing the fixed volume the service can set when it starts.
+
+    The choices are the volumes from 0 to 100, in steps.
+    The current volume is the checked one, if it is one of the choices;
+    the selected item is the choice closest to it.
+    It has to be built again when the volume changes.
+    """
+    current = settings.startup_fixed_volume
+    return Menu(
+        title="Fixed volume",
+        items=tuple(
+            MenuItem(
+                label=str(volume),
+                checked=volume == current,
+                command=MenuCommand.SET_STARTUP_FIXED_VOLUME,
+                value=str(volume),
+            )
+            for volume in FIXED_VOLUME_CHOICES
+        ),
+        selected_index=min(
+            range(len(FIXED_VOLUME_CHOICES)),
+            key=lambda index: abs(FIXED_VOLUME_CHOICES[index] - current),
+        ),
+    )
+
+
 def build_startup_menu(settings: Settings) -> Menu:
     """Build the menu leading to the settings of what happens at startup."""
     return Menu(
         title="Startup",
         items=(
+            MenuItem(
+                label="Fixed volume",
+                submenu=partial(build_startup_fixed_volume_menu, settings),
+            ),
             MenuItem(label="Playlist", submenu=partial(build_startup_playlist_menu, settings)),
             MenuItem(label="Volume", submenu=partial(build_startup_volume_menu, settings)),
         ),

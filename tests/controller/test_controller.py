@@ -229,6 +229,50 @@ class TestController:
         controller.handle(B)
         assert state.current_menu.selected.checked is True
 
+    def test_menu_select_startup_fixed_volume(self, mocker, state, moc, library, host):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            host,
+            DEFAULT_BUTTON_MAP,
+            seek_step=10,
+            volume_step=5,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, Y, B, B):
+            controller.handle(event)
+        titles = ["Menu", "Settings", "Startup", "Fixed volume"]
+        assert [menu.title for menu in state.menus] == titles
+        menu = state.current_menu
+        assert len(menu.items) == 21
+        assert menu.selected.label == "50"
+        assert menu.selected.checked is True
+        save_settings.assert_not_called()
+        for event in (Y, Y, B):
+            controller.handle(event)
+        assert state.settings.startup_fixed_volume == 60
+        save_settings.assert_called_once_with(state.settings)
+        menu = state.current_menu
+        assert [menu.title for menu in state.menus] == titles
+        assert menu.selected.label == "60"
+        assert [item.label for item in menu.items if item.checked] == ["60"]
+        assert state.volume == 50
+        moc.set_volume.assert_not_called()
+
+    def test_menu_select_startup_fixed_volume_without_saving(self, controller, state):
+        for event in (A_LONG, Y, B, Y, B, B, X, B):
+            controller.handle(event)
+        assert state.settings.startup_fixed_volume == 45
+
+    def test_menu_select_startup_fixed_volume_without_value(self, controller, state):
+        item = MenuItem(label="Broken", command=MenuCommand.SET_STARTUP_FIXED_VOLUME)
+        open_single_item_menu(state, item)
+        controller.handle(B)
+        assert state.settings.startup_fixed_volume == 50
+        assert state.current_menu.title == "Above"
+
     def test_menu_select_startup_volume(self, mocker, state, moc, library, host):
         save_settings = mocker.Mock()
         controller = Controller(
@@ -241,7 +285,7 @@ class TestController:
             volume_step=5,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, B, Y, B):
+        for event in (A_LONG, Y, B, Y, B, Y, Y, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Volume"]
         menu = state.current_menu
@@ -264,7 +308,7 @@ class TestController:
         assert [item.checked for item in state.current_menu.items] == [False, True]
 
     def test_menu_select_startup_volume_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, Y, B, Y, B, X, B):
+        for event in (A_LONG, Y, B, Y, B, Y, Y, B, X, B):
             controller.handle(event)
         assert state.settings.startup_volume is StartupVolume.USE_FIXED
 
@@ -287,7 +331,7 @@ class TestController:
             volume_step=5,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, B, B):
+        for event in (A_LONG, Y, B, Y, B, Y, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Playlist"]
         menu = state.current_menu
@@ -315,7 +359,7 @@ class TestController:
         assert save_settings.call_count == 2
 
     def test_menu_select_startup_playlist_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, Y, B, B, Y, B):
+        for event in (A_LONG, Y, B, Y, B, Y, B, Y, B):
             controller.handle(event)
         assert state.settings.startup_playlist is StartupPlaylist.SELECT_FROM_LIBRARY
 

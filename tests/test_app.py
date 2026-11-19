@@ -480,6 +480,7 @@ class TestBuildApp:
             "display:\n"
             "  show_side_icons: false\n"
             "startup:\n"
+            "  fixed_volume: 50\n"
             "  playlist: use_saved\n"
             "  volume: use_saved\n"
         )
@@ -571,6 +572,7 @@ class TestBuildApp:
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),
@@ -579,6 +581,28 @@ class TestBuildApp:
             app._controller.handle(event)
         assert app._state.settings.startup_playlist is StartupPlaylist.USE_MOCP_STATE
         assert load_configuration(path).startup.playlist == "use_mocp_state"
+
+    def test_startup_fixed_volume_setting_is_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        app = build_app(self.configuration("none", "none", fixed_volume=30), path)
+        assert app._state.settings.startup_fixed_volume == 30
+        assert app._state.volume == 30
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.current_menu.selected.label == "35"
+        assert app._state.settings.startup_fixed_volume == 35
+        assert app._state.volume == 30
+        assert load_configuration(path).startup.fixed_volume == 35
 
     def test_startup_volume_setting_is_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
@@ -590,6 +614,7 @@ class TestBuildApp:
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),

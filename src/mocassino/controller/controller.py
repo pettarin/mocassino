@@ -16,6 +16,7 @@ from mocassino.model.menu import (
     build_display_menu,
     build_library_menu,
     build_root_menu,
+    build_startup_fixed_volume_menu,
     build_startup_playlist_menu,
     build_startup_volume_menu,
 )
@@ -100,6 +101,12 @@ class Controller:
             self._state.close_menus()
             self._moc.play(item.path)
             self._state.played_path = str(item.path)
+        elif item.command is MenuCommand.SET_STARTUP_FIXED_VOLUME and item.value is not None:
+            settings = self._state.settings
+            settings.startup_fixed_volume = int(item.value)
+            self._state.replace_menu(build_startup_fixed_volume_menu(settings))
+            if self._save_settings is not None:
+                self._save_settings(settings)
         elif item.command is MenuCommand.SET_STARTUP_PLAYLIST and item.value is not None:
             settings = self._state.settings
             settings.startup_playlist = StartupPlaylist(item.value)

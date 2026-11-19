@@ -17,6 +17,7 @@ from mocassino.model.menu import (
     build_library_menu,
     build_root_menu,
     build_settings_menu,
+    build_startup_fixed_volume_menu,
     build_startup_menu,
     build_startup_playlist_menu,
     build_startup_volume_menu,
@@ -176,15 +177,41 @@ class TestBuildSettingsMenu:
         settings = Settings()
         display, startup = build_settings_menu(settings).items
         assert display.submenu().items[0].checked is True
-        assert startup.submenu().items[1].submenu().selected.label == "Use saved"
+        assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
         settings.startup_volume = StartupVolume.USE_FIXED
         assert display.submenu().items[0].checked is False
-        assert startup.submenu().items[1].submenu().selected.label == "Use fixed"
+        assert startup.submenu().items[2].submenu().selected.label == "Use fixed"
 
     def test_other_items_are_not_checkable(self, library, host):
         menu = build_root_menu(library, host, Settings())
         assert [item.checked for item in menu.items] == [None] * 4
+
+
+class TestBuildStartupFixedVolumeMenu:
+    """Tests for the build_startup_fixed_volume_menu function"""
+
+    def test_choices(self):
+        menu = build_startup_fixed_volume_menu(Settings(startup_fixed_volume=35))
+        assert menu.title == "Fixed volume"
+        assert [item.label for item in menu.items] == [str(volume) for volume in range(0, 101, 5)]
+        assert [item.value for item in menu.items] == [item.label for item in menu.items]
+        assert {item.command for item in menu.items} == {MenuCommand.SET_STARTUP_FIXED_VOLUME}
+        assert [item.label for item in menu.items if item.checked] == ["35"]
+        assert [item.checked for item in menu.items].count(False) == 20
+        assert menu.selected.label == "35"
+
+    @pytest.mark.parametrize(("volume", "label"), [(0, "0"), (100, "100"), (50, "50")])
+    def test_current_volume_is_selected(self, volume, label):
+        menu = build_startup_fixed_volume_menu(Settings(startup_fixed_volume=volume))
+        assert menu.selected.label == label
+        assert menu.selected.checked is True
+
+    @pytest.mark.parametrize(("volume", "label"), [(37, "35"), (38, "40"), (99, "100"), (2, "0")])
+    def test_volume_not_among_the_choices(self, volume, label):
+        menu = build_startup_fixed_volume_menu(Settings(startup_fixed_volume=volume))
+        assert menu.selected.label == label
+        assert [item for item in menu.items if item.checked] == []
 
 
 class TestBuildStartupMenu:
@@ -193,13 +220,21 @@ class TestBuildStartupMenu:
     def test_items(self):
         menu = build_startup_menu(Settings())
         assert menu.title == "Startup"
-        assert [item.label for item in menu.items] == ["Playlist", "Volume"]
-        assert [item.checked for item in menu.items] == [None, None]
-        assert [item.command for item in menu.items] == [None, None]
+        assert [item.label for item in menu.items] == ["Fixed volume", "Playlist", "Volume"]
+        assert [item.checked for item in menu.items] == [None, None, None]
+        assert [item.command for item in menu.items] == [None, None, None]
+
+    def test_fixed_volume_submenu(self):
+        settings = Settings()
+        item = build_startup_menu(settings).items[0]
+        assert item.submenu().title == "Fixed volume"
+        assert item.submenu().selected.label == "50"
+        settings.startup_fixed_volume = 85
+        assert item.submenu().selected.label == "85"
 
     def test_volume_submenu(self):
         settings = Settings()
-        item = build_startup_menu(settings).items[1]
+        item = build_startup_menu(settings).items[2]
         assert item.submenu().title == "Volume"
         assert item.submenu().selected.label == "Use saved"
         settings.startup_volume = StartupVolume.USE_FIXED
@@ -207,7 +242,7 @@ class TestBuildStartupMenu:
 
     def test_playlist_submenu(self):
         settings = Settings()
-        item = build_startup_menu(settings).items[0]
+        item = build_startup_menu(settings).items[1]
         assert item.checked is None
         assert item.command is None
         assert item.submenu().title == "Playlist"

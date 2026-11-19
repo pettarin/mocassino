@@ -37,5 +37,6 @@ class Settings:
     """
 
     show_side_icons: bool = True
+    startup_fixed_volume: int = 50
     startup_playlist: StartupPlaylist = StartupPlaylist.USE_SAVED
     startup_volume: StartupVolume = StartupVolume.USE_SAVED

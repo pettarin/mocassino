@@ -263,6 +263,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
     updates: dict[str, dict[str, object]] = {
         "display": {"show_side_icons": settings.show_side_icons},
         "startup": {
+            "fixed_volume": settings.startup_fixed_volume,
             "playlist": settings.startup_playlist.value,
             "volume": settings.startup_volume.value,
         },
@@ -310,6 +311,7 @@ def build_app(
     state = AppState(
         settings=Settings(
             show_side_icons=configuration.display.show_side_icons,
+            startup_fixed_volume=configuration.startup.fixed_volume,
             startup_playlist=StartupPlaylist(configuration.startup.playlist),
             startup_volume=startup_volume,
         ),
