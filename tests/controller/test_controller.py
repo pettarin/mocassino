@@ -122,7 +122,7 @@ class TestController:
         controller.handle(X)
         assert menu.selected.label == "Library"
         controller.handle(X)
-        assert menu.selected.label == "Host"
+        assert menu.selected.label == "System"
 
     def test_menu_select_back(self, controller, state):
         open_single_item_menu(state, MenuItem(label="Cancel", command=MenuCommand.BACK))
@@ -183,7 +183,7 @@ class TestController:
         controller.handle(Y)
         controller.handle(Y)
         controller.handle(B)
-        assert state.current_menu.title == "Host"
+        assert state.current_menu.title == "System"
         controller.handle(X)
         controller.handle(B)
         assert state.current_menu.title == "Shut down?"

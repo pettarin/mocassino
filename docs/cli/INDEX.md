@@ -358,7 +358,7 @@ and the state is `stopped`.
 
 The state is saved when the track changes, when the volume changes,
 when a setting is changed from the menus, and when the service is stopped.
-Shutting down the host from the `Host` menu saves it too, before the shutdown is asked.
+Shutting down the host from the `System` menu saves it too, before the shutdown is asked.
 The file is only written when its content would change.
 
 When the service starts:
@@ -561,7 +561,7 @@ The top level menu has the following items:
       `Pause`, `Play`, `Stop`, and `Use saved`; the current one has the solid square.
     - `Volume` (`startup.volume`): a menu with the two choices
       `Use default` and `Use saved`; the current one has the solid square.
-- `Host`: show the name and the IP address of the host,
+- `System`: show the name and the IP address of the host,
   and `Shut down`, which asks for confirmation
   before running `system.shutdown_command`.
   The display is turned off before the command is run,

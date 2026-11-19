@@ -216,18 +216,6 @@ def build_display_orientation_menu(settings: Settings) -> Menu:
     )
 
 
-def build_host_menu(host: Host) -> Menu:
-    """Build the menu showing the name and the IP address of the host, and shutting it down."""
-    return Menu(
-        title="Host",
-        items=(
-            MenuItem(label=f"Name: {host.hostname()}"),
-            MenuItem(label=f"IP: {host.ip_address() or 'not available'}"),
-            MenuItem(label="Shut down", submenu=_build_shutdown_menu),
-        ),
-    )
-
-
 def build_library_menu(library: Library, directory_path: Path | None = None) -> Menu:
     """Build the menu of a directory of the library.
 
@@ -322,7 +310,7 @@ def build_root_menu(library: Library, host: Host, settings: Settings) -> Menu:
         items=(
             MenuItem(label="Library", submenu=partial(build_library_menu, library)),
             MenuItem(label="Settings", submenu=partial(build_settings_menu, settings)),
-            MenuItem(label="Host", submenu=partial(build_host_menu, host)),
+            MenuItem(label="System", submenu=partial(build_system_menu, host)),
         ),
     )
 
@@ -387,4 +375,16 @@ def build_startup_volume_menu(settings: Settings) -> Menu:
         tuple(StartupVolume),
         settings.startup_volume,
         MenuCommand.SET_STARTUP_VOLUME,
+    )
+
+
+def build_system_menu(host: Host) -> Menu:
+    """Build the menu showing the name and the IP address of the host, and shutting it down."""
+    return Menu(
+        title="System",
+        items=(
+            MenuItem(label=f"Name: {host.hostname()}"),
+            MenuItem(label=f"IP: {host.ip_address() or 'not available'}"),
+            MenuItem(label="Shut down", submenu=_build_shutdown_menu),
+        ),
     )
