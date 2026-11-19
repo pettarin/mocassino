@@ -77,6 +77,7 @@ class Settings:
     playback_seek_step: int = 10
     playback_volume_default: int = 50
     playback_volume_step: int = 5
+    show_playlist_bar: bool = True
     show_progress_bar: bool = True
     show_side_icons: bool = True
     show_volume_bar: bool = True

@@ -10,6 +10,7 @@ from dataclasses import replace
 
 import pytest
 
+import mocassino.app
 from mocassino.app import App, build_app
 from mocassino.configuration import ColorsConfiguration, Configuration, load_configuration
 from mocassino.controller.actions import DEFAULT_BUTTON_MAP, Action
@@ -85,6 +86,7 @@ TOGGLE_SIDE_ICONS = (
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
     ButtonEvent(Button.B),
+    ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
@@ -423,6 +425,39 @@ class TestApp:
         image = display.show.call_args.args[0]
         assert image.size == (240, 240)
 
+    def test_step_builds_the_playlist_when_the_source_changes(
+        self, mocker, app, state, moc, tmp_path
+    ):
+        album = tmp_path / "Album"
+        album.mkdir()
+        for name in ("01.mp3", "02.mp3"):
+            (album / name).touch()
+        list_tracks = mocker.spy(mocassino.app, "list_tracks")
+        state.played_path = str(album)
+        moc.status.return_value = MocStatus(file_path=str(album / "01.mp3"), state=MocState.PLAY)
+        app.step()
+        assert state.playlist == (str(album / "01.mp3"), str(album / "02.mp3"))
+        moc.status.return_value = MocStatus(file_path=str(album / "02.mp3"), state=MocState.PLAY)
+        app.step()
+        assert list_tracks.call_count == 1
+        state.played_path = str(album / "02.mp3")
+        app.step()
+        assert state.playlist == (str(album / "02.mp3"),)
+        assert list_tracks.call_count == 2
+        moc.status.return_value = MocStatus()
+        app.step()
+        assert state.playlist == ()
+        assert list_tracks.call_count == 2
+
+    def test_step_builds_the_playlist_from_the_directory_of_the_track(
+        self, app, state, moc, tmp_path
+    ):
+        (tmp_path / "01.mp3").touch()
+        (tmp_path / "02.mp3").touch()
+        moc.status.return_value = MocStatus(file_path=str(tmp_path / "02.mp3"), state=MocState.PLAY)
+        app.step()
+        assert state.playlist == (str(tmp_path / "01.mp3"), str(tmp_path / "02.mp3"))
+
     def test_step_sets_the_brightness_only_when_changed(self, app, state, display):
         app.step()
         display.set_brightness.assert_not_called()
@@ -608,6 +643,7 @@ class TestBuildApp:
             "    normal: white\n"
             "    track: dimgray\n"
             "  orientation: 0\n"
+            "  show_playlist_bar: true\n"
             "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
             "  show_volume_bar: true\n"
@@ -635,6 +671,7 @@ class TestBuildApp:
             "    normal: white\n"
             "    track: dimgray\n"
             "  orientation: 0\n"
+            "  show_playlist_bar: true\n"
             "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
             "  show_volume_bar: true\n"
@@ -748,6 +785,15 @@ class TestBuildApp:
         assert app._state.settings.startup_playlist is StartupPlaylist.USE_MOC_STATE
         assert load_configuration(path).startup.playlist == "use_moc_state"
 
+    def test_display_playlist_bar_from_the_configuration(self):
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"show_playlist_bar": False, "target": "none"},
+            }
+        )
+        assert build_app(configuration)._state.settings.show_playlist_bar is False
+
     def test_display_bars_from_the_configuration(self):
         configuration = load_configuration(
             overrides={
@@ -773,6 +819,7 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),

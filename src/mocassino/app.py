@@ -31,6 +31,7 @@ from mocassino.model.moc import (
     MocState,
     SubprocessMocClient,
 )
+from mocassino.model.playlist import list_tracks
 from mocassino.model.resume import (
     adopt_playback,
     apply_state,
@@ -101,6 +102,8 @@ class App:
         self._last_error: str | None = None
         self._last_frame: bytes | None = None
         self._moc = moc
+        # What the playlist of the state has been built from (see _update_playlist)
+        self._playlist_source: str | None = None
         self._renderer = renderer
         self._simulator = simulator
         self._state = state
@@ -155,6 +158,7 @@ class App:
             try:
                 self._state.status = self._moc.status()
                 self._last_error = None
+                self._update_playlist()
             except MocServerNotRunningError:
                 LOGGER.warning("The MOC server is not running: starting it")
                 self._moc.start_server()
@@ -289,6 +293,19 @@ class App:
         self._apply_brightness()
         self._draw()
 
+    def _update_playlist(self) -> None:
+        """Rebuild the playlist of the state, if the current track is played from elsewhere.
+
+        The playlist is built from what MOC was given to play, or from the directory
+        of the current track (see playing_from); it is empty if nothing is playing,
+        or if a network stream is.
+        """
+        file_path = self._state.status.file_path
+        source = playing_from(self._state.played_path, file_path) if file_path else None
+        if source != self._playlist_source:
+            self._playlist_source = source
+            self._state.playlist = () if source is None else list_tracks(Path(source))
+
     def stop(self) -> None:
         """Ask the main loop to end; it does so within one tick."""
         self._stop.set()
@@ -333,6 +350,7 @@ def _build_settings(configuration: Configuration) -> Settings:
         playback_seek_step=configuration.playback.seek_step,
         playback_volume_default=configuration.playback.volume_default,
         playback_volume_step=configuration.playback.volume_step,
+        show_playlist_bar=configuration.display.show_playlist_bar,
         show_progress_bar=configuration.display.show_progress_bar,
         show_side_icons=configuration.display.show_side_icons,
         show_volume_bar=configuration.display.show_volume_bar,
@@ -378,6 +396,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
             "brightness": settings.display_brightness / 100,
             "colors": settings.color_specs(),
             "orientation": settings.display_orientation,
+            "show_playlist_bar": settings.show_playlist_bar,
             "show_progress_bar": settings.show_progress_bar,
             "show_side_icons": settings.show_side_icons,
             "show_volume_bar": settings.show_volume_bar,

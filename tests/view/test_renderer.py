@@ -21,8 +21,10 @@ from mocassino.view.renderer import (
     CONTENT_LEFT,
     CONTENT_RIGHT,
     ELLIPSIS,
+    MARGIN,
     MENU_ROW_HEIGHT,
     MENU_TITLE_HEIGHT,
+    VOLUME_BAR_TOP,
     Renderer,
     _format_seconds,
 )
@@ -308,7 +310,7 @@ class TestRenderer:
             title=text,
             total_seconds=205,
         )
-        image = renderer.render(AppState(status=status))
+        image = renderer.render(AppState(settings=Settings(show_playlist_bar=False), status=status))
         assert not has_content(image, (0, 36, BAND_WIDTH, 204))
         assert not has_content(image, (WIDTH - BAND_WIDTH, 36, WIDTH - 14, 204))
         assert not has_content(image, (WIDTH - 6, 36, WIDTH, 204))
@@ -363,7 +365,7 @@ class TestRenderer:
             title=text,
             total_seconds=205,
         )
-        settings = Settings(show_side_icons=False, show_volume_bar=False)
+        settings = Settings(show_playlist_bar=False, show_side_icons=False, show_volume_bar=False)
         image = renderer.render(AppState(settings=settings, status=status, volume=100))
         defaults = {
             Button.A: (Action.PLAY_PAUSE, Action.OPEN_MENU),
@@ -408,9 +410,11 @@ class TestRenderer:
             title=text,
             total_seconds=205,
         )
-        settings = Settings(show_side_icons=False)
+        settings = Settings(show_playlist_bar=False, show_side_icons=False)
         image = renderer.render(AppState(settings=settings, status=status, volume=100))
-        with_icons = renderer.render(AppState(status=status, volume=100))
+        with_icons = renderer.render(
+            AppState(settings=Settings(show_playlist_bar=False), status=status, volume=100)
+        )
         bar = (WIDTH - BAND_WIDTH + 6, 36, WIDTH - 6, 204)
         assert image.crop(bar).tobytes() == with_icons.crop(bar).tobytes()
         assert image.getpixel((229, 100)) == ACCENT_COLOR
@@ -435,21 +439,64 @@ class TestRenderer:
             assert hidden.crop(box).tobytes() == shown.crop(box).tobytes()
         assert has_content(hidden, below)
 
+    @pytest.mark.parametrize(
+        ("file_path", "current", "filled"),
+        [
+            ("/music/1.mp3", 0, 0.25),
+            ("/music/2.mp3", 50, 0.5),
+            ("/music/4.mp3", 0, 1.0),
+            ("/music/other.mp3", 50, 0.0),
+        ],
+    )
+    def test_playback_playlist_bar(self, renderer, file_path, current, filled):
+        status = MocStatus(
+            current_seconds=current,
+            file_path=file_path,
+            state=MocState.PLAY,
+            title="Title",
+            total_seconds=100,
+        )
+        playlist = ("/music/1.mp3", "/music/2.mp3", "/music/3.mp3", "/music/4.mp3")
+        image = renderer.render(AppState(playlist=playlist, status=status))
+        top, bottom = VOLUME_BAR_TOP, HEIGHT - VOLUME_BAR_TOP - 1
+        boundary = top + round((bottom - top) * filled)
+        column = [image.getpixel((10, y)) for y in range(top, bottom + 1)]
+        assert set(column) <= {ACCENT_COLOR, TRACK_COLOR}
+        if filled > 0:
+            assert column[: boundary - top] == [ACCENT_COLOR] * (boundary - top)
+        assert column[boundary - top + 1 :] == [TRACK_COLOR] * (bottom - boundary)
+        assert image.getpixel((5, 100)) == BACKGROUND_COLOR
+        assert image.getpixel((14, 100)) == BACKGROUND_COLOR
+
+    def test_playback_playlist_bar_hidden(self, renderer):
+        status = MocStatus(file_path="/music/1.mp3", state=MocState.PLAY, total_seconds=100)
+        settings = Settings(show_playlist_bar=False, show_side_icons=False)
+        state = AppState(playlist=("/music/1.mp3",), settings=settings, status=status)
+        image = renderer.render(state)
+        assert not has_content(image, (0, 36, MARGIN, 204))
+
+    @pytest.mark.parametrize("show_playlist_bar", [False, True])
     @pytest.mark.parametrize("show_side_icons", [False, True])
     @pytest.mark.parametrize("show_volume_bar", [False, True])
-    def test_playback_bands(self, renderer, show_side_icons, show_volume_bar):
+    def test_playback_bands(self, renderer, show_playlist_bar, show_side_icons, show_volume_bar):
         text = "A very long text that would never fit in the width of the frame"
         status = MocStatus(
             album=text, artist=text, file_path="/music/a.flac", state=MocState.PLAY, title=text
         )
-        settings = Settings(show_side_icons=show_side_icons, show_volume_bar=show_volume_bar)
+        settings = Settings(
+            show_playlist_bar=show_playlist_bar,
+            show_side_icons=show_side_icons,
+            show_volume_bar=show_volume_bar,
+        )
         image = renderer.render(AppState(settings=settings, status=status, volume=50))
-        left_band_free = has_content(image, (10, 40, CONTENT_LEFT - 4, 200))
-        right_band_free = has_content(image, (CONTENT_RIGHT + 4, 40, WIDTH - BAND_WIDTH + 6, 200))
-        assert left_band_free is (not show_side_icons)
-        assert right_band_free is (not show_side_icons and not show_volume_bar)
+        left_band_used = has_content(image, (14, 40, CONTENT_LEFT - 4, 200))
+        right_band_used = has_content(image, (CONTENT_RIGHT + 4, 40, WIDTH - BAND_WIDTH + 6, 200))
+        assert left_band_used is (not show_side_icons and not show_playlist_bar)
+        assert right_band_used is (not show_side_icons and not show_volume_bar)
         bar_drawn = image.getpixel((229, 190)) == ACCENT_COLOR
         assert bar_drawn is show_volume_bar
+        playlist_bar_drawn = image.getpixel((10, 100)) == TRACK_COLOR
+        assert playlist_bar_drawn is show_playlist_bar
 
     @pytest.mark.parametrize("artist", ["ABBA", "Fabrizio De Andre", "moe.", ""])
     @pytest.mark.parametrize("show_side_icons", [False, True])
@@ -572,7 +619,11 @@ class TestRenderer:
 
     @pytest.mark.parametrize("show_side_icons", [False, True])
     def test_playback_stop_hint_is_centred(self, renderer, show_side_icons):
-        settings = Settings(show_side_icons=show_side_icons, show_volume_bar=show_side_icons)
+        settings = Settings(
+            show_playlist_bar=show_side_icons,
+            show_side_icons=show_side_icons,
+            show_volume_bar=show_side_icons,
+        )
         image = renderer.render(AppState(settings=settings))
         left, right = (CONTENT_LEFT, CONTENT_RIGHT) if show_side_icons else (10, WIDTH - 10)
         hint_left, hint_top, hint_right, hint_bottom = image.crop((left, 40, right, 200)).getbbox()

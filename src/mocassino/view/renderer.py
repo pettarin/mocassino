@@ -16,6 +16,7 @@ from mocassino.controller.events import Button, ButtonEvent, Press
 from mocassino.model.colors import parse_color
 from mocassino.model.menu import Menu
 from mocassino.model.moc import MocState
+from mocassino.model.playlist import playlist_fraction
 from mocassino.model.state import AppState, Mode
 from mocassino.view.colors import DEFAULT_COLORS, parse_colors
 from mocassino.view.display.base import HEIGHT, WIDTH
@@ -198,9 +199,10 @@ class Renderer:
         The bottom is level with the two rows of icons of the buttons there:
         the progress bar is centred on the upper row, and the times, with the icon
         of the state between them, take the lower row.
-        The icons of the buttons, the progress bar, and the volume bar are drawn only if
-        the settings say so. The band on the left is reserved to the icons, when shown;
-        the band on the right, to the icons and the volume bar, when either is shown.
+        The icons of the buttons, the progress bar, the playlist bar, and the volume bar
+        are drawn only if the settings say so. The band on the left is reserved to the icons
+        and the playlist bar, when either is shown; the band on the right, to the icons and
+        the volume bar, when either is shown.
         """
         status = state.status
         small_font = self._font(TIMES_FONT_SIZE)
@@ -208,9 +210,12 @@ class Renderer:
         bar_top = upper_icon_top + (ICON_SIZE - PROGRESS_BAR_HEIGHT) // 2
         settings = state.settings
         left, right = MARGIN, WIDTH - MARGIN
-        if settings.show_side_icons:
+        if settings.show_side_icons or settings.show_playlist_bar:
             left = CONTENT_LEFT
+        if settings.show_side_icons:
             self._draw_button_icons(draw)
+        if settings.show_playlist_bar:
+            self._draw_playlist_bar(draw, playlist_fraction(state.playlist, status))
         if settings.show_side_icons or settings.show_volume_bar:
             right = CONTENT_RIGHT
         if settings.show_volume_bar:
@@ -284,6 +289,20 @@ class Renderer:
             HEIGHT - ICON_BORDER - ICON_SIZE,
             self._colors.accented,
         )
+
+    def _draw_playlist_bar(self, draw: ImageDraw.ImageDraw, fraction: float) -> None:
+        """Draw how far the playback has advanced through the playlist, in the band on the left.
+
+        The bar mirrors the volume bar: it is between the icons of A and those of B,
+        and it is filled from the top, as the tracks are listed.
+        """
+        top, bottom = VOLUME_BAR_TOP, HEIGHT - VOLUME_BAR_TOP - 1
+        left = (BAND_WIDTH - VOLUME_BAR_WIDTH) // 2
+        right = left + VOLUME_BAR_WIDTH - 1
+        draw.rectangle((left, top, right, bottom), fill=self._colors.track)
+        filled = round((bottom - top) * max(0.0, min(1.0, fraction)))
+        if filled > 0:
+            draw.rectangle((left, top, right, top + filled), fill=self._colors.accented)
 
     def _draw_volume_bar(self, draw: ImageDraw.ImageDraw, volume: int) -> None:
         """Draw the volume as a vertical bar in the band on the right, filled from the bottom.

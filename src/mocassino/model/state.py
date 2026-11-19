@@ -22,12 +22,14 @@ class AppState:
     and the application is in playback mode when the stack is empty.
 
     The played path is what MOC was last given to play (a directory, or a single file),
-    if known. The host is shutting down once its reboot or its shutdown has been asked
-    from the menu.
+    if known. The playlist is the tracks of what the current track is played from,
+    in the order MOC plays them (see the playlist module).
+    The host is shutting down once its reboot or its shutdown has been asked from the menu.
     """
 
     menus: list[Menu] = field(default_factory=list)
     played_path: str | None = None
+    playlist: tuple[str, ...] = ()
     settings: Settings = field(default_factory=Settings)
     shutting_down: bool = False
     status: MocStatus = field(default_factory=MocStatus)

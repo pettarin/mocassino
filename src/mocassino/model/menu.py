@@ -81,6 +81,7 @@ class MenuCommand(StrEnum):
     SET_STARTUP_VOLUME = "set_startup_volume"
     SET_SYSTEM_MOC_STATE_ON_EXIT = "set_system_moc_state_on_exit"
     SHUTDOWN = "shutdown"
+    TOGGLE_PLAYLIST_BAR = "toggle_playlist_bar"
     TOGGLE_PROGRESS_BAR = "toggle_progress_bar"
     TOGGLE_SIDE_ICONS = "toggle_side_icons"
     TOGGLE_VOLUME_BAR = "toggle_volume_bar"
@@ -292,6 +293,11 @@ def build_display_menu(settings: Settings) -> Menu:
             MenuItem(
                 label="Orientation",
                 submenu=partial(build_display_orientation_menu, settings),
+            ),
+            MenuItem(
+                label="Show playlist bar",
+                checked=settings.show_playlist_bar,
+                command=MenuCommand.TOGGLE_PLAYLIST_BAR,
             ),
             MenuItem(
                 label="Show progress bar",
