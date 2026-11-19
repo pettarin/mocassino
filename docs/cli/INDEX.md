@@ -296,7 +296,7 @@ it moves the file to a backup next to it, named after the time,
 e.g., `~/.config/mocassino/configuration.yaml.20261119153005.bak`,
 writes a new file with the default values in its place, logs a warning, and starts.
 The older backups are kept.
-As with `Reset settings`, the new file keeps the simulator for the buttons and the display,
+As with `Reset all settings`, the new file keeps the simulator for the buttons and the display,
 if the run uses it.
 A file that cannot be read, or that is given with `-c` but does not exist,
 is still reported as an error, and so is any file for `mocassino configuration`.
@@ -328,7 +328,7 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `open_library`, `use_moc_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
-| `system.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `System` menu |
+| `system.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.reboot_command` | `sudo reboot` | The command rebooting the host, as a string or as a list; it is never run when the simulator is used |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
@@ -584,7 +584,7 @@ The top level menu has the following items:
       At `0` the backlight is off, and the display is dark:
       the brightness can be raised again from the same menu, without seeing it,
       or by editing the configuration file.
-    - `Colors`: a menu with `Accented`, `Background`, `Muted`, `Normal`, `Track`, and `Reset colors`;
+    - `Colors`: a menu with `Accented`, `Background`, `Muted`, `Normal`, `Track`, and `Reset all colors`;
       the first five (`display.colors.accented`, etc.) are each a menu with the
       [140 color names of CSS3](https://www.w3.org/TR/css-color-3/#svg-color),
       ordered by hue (black, the grays, the whites, then reds, oranges, yellows, greens,
@@ -595,7 +595,7 @@ The top level menu has the following items:
       and it cannot be selected; a name spelled with `grey`, or an HTML code
       with the color of a name (e.g., `#696969`), counts as that name (e.g., `dimgray`).
       The change is immediate.
-      The last item, `Reset colors`, asks for confirmation,
+      The last item, `Reset all colors`, asks for confirmation,
       then sets the five colors back to their defaults, leaving the other settings as they are.
     - `Orientation` (`display.orientation`): a menu with the four choices
       `0`, `90`, `180`, and `270`; the current one has the solid square.
@@ -615,6 +615,9 @@ The top level menu has the following items:
       in steps of 5; the current one has the solid square.
     - `Volume step (%)` (`playback.volume_step`): a menu with the choices
       `1`, `2`, `4`, `5`, and `10`.
+  - `MOC state on exit` (`system.moc_state_on_exit`): a menu with the four choices
+    `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
+    The choice applies when the service exits, after its state has been saved.
   - `Startup`: the settings of what the service does when it starts.
     They take effect the next time the service starts.
     - `Playlist` (`startup.playlist`): a menu with the three choices
@@ -623,18 +626,14 @@ The top level menu has the following items:
       `Pause`, `Play`, `Stop`, and `Use saved`; the current one has the solid square.
     - `Volume` (`startup.volume`): a menu with the two choices
       `Use default` and `Use saved`; the current one has the solid square.
-- `System`: show the name and the IP address of the host,
-  `MOC state on exit`, `Reset settings`, `Reboot`, and `Shut down`.
-  `MOC state on exit` (`system.moc_state_on_exit`) is a menu with the four choices
-  `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
-  The choice applies when the service exits, after its state has been saved.
-  `Reset settings` asks for confirmation, then replaces the configuration file
-  with one holding all the default values, as `mocassino configuration --default` prints them;
-  the defaults of the settings take effect at once, the other values the next time
-  the service starts.
-  All the values are reset, not only those of the `Settings` menu
-  (e.g., `library.directory_path`, `system.reboot_command`, and `system.shutdown_command` too),
-  except that the simulator is kept for the buttons and for the display, if it is in use.
+  - `Reset all settings`: asks for confirmation, then replaces the configuration file
+    with one holding all the default values, as `mocassino configuration --default` prints them;
+    the defaults of the settings take effect at once, the other values the next time
+    the service starts.
+    All the values are reset, not only those of the `Settings` menu
+    (e.g., `library.directory_path`, `system.reboot_command`, and `system.shutdown_command` too),
+    except that the simulator is kept for the buttons and for the display, if it is in use.
+- `System`: show the name and the IP address of the host, `Reboot`, and `Shut down`.
   `Reboot` and `Shut down` ask for confirmation
   before running `system.reboot_command` and `system.shutdown_command`, respectively.
   The display is turned off before the command is run,

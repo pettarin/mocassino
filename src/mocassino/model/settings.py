@@ -89,7 +89,7 @@ class Settings:
         """Return the colors of the display, as names or HTML codes, by role."""
         return {role: getattr(self, f"display_colors_{role}") for role in COLOR_ROLES}
 
-    def reset_colors(self) -> None:
+    def reset_all_colors(self) -> None:
         """Set the colors of the display to the default ones."""
         for role, spec in DEFAULT_COLOR_SPECS.items():
             setattr(self, f"display_colors_{role}", spec)

@@ -66,14 +66,12 @@ REBOOT = (
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
 )
-# From playback mode: open the menu, go up to System, open it, go up thrice to Reset settings,
+# From playback mode: open the menu, go down to Settings, open it, go up to Reset all settings,
 # open it, go down to Reset now, and select it
-RESET_SETTINGS = (
+RESET_ALL_SETTINGS = (
     ButtonEvent(Button.A, Press.LONG),
-    ButtonEvent(Button.X),
+    ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
-    ButtonEvent(Button.X),
-    ButtonEvent(Button.X),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
     ButtonEvent(Button.Y),
@@ -739,6 +737,7 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
+            ButtonEvent(Button.X),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
@@ -806,7 +805,7 @@ class TestBuildApp:
         assert app._state.settings.system_moc_state_on_exit is MocStateOnExit.PAUSE
         events = (
             ButtonEvent(Button.A, Press.LONG),
-            ButtonEvent(Button.X),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
@@ -859,7 +858,7 @@ class TestBuildApp:
         saved = load_configuration(path).display.colors
         assert (saved.accented, saved.muted, saved.track) == ("forestgreen", "#123456", "dimgray")
 
-    def test_reset_colors_is_applied_and_saved(self, mocker, tmp_path):
+    def test_reset_all_colors_is_applied_and_saved(self, mocker, tmp_path):
         moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
         moc.status.return_value = PLAYING
         path = tmp_path / "custom.yaml"
@@ -981,6 +980,7 @@ class TestBuildApp:
             ButtonEvent(Button.A, Press.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
@@ -1188,6 +1188,7 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
+            ButtonEvent(Button.X),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
@@ -1218,7 +1219,7 @@ class TestBuildApp:
         assert moc.volume == 70
         assert StateFile(state_file_path).load() == SavedState(volume=70)
 
-    def test_reset_settings(self, mocker, tmp_path):
+    def test_reset_all_settings(self, mocker, tmp_path):
         moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
         moc.status.return_value = PLAYING
         path = tmp_path / "custom.yaml"
@@ -1239,43 +1240,43 @@ class TestBuildApp:
         app = build_app(configuration, path)
         settings = app._state.settings
         assert (settings.display_brightness, settings.show_side_icons) == (40, False)
-        for event in RESET_SETTINGS:
+        for event in RESET_ALL_SETTINGS:
             app.events.put(event)
         app.step()
         assert app._state.settings is settings
         assert settings == Settings()
         assert app._display.brightness == 1.0
-        assert [menu.title for menu in app._state.menus] == ["Menu", "System"]
+        assert [menu.title for menu in app._state.menus] == ["Menu", "Settings"]
         assert load_configuration(path) == Configuration()
 
     @pytest.mark.parametrize(
         ("origin", "target"),
         [("simulator", "none"), ("none", "simulator"), ("simulator", "simulator")],
     )
-    def test_reset_settings_keeps_the_simulator(self, tmp_path, origin, target):
+    def test_reset_all_settings_keeps_the_simulator(self, tmp_path, origin, target):
         path = tmp_path / "custom.yaml"
         app = build_app(self.configuration(origin, target), path)
-        for event in RESET_SETTINGS:
+        for event in RESET_ALL_SETTINGS:
             app._controller.handle(event)
         written = load_configuration(path)
         assert written.buttons.origin == ("simulator" if origin == "simulator" else "pirateaudio")
         assert written.display.target == ("simulator" if target == "simulator" else "pirateaudio")
         assert written.library == Configuration().library
 
-    def test_reset_settings_to_the_default_file(self, tmp_path):
+    def test_reset_all_settings_to_the_default_file(self, tmp_path):
         app = build_app(self.configuration("none", "none"))
-        for event in RESET_SETTINGS:
+        for event in RESET_ALL_SETTINGS:
             app._controller.handle(event)
         path = tmp_path / ".config" / "mocassino" / "configuration.yaml"
         assert load_configuration(path) == Configuration()
 
-    def test_reset_settings_cannot_be_written(self, tmp_path, caplog):
+    def test_reset_all_settings_cannot_be_written(self, tmp_path, caplog):
         blocker = tmp_path / "blocker"
         blocker.touch()
         app = build_app(self.configuration("none", "none"), blocker / "configuration.yaml")
         app._state.settings.show_volume_bar = False
         with caplog.at_level(logging.ERROR):
-            for event in RESET_SETTINGS:
+            for event in RESET_ALL_SETTINGS:
                 app._controller.handle(event)
         assert "Cannot reset the settings: Cannot write configuration file" in caplog.text
         assert app._state.settings == Settings()

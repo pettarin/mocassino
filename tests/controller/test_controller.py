@@ -194,9 +194,9 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, Y, B, Y, Y, B):
+        for event in (A_LONG, Y, B, Y, Y, B):
             controller.handle(event)
-        titles = ["Menu", "System", "MOC state on exit"]
+        titles = ["Menu", "Settings", "MOC state on exit"]
         assert [menu.title for menu in state.menus] == titles
         assert state.current_menu.selected.label == "Do nothing"
         assert state.current_menu.selected.checked is True
@@ -208,9 +208,9 @@ class TestController:
         assert [item.label for item in state.current_menu.items if item.checked] == ["Quit"]
         moc.exit_server.assert_not_called()
 
-    def test_menu_select_reset_settings(self, mocker, state, moc, library, system):
+    def test_menu_select_reset_all_settings(self, mocker, state, moc, library, system):
         defaults = Settings(display_brightness=70)
-        reset_settings = mocker.Mock(return_value=defaults)
+        reset_all_settings = mocker.Mock(return_value=defaults)
         save_settings = mocker.Mock()
         controller = Controller(
             state,
@@ -218,46 +218,46 @@ class TestController:
             library,
             system,
             DEFAULT_BUTTON_MAP,
-            reset_settings=reset_settings,
+            reset_all_settings=reset_all_settings,
             save_settings=save_settings,
         )
         settings = state.settings
         settings.playback_seek_step = 30
         settings.show_side_icons = False
-        for event in (A_LONG, Y, Y, B, X, X, X):
+        for event in (A_LONG, Y, B, X):
             controller.handle(event)
-        assert state.current_menu.selected.label == "Reset settings"
+        assert state.current_menu.selected.label == "Reset all settings"
         controller.handle(B)
-        assert state.current_menu.title == "Reset settings?"
+        assert state.current_menu.title == "Reset all settings?"
         assert state.current_menu.selected.label == "Cancel"
-        reset_settings.assert_not_called()
+        reset_all_settings.assert_not_called()
         controller.handle(Y)
         controller.handle(B)
-        reset_settings.assert_called_once_with()
+        reset_all_settings.assert_called_once_with()
         save_settings.assert_not_called()
         assert state.settings is settings
         assert settings == defaults
-        assert [menu.title for menu in state.menus] == ["Menu", "System"]
-        assert state.current_menu.selected.label == "Reset settings"
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings"]
+        assert state.current_menu.selected.label == "Reset all settings"
 
-    def test_menu_select_reset_settings_without_callback(self, controller, state):
+    def test_menu_select_reset_all_settings_without_callback(self, controller, state):
         state.settings.show_volume_bar = False
-        for event in (A_LONG, Y, Y, B, X, X, X, B, Y, B):
+        for event in (A_LONG, Y, B, X, B, Y, B):
             controller.handle(event)
         assert state.settings == Settings()
-        assert [menu.title for menu in state.menus] == ["Menu", "System"]
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings"]
 
-    def test_menu_select_reset_settings_cancelled(self, mocker, state, moc, library, system):
-        reset_settings = mocker.Mock(return_value=Settings())
+    def test_menu_select_reset_all_settings_cancelled(self, mocker, state, moc, library, system):
+        reset_all_settings = mocker.Mock(return_value=Settings())
         controller = Controller(
-            state, moc, library, system, DEFAULT_BUTTON_MAP, reset_settings=reset_settings
+            state, moc, library, system, DEFAULT_BUTTON_MAP, reset_all_settings=reset_all_settings
         )
         state.settings.show_volume_bar = False
-        for event in (A_LONG, Y, Y, B, X, X, X, B, B):
+        for event in (A_LONG, Y, B, X, B, B):
             controller.handle(event)
-        reset_settings.assert_not_called()
+        reset_all_settings.assert_not_called()
         assert state.settings.show_volume_bar is False
-        assert [menu.title for menu in state.menus] == ["Menu", "System"]
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings"]
 
     def test_menu_select_reboot(self, controller, state, system):
         for event in (A_LONG, Y, Y, B, X, X):
@@ -432,7 +432,7 @@ class TestController:
         assert state.current_menu.selected.label == "forestgreen [X]"
         assert "limegreen" in [item.label for item in state.current_menu.items]
 
-    def test_menu_select_reset_colors(self, mocker, state, moc, library, system):
+    def test_menu_select_reset_all_colors(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
@@ -448,9 +448,9 @@ class TestController:
         settings.display_brightness = 40
         for event in (A_LONG, Y, B, B, Y, B, X):
             controller.handle(event)
-        assert state.current_menu.selected.label == "Reset colors"
+        assert state.current_menu.selected.label == "Reset all colors"
         controller.handle(B)
-        assert state.current_menu.title == "Reset colors?"
+        assert state.current_menu.title == "Reset all colors?"
         assert state.current_menu.selected.label == "Cancel"
         save_settings.assert_not_called()
         controller.handle(Y)
@@ -459,9 +459,9 @@ class TestController:
         assert settings.display_brightness == 40
         save_settings.assert_called_once_with(settings)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Display", "Colors"]
-        assert state.current_menu.selected.label == "Reset colors"
+        assert state.current_menu.selected.label == "Reset all colors"
 
-    def test_menu_select_reset_colors_cancelled(self, mocker, state, moc, library, system):
+    def test_menu_select_reset_all_colors_cancelled(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
             state, moc, library, system, DEFAULT_BUTTON_MAP, save_settings=save_settings
@@ -473,7 +473,7 @@ class TestController:
         save_settings.assert_not_called()
         assert state.current_menu.title == "Colors"
 
-    def test_menu_select_reset_colors_without_saving(self, controller, state):
+    def test_menu_select_reset_all_colors_without_saving(self, controller, state):
         state.settings.display_colors_muted = "navy"
         for event in (A_LONG, Y, B, B, Y, B, X, B, Y, B):
             controller.handle(event)
@@ -694,7 +694,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, X, B, Y, B):
+        for event in (A_LONG, Y, B, X, X, B, Y, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "State"]
         menu = state.current_menu
@@ -725,7 +725,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, X, B, X, B):
+        for event in (A_LONG, Y, B, X, X, B, X, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Volume"]
         menu = state.current_menu
@@ -748,7 +748,7 @@ class TestController:
         assert [item.checked for item in state.current_menu.items] == [False, True]
 
     def test_menu_select_startup_volume_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, X, B, X, B, X, B):
+        for event in (A_LONG, Y, B, X, X, B, X, B, X, B):
             controller.handle(event)
         assert state.settings.startup_volume is StartupVolume.USE_DEFAULT
 
@@ -769,7 +769,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, X, B, B):
+        for event in (A_LONG, Y, B, X, X, B, B):
             controller.handle(event)
         assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Startup", "Playlist"]
         menu = state.current_menu
@@ -797,7 +797,7 @@ class TestController:
         assert save_settings.call_count == 2
 
     def test_menu_select_startup_playlist_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, X, B, B, Y, B):
+        for event in (A_LONG, Y, B, X, X, B, B, Y, B):
             controller.handle(event)
         assert state.settings.startup_playlist is StartupPlaylist.OPEN_LIBRARY
 

@@ -343,7 +343,7 @@ def _build_settings(configuration: Configuration) -> Settings:
     )
 
 
-def _reset_settings(
+def _reset_all_settings(
     configuration: Configuration,
     configuration_file_path: Path | None,
 ) -> Settings:
@@ -460,7 +460,7 @@ def build_app(
         library,
         system,
         button_map=configuration.buttons.button_map,
-        reset_settings=partial(_reset_settings, configuration, configuration_file_path),
+        reset_all_settings=partial(_reset_all_settings, configuration, configuration_file_path),
         save_settings=partial(_save_settings, configuration_file_path),
         switch_display=partial(_switch_display, display),
     )

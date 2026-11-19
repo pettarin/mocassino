@@ -64,8 +64,8 @@ class MenuCommand(StrEnum):
     BACK = "back"
     PLAY = "play"
     REBOOT = "reboot"
-    RESET_COLORS = "reset_colors"
-    RESET_SETTINGS = "reset_settings"
+    RESET_ALL_COLORS = "reset_all_colors"
+    RESET_ALL_SETTINGS = "reset_all_settings"
     SET_DISPLAY_BRIGHTNESS = "set_display_brightness"
     SET_DISPLAY_COLORS_ACCENTED = "set_display_colors_accented"
     SET_DISPLAY_COLORS_BACKGROUND = "set_display_colors_background"
@@ -172,24 +172,24 @@ def _build_reboot_menu() -> Menu:
     )
 
 
-def _build_reset_colors_menu() -> Menu:
+def _build_reset_all_colors_menu() -> Menu:
     """Build the menu asking to confirm the reset of the colors; the default is to cancel."""
     return Menu(
-        title="Reset colors?",
+        title="Reset all colors?",
         items=(
             MenuItem(label="Cancel", command=MenuCommand.BACK),
-            MenuItem(label="Reset now", command=MenuCommand.RESET_COLORS),
+            MenuItem(label="Reset now", command=MenuCommand.RESET_ALL_COLORS),
         ),
     )
 
 
-def _build_reset_settings_menu() -> Menu:
+def _build_reset_all_settings_menu() -> Menu:
     """Build the menu asking to confirm the reset of the settings; the default is to cancel."""
     return Menu(
-        title="Reset settings?",
+        title="Reset all settings?",
         items=(
             MenuItem(label="Cancel", command=MenuCommand.BACK),
-            MenuItem(label="Reset now", command=MenuCommand.RESET_SETTINGS),
+            MenuItem(label="Reset now", command=MenuCommand.RESET_ALL_SETTINGS),
         ),
     )
 
@@ -269,7 +269,7 @@ def build_display_colors_menu(settings: Settings) -> Menu:
         )
         for role in COLOR_ROLES
     ]
-    items.append(MenuItem(label="Reset colors", submenu=_build_reset_colors_menu))
+    items.append(MenuItem(label="Reset all colors", submenu=_build_reset_all_colors_menu))
     return Menu(title="Colors", items=tuple(items))
 
 
@@ -419,19 +419,28 @@ def build_root_menu(library: Library, system: System, settings: Settings) -> Men
         items=(
             MenuItem(label="Library", submenu=partial(build_library_menu, library)),
             MenuItem(label="Settings", submenu=partial(build_settings_menu, settings)),
-            MenuItem(label="System", submenu=partial(build_system_menu, system, settings)),
+            MenuItem(label="System", submenu=partial(build_system_menu, system)),
         ),
     )
 
 
 def build_settings_menu(settings: Settings) -> Menu:
-    """Build the menu leading to the settings, grouped by what they are about."""
+    """Build the menu leading to the settings, grouped by what they are about.
+
+    It also leads to the setting of what is done to MOC on exit,
+    and resets all the settings, after a confirmation.
+    """
     return Menu(
         title="Settings",
         items=(
             MenuItem(label="Display", submenu=partial(build_display_menu, settings)),
             MenuItem(label="Playback", submenu=partial(build_playback_menu, settings)),
+            MenuItem(
+                label="MOC state on exit",
+                submenu=partial(build_system_moc_state_on_exit_menu, settings),
+            ),
             MenuItem(label="Startup", submenu=partial(build_startup_menu, settings)),
+            MenuItem(label="Reset all settings", submenu=_build_reset_all_settings_menu),
         ),
     )
 
@@ -487,22 +496,16 @@ def build_startup_volume_menu(settings: Settings) -> Menu:
     )
 
 
-def build_system_menu(system: System, settings: Settings) -> Menu:
+def build_system_menu(system: System) -> Menu:
     """Build the menu showing the name and the IP address of the host.
 
-    It also leads to the setting of what is done to MOC on exit,
-    resets the settings, and reboots or shuts down the host.
+    It also reboots or shuts down the host, after a confirmation.
     """
     return Menu(
         title="System",
         items=(
             MenuItem(label=f"Name: {system.hostname()}"),
             MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
-            MenuItem(
-                label="MOC state on exit",
-                submenu=partial(build_system_moc_state_on_exit_menu, settings),
-            ),
-            MenuItem(label="Reset settings", submenu=_build_reset_settings_menu),
             MenuItem(label="Reboot", submenu=_build_reboot_menu),
             MenuItem(label="Shut down", submenu=_build_shutdown_menu),
         ),

@@ -183,19 +183,19 @@ class TestBuildDisplayColorsMenu:
         menu = build_display_colors_menu(settings)
         assert menu.title == "Colors"
         labels = ["Accented", "Background", "Muted", "Normal", "Track"]
-        assert [item.label for item in menu.items] == [*labels, "Reset colors"]
+        assert [item.label for item in menu.items] == [*labels, "Reset all colors"]
         assert [item.submenu().title for item in menu.items[:5]] == labels
         assert all(item.command is None and item.checked is None for item in menu.items)
         settings.display_colors_normal = "gold"
         assert menu.items[3].submenu().selected.label == "gold [X]"
 
-    def test_reset_colors_is_confirmed(self):
+    def test_reset_all_colors_is_confirmed(self):
         item = build_display_colors_menu(Settings()).items[5]
         assert item.submenu() == Menu(
-            title="Reset colors?",
+            title="Reset all colors?",
             items=(
                 MenuItem(label="Cancel", command=MenuCommand.BACK),
-                MenuItem(label="Reset now", command=MenuCommand.RESET_COLORS),
+                MenuItem(label="Reset now", command=MenuCommand.RESET_ALL_COLORS),
             ),
         )
 
@@ -312,16 +312,41 @@ class TestBuildSettingsMenu:
     def test_items(self):
         menu = build_settings_menu(Settings())
         assert menu.title == "Settings"
-        assert [item.label for item in menu.items] == ["Display", "Playback", "Startup"]
-        assert [item.checked for item in menu.items] == [None, None, None]
-        assert [item.command for item in menu.items] == [None, None, None]
+        assert [item.label for item in menu.items] == [
+            "Display",
+            "Playback",
+            "MOC state on exit",
+            "Startup",
+            "Reset all settings",
+        ]
+        assert [item.checked for item in menu.items] == [None] * 5
+        assert [item.command for item in menu.items] == [None] * 5
         assert menu.items[0].submenu().title == "Display"
         assert menu.items[1].submenu().title == "Playback"
-        assert menu.items[2].submenu().title == "Startup"
+        assert menu.items[2].submenu().title == "MOC state on exit"
+        assert menu.items[3].submenu().title == "Startup"
+
+    def test_moc_state_on_exit_submenu(self):
+        settings = Settings()
+        item = build_settings_menu(settings).items[2]
+        assert item.submenu().selected.label == "Do nothing"
+        settings.system_moc_state_on_exit = MocStateOnExit.STOP
+        assert item.submenu().selected.label == "Stop"
+
+    def test_reset_all_settings_is_confirmed(self):
+        item = build_settings_menu(Settings()).items[4]
+        assert item.command is None
+        assert item.submenu() == Menu(
+            title="Reset all settings?",
+            items=(
+                MenuItem(label="Cancel", command=MenuCommand.BACK),
+                MenuItem(label="Reset now", command=MenuCommand.RESET_ALL_SETTINGS),
+            ),
+        )
 
     def test_submenus_show_the_current_values(self):
         settings = Settings()
-        display, playback, startup = build_settings_menu(settings).items
+        display, playback, _, startup, _ = build_settings_menu(settings).items
         assert playback.submenu().items[0].submenu().selected.label == "10"
         settings.playback_seek_step = 30
         assert playback.submenu().items[0].submenu().selected.label == "30"
@@ -531,13 +556,11 @@ class TestBuildSystemMenu:
     """Tests for the build_system_menu function"""
 
     def test_items(self, system):
-        menu = build_system_menu(system, Settings())
+        menu = build_system_menu(system)
         assert menu.title == "System"
         assert [item.label for item in menu.items] == [
             "Name: pirate",
             "IP: 192.168.1.20",
-            "MOC state on exit",
-            "Reset settings",
             "Reboot",
             "Shut down",
         ]
@@ -546,31 +569,10 @@ class TestBuildSystemMenu:
 
     def test_no_ip_address(self, system):
         system.ip_address.return_value = None
-        assert build_system_menu(system, Settings()).items[1].label == "IP: not available"
-
-    def test_moc_state_on_exit_submenu(self, system):
-        settings = Settings()
-        item = build_system_menu(system, settings).items[2]
-        assert item.checked is None
-        assert item.command is None
-        assert item.submenu().title == "MOC state on exit"
-        assert item.submenu().selected.label == "Do nothing"
-        settings.system_moc_state_on_exit = MocStateOnExit.STOP
-        assert item.submenu().selected.label == "Stop"
-
-    def test_reset_settings_is_confirmed(self, system):
-        item = build_system_menu(system, Settings()).items[3]
-        assert item.command is None
-        assert item.submenu() == Menu(
-            title="Reset settings?",
-            items=(
-                MenuItem(label="Cancel", command=MenuCommand.BACK),
-                MenuItem(label="Reset now", command=MenuCommand.RESET_SETTINGS),
-            ),
-        )
+        assert build_system_menu(system).items[1].label == "IP: not available"
 
     def test_reboot_is_confirmed(self, system):
-        item = build_system_menu(system, Settings()).items[4]
+        item = build_system_menu(system).items[2]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Reboot?",
@@ -582,7 +584,7 @@ class TestBuildSystemMenu:
         system.reboot.assert_not_called()
 
     def test_shutdown_is_confirmed(self, system):
-        item = build_system_menu(system, Settings()).items[5]
+        item = build_system_menu(system).items[3]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Shut down?",
