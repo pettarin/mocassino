@@ -4,13 +4,20 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
+import logging
+import os
+import signal
+
 import pytest
 import yaml
 from click.testing import CliRunner
 
 import mocassino
-from mocassino.cli import main
+from mocassino.cli import _daemonize, main
 from mocassino.configuration import Configuration
+from mocassino.model.moc import MocError
+
+NULL_DESCRIPTOR = 9999
 
 
 @pytest.fixture(autouse=True)
@@ -81,6 +88,82 @@ class TestConfigurationCommand:
         assert output["display"]["target"] == "none"
 
 
+class TestDaemonize:
+    """Tests for the _daemonize function"""
+
+    @pytest.fixture
+    def root_handlers(self):
+        """Restore the handlers of the root logger after the test."""
+        root = logging.getLogger()
+        handlers = list(root.handlers)
+        yield
+        root.handlers = handlers
+
+    @pytest.fixture
+    def system(self, mocker):
+        """Replace the system calls, so that the tests never fork nor lose their output.
+
+        Only the calls about the null device go to the replacements:
+        the others (e.g., those of pytest itself) go to the real functions.
+        """
+        real_close, real_dup2, real_open = os.close, os.dup2, os.open
+        system = mocker.Mock()
+        system.fork = mocker.patch("mocassino.cli.os.fork", return_value=0)
+        system.setsid = mocker.patch("mocassino.cli.os.setsid")
+        system.closerange = mocker.patch("mocassino.cli.os.closerange")
+
+        def fake_close(descriptor):
+            if descriptor != NULL_DESCRIPTOR:
+                return real_close(descriptor)
+            return system.close(descriptor)
+
+        def fake_dup2(descriptor, target, *args, **kwargs):
+            if descriptor != NULL_DESCRIPTOR:
+                return real_dup2(descriptor, target, *args, **kwargs)
+            return system.dup2(descriptor, target)
+
+        def fake_open(path, *args, **kwargs):
+            if path != os.devnull:
+                return real_open(path, *args, **kwargs)
+            system.open(path, *args, **kwargs)
+            return NULL_DESCRIPTOR
+
+        mocker.patch("mocassino.cli.os.close", side_effect=fake_close)
+        mocker.patch("mocassino.cli.os.dup2", side_effect=fake_dup2)
+        mocker.patch("mocassino.cli.os.open", side_effect=fake_open)
+        return system
+
+    def test_background_process(self, mocker, system, root_handlers, tmp_path):
+        socket_path = tmp_path / "log"
+        socket_path.touch()
+        mocker.patch("mocassino.cli.SYSLOG_SOCKET_PATH", socket_path)
+        handler_class = mocker.patch("mocassino.cli.SysLogHandler")
+        _daemonize()
+        system.setsid.assert_called_once_with()
+        system.open.assert_called_once_with(os.devnull, os.O_RDWR)
+        descriptors = [call.args for call in system.dup2.call_args_list]
+        assert descriptors == [(NULL_DESCRIPTOR, 0), (NULL_DESCRIPTOR, 1), (NULL_DESCRIPTOR, 2)]
+        system.close.assert_called_once_with(NULL_DESCRIPTOR)
+        system.closerange.assert_called_once_with(3, os.sysconf("SC_OPEN_MAX"))
+        handler_class.assert_called_once_with(address=str(socket_path))
+        assert logging.getLogger().handlers == [handler_class.return_value]
+
+    def test_background_process_without_system_log(self, mocker, system, root_handlers, tmp_path):
+        mocker.patch("mocassino.cli.SYSLOG_SOCKET_PATH", tmp_path / "missing")
+        _daemonize()
+        assert logging.getLogger().handlers == []
+
+    def test_foreground_process(self, system, capsys):
+        system.fork.return_value = 4242
+        with pytest.raises(SystemExit) as info:
+            _daemonize()
+        assert info.value.code == 0
+        assert capsys.readouterr().out == "mocassino is running in background (PID 4242)\n"
+        system.setsid.assert_not_called()
+        system.dup2.assert_not_called()
+        system.closerange.assert_not_called()
+
+
 class TestMain:
     """Tests for the main group"""
 
@@ -97,3 +180,99 @@ class TestMain:
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
         assert result.output == f"mocassino, version {mocassino.__version__}\n"
+
+
+class TestRunCommand:
+    """Tests for the run command"""
+
+    @pytest.fixture
+    def app(self, mocker):
+        """Replace the application, so that nothing is really run."""
+        return mocker.patch("mocassino.cli.build_app").return_value
+
+    @pytest.fixture
+    def arguments(self, tmp_path):
+        """The arguments running the service on an existing directory with an existing mocp."""
+        return ["run", "--library-directory-path", str(tmp_path), "--display-target", "none"]
+
+    @pytest.fixture
+    def daemonize(self, mocker):
+        return mocker.patch("mocassino.cli._daemonize")
+
+    @pytest.fixture(autouse=True)
+    def set_signal(self, mocker):
+        """Replace signal.signal, so that the handlers of the tests are left alone."""
+        return mocker.patch("mocassino.cli.signal.signal")
+
+    @pytest.fixture(autouse=True)
+    def which(self, mocker):
+        return mocker.patch("mocassino.cli.shutil.which", return_value="/usr/bin/mocp")
+
+    def test_background(self, runner, app, arguments, daemonize):
+        result = runner.invoke(main, [*arguments, "--background"])
+        assert result.exit_code == 0
+        daemonize.assert_called_once_with()
+        app.run.assert_called_once_with()
+
+    def test_background_is_the_default(self, runner, app, arguments, daemonize):
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        daemonize.assert_called_once_with()
+        app.run.assert_called_once_with()
+
+    def test_configuration_is_used(self, runner, mocker, arguments, daemonize, tmp_path):
+        build_app = mocker.patch("mocassino.cli.build_app")
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        effective = build_app.call_args.args[0]
+        assert effective.display.target == "none"
+        assert effective.library.directory_path == tmp_path
+
+    def test_error_while_building(self, runner, mocker, arguments, daemonize):
+        mocker.patch("mocassino.cli.build_app", side_effect=OSError("cannot open resource"))
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 1
+        assert "Error: Stopped by an error: cannot open resource" in result.output
+
+    def test_error_while_running(self, runner, app, arguments, daemonize):
+        app.run.side_effect = MocError("Server exited!")
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 1
+        assert "Error: Stopped by an error: Server exited!" in result.output
+
+    def test_foreground(self, runner, app, arguments, daemonize):
+        result = runner.invoke(main, [*arguments, "--foreground"])
+        assert result.exit_code == 0
+        daemonize.assert_not_called()
+        app.run.assert_called_once_with()
+
+    def test_invalid_configuration(self, runner, app, arguments, daemonize):
+        result = runner.invoke(main, [*arguments, "--configuration-file-path", "missing.yaml"])
+        assert result.exit_code == 1
+        assert "Error: Cannot read configuration file" in result.output
+        daemonize.assert_not_called()
+
+    def test_mocp_not_found(self, runner, app, arguments, daemonize, which):
+        which.return_value = None
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 1
+        assert "Error: Cannot find 'mocp'" in result.output
+        daemonize.assert_not_called()
+        app.run.assert_not_called()
+
+    def test_music_root_directory_missing(self, runner, app, daemonize, tmp_path):
+        missing = tmp_path / "missing"
+        result = runner.invoke(main, ["run", "--library-directory-path", str(missing)])
+        assert result.exit_code == 1
+        assert f"Error: The music root directory '{missing}' does not exist" in result.output
+        daemonize.assert_not_called()
+        app.run.assert_not_called()
+
+    def test_signals_stop_the_application(self, runner, app, arguments, daemonize, set_signal):
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        handlers = {call.args[0]: call.args[1] for call in set_signal.call_args_list}
+        assert set(handlers) == {signal.SIGINT, signal.SIGTERM}
+        app.stop.assert_not_called()
+        handlers[signal.SIGTERM](signal.SIGTERM, None)
+        app.stop.assert_called_once_with()
