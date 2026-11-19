@@ -67,6 +67,13 @@ SETTERS: dict[
     ),
 }
 
+# For each menu command turning on or off a setting of the display: the setting
+TOGGLES: dict[MenuCommand, str] = {
+    MenuCommand.TOGGLE_PROGRESS_BAR: "show_progress_bar",
+    MenuCommand.TOGGLE_SIDE_ICONS: "show_side_icons",
+    MenuCommand.TOGGLE_VOLUME_BAR: "show_volume_bar",
+}
+
 
 class Controller:
     """Performs the actions asked by the button events, on the state, MOC, and the host."""
@@ -147,9 +154,10 @@ class Controller:
             self._state.close_menus()
             self._state.shutting_down = True
             self._host.shutdown()
-        elif item.command is MenuCommand.TOGGLE_SIDE_ICONS:
+        elif item.command in TOGGLES:
             settings = self._state.settings
-            settings.show_side_icons = not settings.show_side_icons
+            attribute = TOGGLES[item.command]
+            setattr(settings, attribute, not getattr(settings, attribute))
             self._state.replace_menu(build_display_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)

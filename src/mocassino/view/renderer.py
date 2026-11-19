@@ -197,16 +197,22 @@ class Renderer:
         The bottom is level with the two rows of icons of the buttons there:
         the progress bar is centred on the upper row, and the times, with the state
         written between them, take the lower row.
-        The icons of the buttons and the volume bar, at the sides, are drawn only if shown.
+        The icons of the buttons, the progress bar, and the volume bar are drawn only if
+        the settings say so. The band on the left is reserved to the icons, when shown;
+        the band on the right, to the icons and the volume bar, when either is shown.
         """
         status = state.status
         small_font = self._font(TIMES_FONT_SIZE)
         upper_icon_top = HEIGHT - 2 * (ICON_SIZE + ICON_BORDER)
         bar_top = upper_icon_top + (ICON_SIZE - PROGRESS_BAR_HEIGHT) // 2
+        settings = state.settings
         left, right = MARGIN, WIDTH - MARGIN
-        if state.settings.show_side_icons:
-            left, right = CONTENT_LEFT, CONTENT_RIGHT
+        if settings.show_side_icons:
+            left = CONTENT_LEFT
             self._draw_button_icons(draw)
+        if settings.show_side_icons or settings.show_volume_bar:
+            right = CONTENT_RIGHT
+        if settings.show_volume_bar:
             self._draw_volume_bar(draw, state.volume)
         width = right - left
         if status.state is MocState.STOP:
@@ -244,11 +250,12 @@ class Renderer:
                 font=album_font,
             )
             total = status.total_seconds
-            self._draw_bar(
-                draw,
-                (left, bar_top, right - 1, bar_top + PROGRESS_BAR_HEIGHT - 1),
-                status.current_seconds / total if total else 0.0,
-            )
+            if settings.show_progress_bar:
+                self._draw_bar(
+                    draw,
+                    (left, bar_top, right - 1, bar_top + PROGRESS_BAR_HEIGHT - 1),
+                    status.current_seconds / total if total else 0.0,
+                )
             draw.text(
                 (left, HEIGHT - ICON_BORDER),
                 _format_seconds(status.current_seconds),

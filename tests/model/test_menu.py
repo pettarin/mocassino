@@ -55,11 +55,31 @@ class TestBuildDisplayMenu:
     def test_side_icons(self, show):
         menu = build_display_menu(Settings(show_side_icons=show))
         assert menu.title == "Display"
-        assert [item.label for item in menu.items] == ["Orientation", "Show side icons"]
-        assert menu.items[1] == MenuItem(
+        assert [item.label for item in menu.items] == [
+            "Orientation",
+            "Show progress bar",
+            "Show side icons",
+            "Show volume bar",
+        ]
+        assert menu.items[2] == MenuItem(
             label="Show side icons",
             checked=show,
             command=MenuCommand.TOGGLE_SIDE_ICONS,
+        )
+
+    @pytest.mark.parametrize("show", [True, False])
+    def test_bars(self, show):
+        settings = Settings(show_progress_bar=show, show_volume_bar=not show)
+        menu = build_display_menu(settings)
+        assert menu.items[1] == MenuItem(
+            label="Show progress bar",
+            checked=show,
+            command=MenuCommand.TOGGLE_PROGRESS_BAR,
+        )
+        assert menu.items[3] == MenuItem(
+            label="Show volume bar",
+            checked=not show,
+            command=MenuCommand.TOGGLE_VOLUME_BAR,
         )
 
     def test_orientation_submenu(self):
@@ -182,9 +202,9 @@ class TestBuildRootMenu:
     def test_settings_menu_shows_the_current_values(self, library, host):
         settings = Settings()
         item = build_root_menu(library, host, settings).items[1]
-        assert item.submenu().items[0].submenu().items[1].checked is True
+        assert item.submenu().items[0].submenu().items[2].checked is True
         settings.show_side_icons = False
-        assert item.submenu().items[0].submenu().items[1].checked is False
+        assert item.submenu().items[0].submenu().items[2].checked is False
 
     def test_submenus_are_built_when_opened(self, library, host):
         build_root_menu(library, host, Settings())
@@ -210,11 +230,11 @@ class TestBuildSettingsMenu:
         assert playback.submenu().items[0].submenu().selected.label == "10"
         settings.playback_seek_step = 30
         assert playback.submenu().items[0].submenu().selected.label == "30"
-        assert display.submenu().items[1].checked is True
+        assert display.submenu().items[2].checked is True
         assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
         settings.startup_volume = StartupVolume.USE_FIXED
-        assert display.submenu().items[1].checked is False
+        assert display.submenu().items[2].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use fixed"
 
     def test_other_items_are_not_checkable(self, library, host):

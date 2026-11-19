@@ -216,6 +216,7 @@ class TestController:
         assert state.current_menu.title == "Display"
         assert state.current_menu.selected.label == "Orientation"
         controller.handle(Y)
+        controller.handle(Y)
         assert state.current_menu.selected.label == "Show side icons"
         assert state.current_menu.selected.checked is True
         controller.handle(B)
@@ -228,6 +229,43 @@ class TestController:
         controller.handle(A)
         controller.handle(B)
         controller.handle(Y)
+        controller.handle(Y)
+        assert state.current_menu.selected.checked is True
+
+    @pytest.mark.parametrize(
+        ("moves", "label", "attribute"),
+        [
+            (1, "Show progress bar", "show_progress_bar"),
+            (2, "Show side icons", "show_side_icons"),
+            (3, "Show volume bar", "show_volume_bar"),
+        ],
+    )
+    def test_menu_select_toggles_of_the_display(
+        self, mocker, state, moc, library, host, moves, label, attribute
+    ):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            host,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, B, *[Y] * moves):
+            controller.handle(event)
+        assert state.current_menu.title == "Display"
+        assert state.current_menu.selected.label == label
+        assert state.current_menu.selected.checked is True
+        controller.handle(B)
+        assert getattr(state.settings, attribute) is False
+        others = {"show_progress_bar", "show_side_icons", "show_volume_bar"} - {attribute}
+        assert all(getattr(state.settings, other) is True for other in others)
+        assert state.current_menu.selected.label == label
+        assert state.current_menu.selected.checked is False
+        save_settings.assert_called_once_with(state.settings)
+        controller.handle(B)
+        assert getattr(state.settings, attribute) is True
         assert state.current_menu.selected.checked is True
 
     def test_menu_select_display_orientation(self, mocker, state, moc, library, host):
@@ -502,7 +540,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, B, Y):
+        for event in (A_LONG, Y, B, B, Y, Y):
             controller.handle(event)
         save_settings.assert_not_called()
         controller.handle(B)

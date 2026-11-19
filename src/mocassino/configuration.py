@@ -48,7 +48,9 @@ class DisplayConfiguration:
 
     font_file_path: Path | None = None
     orientation: int = 0
+    show_progress_bar: bool = True
     show_side_icons: bool = True
+    show_volume_bar: bool = True
     target: str = "pirateaudio"
     tick: float = 0.5
 
@@ -139,7 +141,9 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "display": {
             "font_file_path": _to_path,
             "orientation": _to_int,
+            "show_progress_bar": _to_bool,
             "show_side_icons": _to_bool,
+            "show_volume_bar": _to_bool,
             "target": _to_str,
             "tick": _to_float,
         },

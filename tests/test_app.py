@@ -37,12 +37,13 @@ from tests.model.fake_moc import FakeMoc
 PLAYING = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Title")
 TICK = 0.01
 # From playback mode: open the menu, go to Settings, open it, open Display (its first item),
-# go to Show side icons (its second item), and select it
+# go to Show side icons (its third item), and select it
 TOGGLE_SIDE_ICONS = (
     ButtonEvent(Button.A, Press.LONG),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
     ButtonEvent(Button.B),
+    ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
 )
@@ -496,7 +497,9 @@ class TestBuildApp:
             "  volume: use_saved\n"
             "display:\n"
             "  orientation: 0\n"
+            "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
+            "  show_volume_bar: true\n"
             "playback:\n"
             "  seek_step: 10\n"
             "  volume_step: 5\n"
@@ -511,7 +514,9 @@ class TestBuildApp:
         assert path.read_text(encoding="utf-8") == (
             "display:\n"
             "  orientation: 0\n"
+            "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
+            "  show_volume_bar: true\n"
             "playback:\n"
             "  seek_step: 10\n"
             "  volume_step: 5\n"
@@ -617,6 +622,48 @@ class TestBuildApp:
             app._controller.handle(event)
         assert app._state.settings.startup_playlist is StartupPlaylist.USE_MOCP_STATE
         assert load_configuration(path).startup.playlist == "use_mocp_state"
+
+    def test_display_bars_from_the_configuration(self):
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {
+                    "show_progress_bar": False,
+                    "show_volume_bar": False,
+                    "target": "none",
+                },
+            }
+        )
+        settings = build_app(configuration)._state.settings
+        assert (settings.show_progress_bar, settings.show_volume_bar) == (False, False)
+        assert settings.show_side_icons is True
+        default = build_app(self.configuration("none", "none"))._state.settings
+        assert (default.show_progress_bar, default.show_volume_bar) == (True, True)
+
+    def test_display_bars_settings_are_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        app = build_app(self.configuration("none", "none"), path)
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.settings.show_progress_bar is False
+        assert app._state.settings.show_volume_bar is False
+        saved = load_configuration(path).display
+        assert (saved.show_progress_bar, saved.show_side_icons, saved.show_volume_bar) == (
+            False,
+            True,
+            False,
+        )
 
     def test_display_orientation_from_the_configuration(self):
         configuration = load_configuration(

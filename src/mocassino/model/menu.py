@@ -58,7 +58,9 @@ class MenuCommand(StrEnum):
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SET_STARTUP_VOLUME = "set_startup_volume"
     SHUTDOWN = "shutdown"
+    TOGGLE_PROGRESS_BAR = "toggle_progress_bar"
     TOGGLE_SIDE_ICONS = "toggle_side_icons"
+    TOGGLE_VOLUME_BAR = "toggle_volume_bar"
 
 
 @dataclass(frozen=True)
@@ -158,9 +160,19 @@ def build_display_menu(settings: Settings) -> Menu:
                 submenu=partial(build_display_orientation_menu, settings),
             ),
             MenuItem(
+                label="Show progress bar",
+                checked=settings.show_progress_bar,
+                command=MenuCommand.TOGGLE_PROGRESS_BAR,
+            ),
+            MenuItem(
                 label="Show side icons",
                 checked=settings.show_side_icons,
                 command=MenuCommand.TOGGLE_SIDE_ICONS,
+            ),
+            MenuItem(
+                label="Show volume bar",
+                checked=settings.show_volume_bar,
+                command=MenuCommand.TOGGLE_VOLUME_BAR,
             ),
         ),
     )

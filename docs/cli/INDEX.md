@@ -222,7 +222,9 @@ buttons:
 display:
   font_file_path: null
   orientation: 0
+  show_progress_bar: true
   show_side_icons: true
+  show_volume_bar: true
   target: pirateaudio
   tick: 0.5
 library:
@@ -266,7 +268,9 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
 | `display.orientation` | `0` | By how many degrees, clockwise, what is shown on the display is rotated: `0`, `90`, `180`, or `270`; it can be changed from the `Settings` menu |
+| `display.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode; it can be changed from the `Settings` menu |
 | `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode; it can be changed from the `Settings` menu |
+| `display.show_volume_bar` | `true` | Whether the volume bar is shown in playback mode; it can be changed from the `Settings` menu |
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `library.directory_path` | `/music` | The music root directory |
@@ -449,9 +453,14 @@ The volume is shown as a vertical bar in the band on the right, between the icon
 with the default button map, between the icon turning the volume up, where the bar is full,
 and the icon turning the volume down, where the bar is empty.
 
-Set `display.show_side_icons` to `false` to hide the icons and the volume bar:
-the two bands are then used by the playback information.
-The icons can also be shown or hidden while the service runs, from the `Settings` menu.
+Set `display.show_side_icons` to `false` to hide the icons,
+and `display.show_volume_bar` to `false` to hide the volume bar.
+The band on the left is reserved to the icons, and the band on the right
+to the icons and the volume bar: a band that has nothing to show
+is used by the playback information.
+Set `display.show_progress_bar` to `false` to hide the progress bar:
+the times and the state of the playback are still shown below its place.
+The three can also be shown or hidden while the service runs, from the `Settings` menu.
 
 
 ### Orientation
@@ -497,8 +506,12 @@ The top level menu has the following items:
     - `Orientation` (`display.orientation`): a menu with the four choices
       `0`, `90`, `180`, and `270`; the current one has the solid square.
       The change is immediate (see below).
+    - `Show progress bar` (`display.show_progress_bar`):
+      whether the progress bar of the track is shown in playback mode.
     - `Show side icons` (`display.show_side_icons`):
       whether the icons of the buttons are shown in playback mode.
+    - `Show volume bar` (`display.show_volume_bar`):
+      whether the volume bar is shown in playback mode.
   - `Playback`: the amounts of each seek and of each volume change.
     They take effect immediately.
     - `Seek step (s)` (`playback.seek_step`): a menu with the choices

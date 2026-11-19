@@ -42,7 +42,9 @@ class Settings:
     display_orientation: int = 0
     playback_seek_step: int = 10
     playback_volume_step: int = 5
+    show_progress_bar: bool = True
     show_side_icons: bool = True
+    show_volume_bar: bool = True
     startup_fixed_volume: int = 50
     startup_playlist: StartupPlaylist = StartupPlaylist.USE_SAVED
     startup_volume: StartupVolume = StartupVolume.USE_SAVED

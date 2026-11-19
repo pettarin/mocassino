@@ -263,7 +263,9 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
     updates: dict[str, dict[str, object]] = {
         "display": {
             "orientation": settings.display_orientation,
+            "show_progress_bar": settings.show_progress_bar,
             "show_side_icons": settings.show_side_icons,
+            "show_volume_bar": settings.show_volume_bar,
         },
         "playback": {
             "seek_step": settings.playback_seek_step,
@@ -320,7 +322,9 @@ def build_app(
             display_orientation=configuration.display.orientation,
             playback_seek_step=configuration.playback.seek_step,
             playback_volume_step=configuration.playback.volume_step,
+            show_progress_bar=configuration.display.show_progress_bar,
             show_side_icons=configuration.display.show_side_icons,
+            show_volume_bar=configuration.display.show_volume_bar,
             startup_fixed_volume=configuration.startup.fixed_volume,
             startup_playlist=StartupPlaylist(configuration.startup.playlist),
             startup_volume=startup_volume,

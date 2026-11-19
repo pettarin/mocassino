@@ -49,7 +49,9 @@ class TestConfiguration:
         assert configuration.display == DisplayConfiguration(
             font_file_path=None,
             orientation=0,
+            show_progress_bar=True,
             show_side_icons=True,
+            show_volume_bar=True,
             target="pirateaudio",
             tick=0.5,
         )
@@ -75,7 +77,9 @@ class TestConfiguration:
             "display": {
                 "font_file_path": None,
                 "orientation": 0,
+                "show_progress_bar": True,
                 "show_side_icons": True,
+                "show_volume_bar": True,
                 "target": "pirateaudio",
                 "tick": 0.5,
             },
@@ -199,7 +203,9 @@ class TestLoadConfiguration:
             ("display", "orientation", -90),
             ("display", "orientation", "90"),
             ("display", "orientation", True),
+            ("display", "show_progress_bar", "yes"),
             ("display", "show_side_icons", "yes"),
+            ("display", "show_volume_bar", 0),
             ("display", "show_side_icons", 1),
             ("display", "target", "hdmi"),
             ("display", "tick", -0.5),
@@ -262,6 +268,15 @@ class TestLoadConfiguration:
     def test_display_orientations(self, tmp_path, orientation):
         path = write_yaml(tmp_path, f"display:\n  orientation: {orientation}\n")
         assert load_configuration(path).display.orientation == orientation
+
+    def test_display_bars(self, tmp_path):
+        path = write_yaml(
+            tmp_path,
+            "display:\n  show_progress_bar: false\n  show_volume_bar: false\n",
+        )
+        display = load_configuration(path).display
+        assert (display.show_progress_bar, display.show_volume_bar) == (False, False)
+        assert display.show_side_icons is True
 
     def test_invalid_yaml(self, tmp_path):
         with pytest.raises(ConfigurationError, match="is not valid YAML"):
