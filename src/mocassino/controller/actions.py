@@ -32,7 +32,7 @@ DEFAULT_BUTTON_MAP: dict[str, dict[str, str]] = {
         "A": "play_pause",
         "A_long": "open_menu",
         "B": "next",
-        "B_hold": "previous",
+        "B_long": "previous",
         "X": "volume_up",
         "X_hold": "seek_forward",
         "Y": "volume_down",

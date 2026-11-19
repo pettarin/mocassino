@@ -91,7 +91,7 @@ class TestLoadConfiguration:
     def test_button_map(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "buttons:\n  button_map:\n    playback:\n      B: previous\n      B_hold: null\n",
+            "buttons:\n  button_map:\n    playback:\n      B: previous\n      B_long: null\n",
         )
         button_map = load_configuration(path).buttons.button_map
         assert button_map["menu"] == DEFAULT_BUTTON_MAP["menu"]

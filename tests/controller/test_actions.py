@@ -30,7 +30,7 @@ class TestParseButtonMap:
             (Mode.PLAYBACK, ButtonEvent(Button.A)): Action.PLAY_PAUSE,
             (Mode.PLAYBACK, ButtonEvent(Button.A, Press.LONG)): Action.OPEN_MENU,
             (Mode.PLAYBACK, ButtonEvent(Button.B)): Action.NEXT,
-            (Mode.PLAYBACK, ButtonEvent(Button.B, Press.HOLD)): Action.PREVIOUS,
+            (Mode.PLAYBACK, ButtonEvent(Button.B, Press.LONG)): Action.PREVIOUS,
             (Mode.PLAYBACK, ButtonEvent(Button.X)): Action.VOLUME_UP,
             (Mode.PLAYBACK, ButtonEvent(Button.X, Press.HOLD)): Action.SEEK_FORWARD,
             (Mode.PLAYBACK, ButtonEvent(Button.Y)): Action.VOLUME_DOWN,
@@ -82,7 +82,7 @@ class TestResolveButtonMap:
 
     def test_overrides(self):
         resolved = resolve_button_map(
-            {"playback": {"B": "previous", "B_hold": None, "X_long": "next", "Y_hold": None}}
+            {"playback": {"B": "previous", "B_long": None, "X_long": "next", "Y_hold": None}}
         )
         assert resolved["menu"] == DEFAULT_BUTTON_MAP["menu"]
         assert resolved["playback"] == {

@@ -248,7 +248,7 @@ class TestRenderer:
                     "A": "next",
                     "A_hold": "seek_forward",
                     "B": "menu_up",
-                    "B_hold": None,
+                    "B_long": None,
                     "X": None,
                     "X_hold": None,
                     "Y_long": "open_menu",

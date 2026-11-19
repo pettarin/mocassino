@@ -26,7 +26,6 @@ from mocassino.model.state import AppState, Mode
 A = ButtonEvent(Button.A)
 A_LONG = ButtonEvent(Button.A, Press.LONG)
 B = ButtonEvent(Button.B)
-B_HOLD = ButtonEvent(Button.B, Press.HOLD)
 B_LONG = ButtonEvent(Button.B, Press.LONG)
 X = ButtonEvent(Button.X)
 X_HOLD = ButtonEvent(Button.X, Press.HOLD)
@@ -272,7 +271,7 @@ class TestController:
         moc.toggle_pause.assert_not_called()
 
     def test_previous(self, controller, moc):
-        controller.handle(B_HOLD)
+        controller.handle(B_LONG)
         moc.previous.assert_called_once_with()
 
     def test_seek(self, controller, moc):

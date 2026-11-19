@@ -166,7 +166,7 @@ buttons:
       A: play_pause
       A_long: open_menu
       B: next
-      B_hold: previous
+      B_long: previous
       X: volume_up
       X_hold: seek_forward
       Y: volume_down
@@ -301,7 +301,7 @@ The default button map is:
 | `A` | `play_pause` | `menu_back` |
 | `A_long` | `open_menu` | |
 | `B` | `next` | `menu_select` |
-| `B_hold` | `previous` | |
+| `B_long` | `previous` | |
 | `X` | `volume_up` | `menu_up` |
 | `X_hold` | `seek_forward` | |
 | `X_long` | | `menu_select` |
@@ -334,7 +334,7 @@ buttons:
   button_map:
     playback:
       B: previous
-      B_hold: null
+      B_long: null
       X_long: next
 ```
 
