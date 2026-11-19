@@ -1,0 +1,166 @@
+"""A window simulating the Pirate Audio hat: its display and its four buttons.
+
+The window is both a display and a button source.
+Tk must run in the main thread, so the application runs in another thread:
+the two only exchange frames and button events, through queues.
+
+:copyright: Copyright (C) 2026 Alberto Pettarin
+:license: GNU General Public License v3.0 (see the LICENSE file for details)
+"""
+
+from __future__ import annotations
+
+import threading
+from collections.abc import Callable
+from functools import partial
+from queue import Empty, Queue
+from typing import TYPE_CHECKING, Any
+
+from PIL import Image
+
+from mocassino.controller.events import Button, ButtonEvent
+from mocassino.view.display.base import HEIGHT, WIDTH
+
+if TYPE_CHECKING:
+    import tkinter
+
+# The row and the column of each button in the window, around the display like on the hat
+BUTTON_CELLS: dict[Button, tuple[int, int]] = {
+    Button.A: (0, 0),
+    Button.B: (1, 0),
+    Button.X: (0, 2),
+    Button.Y: (1, 2),
+}
+HINT: str = (
+    "Click a button, or keep it pressed for a long press.\n"
+    "Keys: a b x y for a short press, A B X Y for a long press."
+)
+PADDING: int = 8
+POLL_INTERVAL_MS: int = 30
+SCALE: int = 2
+TITLE: str = "mocassino simulator"
+
+
+class TkSimulator:
+    """A window simulating the display and the buttons of the Pirate Audio hat.
+
+    The methods of the display and of the button source can be called from any thread;
+    the run method must be called from the main thread.
+    """
+
+    def __init__(self, hold_time: float) -> None:
+        """Initialize the simulator; the window is created when it is run.
+
+        :param hold_time: how long a button must be pressed for a long press, in seconds
+        """
+        self._closed = threading.Event()
+        self._events: Queue[ButtonEvent] | None = None
+        self._frames: Queue[Image.Image] = Queue()
+        self._held: set[Button] = set()
+        self._hold_time = hold_time
+        self._image_tk: Any = None
+        self._photo: Any = None
+        self._root: Any = None
+        self._screen: Any = None
+        self._timers: dict[Button, Any] = {}
+
+    def _emit(self, event: ButtonEvent) -> None:
+        """Put a button event in the queue, if the source has been started."""
+        if self._events is not None:
+            self._events.put(event)
+
+    def _on_held(self, button: Button) -> None:
+        """Report a long press: the button has been pressed for long enough."""
+        self._held.add(button)
+        self._emit(ButtonEvent(button, long=True))
+
+    def _on_key(self, tk_event: tkinter.Event[tkinter.Misc]) -> None:
+        """Report the press of the button named by a key: short if lowercase, long if not."""
+        character = str(tk_event.char)
+        if character and character.upper() in list(Button):
+            self._emit(ButtonEvent(Button(character.upper()), long=character.isupper()))
+
+    def _on_press(self, button: Button, tk_event: object = None) -> None:
+        """Start timing the press of a button of the window."""
+        if button not in self._timers:
+            delay = int(self._hold_time * 1000)
+            self._timers[button] = self._root.after(delay, partial(self._on_held, button))
+
+    def _on_release(self, button: Button, tk_event: object = None) -> None:
+        """Report a short press, unless the release ends a long press already reported."""
+        timer = self._timers.pop(button, None)
+        if button in self._held:
+            self._held.discard(button)
+        elif timer is not None:
+            self._root.after_cancel(timer)
+            self._emit(ButtonEvent(button))
+
+    def _poll(self) -> None:
+        """Show the latest frame received, if any, and close the window when asked to."""
+        if self._closed.is_set():
+            self._root.quit()
+            return
+        image = None
+        try:
+            while True:
+                image = self._frames.get_nowait()
+        except Empty:
+            pass
+        if image is not None:
+            self._show(image)
+        self._root.after(POLL_INTERVAL_MS, self._poll)
+
+    def _show(self, image: Image.Image) -> None:
+        """Draw a frame in the window, enlarged."""
+        enlarged = image.resize((WIDTH * SCALE, HEIGHT * SCALE), Image.Resampling.NEAREST)
+        self._photo = self._image_tk.PhotoImage(enlarged)
+        self._screen.configure(image=self._photo)
+
+    def close(self) -> None:
+        """Ask the window to close; it can be called more than once."""
+        self._closed.set()
+
+    def run(self, on_window_closed: Callable[[], None]) -> None:
+        """Create the window and handle it until it is asked to close.
+
+        Closing the window by hand does not close it directly: it calls the given function,
+        which is expected to stop the application, which in turn closes its display.
+
+        :param on_window_closed: called when the user closes the window
+        """
+        tkinter, self._image_tk = _import_tk()
+        root = self._root = tkinter.Tk()
+        root.title(TITLE)
+        root.resizable(False, False)
+        self._screen = tkinter.Label(root, borderwidth=0)
+        self._screen.grid(row=0, column=1, rowspan=2, padx=PADDING, pady=PADDING)
+        self._show(Image.new("RGB", (WIDTH, HEIGHT)))
+        for button, (row, column) in BUTTON_CELLS.items():
+            widget = tkinter.Button(root, text=button.value, width=3, height=2)
+            widget.grid(row=row, column=column, padx=PADDING, pady=PADDING)
+            widget.bind("<ButtonPress-1>", partial(self._on_press, button))
+            widget.bind("<ButtonRelease-1>", partial(self._on_release, button))
+        hint = tkinter.Label(root, text=HINT, justify="left")
+        hint.grid(row=2, column=0, columnspan=3, padx=PADDING, pady=(0, PADDING))
+        root.bind("<KeyPress>", self._on_key)
+        root.protocol("WM_DELETE_WINDOW", on_window_closed)
+        root.after(POLL_INTERVAL_MS, self._poll)
+        root.mainloop()
+        root.destroy()
+
+    def show(self, image: Image.Image) -> None:
+        """Show the given frame, an RGB image of WIDTH x HEIGHT pixels."""
+        self._frames.put(image)
+
+    def start(self, events: Queue[ButtonEvent]) -> None:
+        """Start putting the events in the given queue."""
+        self._events = events
+
+
+def _import_tk() -> tuple[Any, Any]:
+    """Import Tk, so that it is only needed when the simulator is actually run."""
+    import tkinter
+
+    from PIL import ImageTk
+
+    return tkinter, ImageTk

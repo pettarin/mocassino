@@ -7,15 +7,18 @@
 import logging
 import os
 import signal
+import threading
 
 import pytest
 import yaml
 from click.testing import CliRunner
 
 import mocassino
-from mocassino.cli import _daemonize, main
+from mocassino.app import App
+from mocassino.cli import _daemonize, _run_with_simulator, main
 from mocassino.configuration import Configuration
 from mocassino.model.moc import MocError
+from mocassino.simulator.tk import TkSimulator
 
 NULL_DESCRIPTOR = 9999
 
@@ -164,6 +167,43 @@ class TestDaemonize:
         system.closerange.assert_not_called()
 
 
+class TestRunWithSimulator:
+    """Tests for the _run_with_simulator function"""
+
+    @pytest.fixture
+    def app(self, mocker):
+        return mocker.create_autospec(App, instance=True)
+
+    @pytest.fixture
+    def simulator(self, mocker):
+        return mocker.create_autospec(TkSimulator, instance=True)
+
+    def test_application_error(self, app, simulator):
+        app.run.side_effect = MocError("Server exited!")
+        with pytest.raises(MocError, match="Server exited!"):
+            _run_with_simulator(app, simulator)
+        simulator.close.assert_called_once_with()
+
+    def test_both_are_run(self, app, simulator):
+        threads = []
+        app.run.side_effect = lambda: threads.append(threading.current_thread())
+        simulator.run.side_effect = lambda **kwargs: threads.append(threading.current_thread())
+        _run_with_simulator(app, simulator)
+        assert len(threads) == 2
+        assert threading.main_thread() in threads
+        assert threads[0] is not threads[1]
+        simulator.run.assert_called_once_with(on_window_closed=app.stop)
+        simulator.close.assert_called_once_with()
+        app.stop.assert_called_once_with()
+
+    def test_simulator_error(self, app, simulator):
+        simulator.run.side_effect = RuntimeError("no display name")
+        with pytest.raises(RuntimeError, match="no display name"):
+            _run_with_simulator(app, simulator)
+        app.stop.assert_called_once_with()
+        app.run.assert_called_once_with()
+
+
 class TestMain:
     """Tests for the main group"""
 
@@ -188,7 +228,9 @@ class TestRunCommand:
     @pytest.fixture
     def app(self, mocker):
         """Replace the application, so that nothing is really run."""
-        return mocker.patch("mocassino.cli.build_app").return_value
+        app = mocker.patch("mocassino.cli.build_app").return_value
+        app.simulator = None
+        return app
 
     @pytest.fixture
     def arguments(self, tmp_path):
@@ -222,6 +264,7 @@ class TestRunCommand:
 
     def test_configuration_is_used(self, runner, mocker, arguments, daemonize, tmp_path):
         build_app = mocker.patch("mocassino.cli.build_app")
+        build_app.return_value.simulator = None
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         effective = build_app.call_args.args[0]
@@ -266,6 +309,14 @@ class TestRunCommand:
         assert result.exit_code == 1
         assert f"Error: The music root directory '{missing}' does not exist" in result.output
         daemonize.assert_not_called()
+        app.run.assert_not_called()
+
+    def test_simulator(self, runner, mocker, app, arguments, daemonize):
+        run_with_simulator = mocker.patch("mocassino.cli._run_with_simulator")
+        app.simulator = mocker.sentinel.simulator
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        run_with_simulator.assert_called_once_with(app, mocker.sentinel.simulator)
         app.run.assert_not_called()
 
     def test_signals_stop_the_application(self, runner, app, arguments, daemonize, set_signal):

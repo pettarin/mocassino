@@ -23,6 +23,7 @@ from mocassino.model.moc import (
     SubprocessMocClient,
 )
 from mocassino.model.state import AppState
+from mocassino.simulator.tk import TkSimulator
 from mocassino.view.display.base import Display
 from mocassino.view.display.null import NullDisplay
 from mocassino.view.display.st7789 import St7789Display
@@ -47,10 +48,12 @@ class App:
         display: Display,
         button_source: ButtonSource,
         tick: float,
+        simulator: TkSimulator | None = None,
     ) -> None:
         """Initialize the application.
 
         :param tick: the maximum duration of a step of the main loop, in seconds
+        :param simulator: the simulator used as display or button source, if any
         """
         self._button_source = button_source
         self._controller = controller
@@ -60,6 +63,7 @@ class App:
         self._last_frame: bytes | None = None
         self._moc = moc
         self._renderer = renderer
+        self._simulator = simulator
         self._state = state
         self._stop = threading.Event()
         self._tick = tick
@@ -111,6 +115,11 @@ class App:
         finally:
             self.close()
 
+    @property
+    def simulator(self) -> TkSimulator | None:
+        """The simulator used as display or button source, if any; it has to be run too."""
+        return self._simulator
+
     def start(self) -> None:
         """Start the MOC server, set the initial volume, and start listening to the buttons.
 
@@ -140,32 +149,40 @@ class App:
         self._stop.set()
 
 
-def _build_button_source(configuration: Configuration) -> ButtonSource:
+def _build_button_source(
+    configuration: Configuration,
+    simulator: TkSimulator | None,
+) -> ButtonSource:
     """Build the button source selected by the configuration."""
     origin = configuration.buttons.origin
     if origin == "gpio":
         return GpioButtonSource(hold_time=configuration.buttons.hold_time)
-    if origin == "none":
-        return NullButtonSource()
-    raise ValueError(f"The buttons origin '{origin}' is not available yet")
+    if origin == "simulator" and simulator is not None:
+        return simulator
+    return NullButtonSource()
 
 
-def _build_display(configuration: Configuration) -> Display:
+def _build_display(configuration: Configuration, simulator: TkSimulator | None) -> Display:
     """Build the display selected by the configuration."""
     target = configuration.display.target
-    if target == "none":
-        return NullDisplay()
+    if target == "simulator" and simulator is not None:
+        return simulator
     if target == "st7789":
         return St7789Display()
-    raise ValueError(f"The display target '{target}' is not available yet")
+    return NullDisplay()
 
 
 def build_app(configuration: Configuration) -> App:
     """Build the application described by the configuration.
 
+    If the buttons or the display are simulated, the application has a simulator,
+    which has to be run in the main thread while the application runs in another one.
+
     :raises OSError: if the font or the display cannot be accessed
-    :raises ValueError: if a part selected by the configuration is not available
     """
+    simulator: TkSimulator | None = None
+    if "simulator" in (configuration.buttons.origin, configuration.display.target):
+        simulator = TkSimulator(hold_time=configuration.buttons.hold_time)
     host = Host(shutdown_command=configuration.system.shutdown_command)
     library = Library(directory_path=configuration.library.directory_path)
     moc = SubprocessMocClient(mocp_file_path=configuration.system.mocp_file_path)
@@ -183,7 +200,8 @@ def build_app(configuration: Configuration) -> App:
         controller,
         moc,
         renderer=Renderer(font_file_path=configuration.display.font_file_path),
-        display=_build_display(configuration),
-        button_source=_build_button_source(configuration),
+        display=_build_display(configuration, simulator),
+        button_source=_build_button_source(configuration, simulator),
         tick=configuration.display.tick,
+        simulator=simulator,
     )

@@ -9,6 +9,7 @@ import os
 import shutil
 import signal
 import sys
+import threading
 from collections.abc import Callable
 from logging.handlers import SysLogHandler
 from pathlib import Path
@@ -19,7 +20,7 @@ import click
 import yaml
 
 from mocassino import __version__
-from mocassino.app import build_app
+from mocassino.app import App, build_app
 from mocassino.configuration import (
     BUTTONS_ORIGINS,
     DISPLAY_TARGETS,
@@ -27,6 +28,7 @@ from mocassino.configuration import (
     ConfigurationError,
     load_configuration,
 )
+from mocassino.simulator.tk import TkSimulator
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
 SYSLOG_SOCKET_PATH: Path = Path("/dev/log")
@@ -115,6 +117,34 @@ def _load_configuration(
         raise click.ClickException(str(exc)) from exc
 
 
+def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
+    """Run the application in another thread, and the simulator in this (the main) one.
+
+    Either of them ending makes the other end too.
+
+    :raises Exception: the error that stopped the application, if any
+    """
+    errors: list[Exception] = []
+
+    def run_app() -> None:
+        try:
+            app.run()
+        except Exception as exc:
+            errors.append(exc)
+        finally:
+            simulator.close()
+
+    thread = threading.Thread(target=run_app, name="mocassino-app")
+    thread.start()
+    try:
+        simulator.run(on_window_closed=app.stop)
+    finally:
+        app.stop()
+        thread.join()
+    if errors:
+        raise errors[0]
+
+
 @click.command()
 @_configuration_options
 def configuration(
@@ -178,7 +208,10 @@ def run(
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
         LOGGER.info("Running, press Ctrl+C or send SIGTERM to stop")
-        app.run()
+        if app.simulator is None:
+            app.run()
+        else:
+            _run_with_simulator(app, app.simulator)
         LOGGER.info("Stopped")
     except Exception as exc:
         LOGGER.exception("Stopped by an error")

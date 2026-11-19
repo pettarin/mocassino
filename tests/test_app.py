@@ -25,6 +25,7 @@ from mocassino.model.moc import (
     SubprocessMocClient,
 )
 from mocassino.model.state import AppState, Mode
+from mocassino.simulator.tk import TkSimulator
 from mocassino.view.display.null import NullDisplay
 from mocassino.view.display.st7789 import St7789Display
 from mocassino.view.renderer import Renderer
@@ -179,16 +180,25 @@ class TestBuildApp:
         app = build_app(self.configuration("none", "none", initial_volume=30, volume_step=10))
         assert isinstance(app._button_source, NullButtonSource)
         assert isinstance(app._display, NullDisplay)
+        assert app.simulator is None
         assert app._state.volume == 30
         assert app._tick == 0.5
         app.events.put(ButtonEvent(Button.A, long=True))
         app._controller.handle(app.events.get())
         assert app._state.mode == Mode.MENU
 
-    def test_simulated_buttons_are_not_available_yet(self):
-        with pytest.raises(ValueError, match="buttons origin 'simulator' is not available yet"):
-            build_app(self.configuration("simulator", "none"))
+    def test_simulator(self):
+        app = build_app(self.configuration("simulator", "simulator"))
+        assert isinstance(app.simulator, TkSimulator)
+        assert app._button_source is app.simulator
+        assert app._display is app.simulator
 
-    def test_simulated_display_is_not_available_yet(self):
-        with pytest.raises(ValueError, match="display target 'simulator' is not available yet"):
-            build_app(self.configuration("none", "simulator"))
+    def test_simulator_for_the_buttons_only(self):
+        app = build_app(self.configuration("simulator", "none"))
+        assert app._button_source is app.simulator
+        assert isinstance(app._display, NullDisplay)
+
+    def test_simulator_for_the_display_only(self):
+        app = build_app(self.configuration("none", "simulator"))
+        assert isinstance(app._button_source, NullButtonSource)
+        assert app._display is app.simulator
