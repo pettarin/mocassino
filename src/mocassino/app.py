@@ -6,7 +6,7 @@
 
 import logging
 import threading
-from dataclasses import astuple, replace
+from dataclasses import asdict, astuple, replace
 from functools import partial
 from pathlib import Path
 from queue import Empty, Queue
@@ -48,6 +48,7 @@ from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.model.system import System
 from mocassino.simulator.tk import TkSimulator
+from mocassino.view.colors import Colors, parse_colors
 from mocassino.view.display.base import Display
 from mocassino.view.display.null import NullDisplay
 from mocassino.view.display.st7789 import St7789Display
@@ -309,6 +310,11 @@ def _build_button_source(
     return NullButtonSource()
 
 
+def _build_colors(configuration: Configuration) -> Colors:
+    """Build the colors of the display from the configuration, which has checked them."""
+    return parse_colors(asdict(configuration.display.colors))
+
+
 def _build_display(configuration: Configuration, simulator: TkSimulator | None) -> Display:
     """Build the display selected by the configuration."""
     target = configuration.display.target
@@ -465,6 +471,7 @@ def build_app(
         renderer=Renderer(
             font_file_path=configuration.display.font_file_path,
             button_map=configuration.buttons.button_map,
+            colors=_build_colors(configuration),
         ),
         display=display,
         button_source=_build_button_source(configuration, simulator),

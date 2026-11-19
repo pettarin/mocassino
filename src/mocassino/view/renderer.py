@@ -16,21 +16,18 @@ from mocassino.controller.events import Button, ButtonEvent, Press
 from mocassino.model.menu import Menu
 from mocassino.model.moc import MocState
 from mocassino.model.state import AppState, Mode
+from mocassino.view.colors import DEFAULT_COLORS, Colors
 from mocassino.view.display.base import HEIGHT, WIDTH
 from mocassino.view.icons import ICON_SIZE, draw_icon, draw_state_icon
 
 type Box = tuple[int, int, int, int]
-type Color = tuple[int, int, int]
 type Font = ImageFont.FreeTypeFont | ImageFont.ImageFont
 
-ACCENT_COLOR: Color = (255, 176, 0)
-BACKGROUND_COLOR: Color = (0, 0, 0)
 # In playback mode, a band on each side of the frame is reserved to the icons of the buttons,
 # when they are shown: the content is then drawn between CONTENT_LEFT and CONTENT_RIGHT
 BAND_WIDTH: int = 20
 CONTENT_LEFT: int = BAND_WIDTH + 4
 CONTENT_RIGHT: int = WIDTH - BAND_WIDTH - 4
-DIM_COLOR: Color = (140, 140, 140)
 ELLIPSIS: str = "..."
 # The space around the icons of the buttons, and between them
 ICON_BORDER: int = 2
@@ -51,12 +48,10 @@ SCROLLBAR_WIDTH: int = 4
 # What is shown, centred in the frame, when nothing is playing
 STOPPED_HINT: tuple[str, ...] = ("Press Menu to select", "the folder to play")
 STOPPED_HINT_LINE_HEIGHT: int = 26
-TEXT_COLOR: Color = (255, 255, 255)
 TIMES_FONT_SIZE: int = 20
 TITLE_MAX_LINES: int = 5
 # The first row below the two icons of a button at the top of a band
 TOP_ICONS_BOTTOM: int = 2 * (ICON_SIZE + ICON_BORDER)
-TRACK_COLOR: Color = (60, 60, 60)
 # The volume bar leaves twice the border between itself and the icons of the buttons
 VOLUME_BAR_TOP: int = TOP_ICONS_BOTTOM + 2 * ICON_BORDER
 VOLUME_BAR_WIDTH: int = 8
@@ -69,18 +64,21 @@ class Renderer:
         self,
         font_file_path: Path | None = None,
         button_map: Mapping[str, Mapping[str, str]] | None = None,
+        colors: Colors | None = None,
     ) -> None:
         """Initialize the renderer.
 
         :param font_file_path: the TrueType font; if None, the font built in Pillow
         :param button_map: the button map, in plain form, whose playback actions are shown
                            as icons next to the buttons; if None, the default button map
+        :param colors: the colors to draw with; if None, the default ones
         :raises OSError: if the font cannot be loaded
         :raises ValueError: if the button map is not valid
         """
         if button_map is None:
             button_map = resolve_button_map({})
         self._button_map = parse_button_map(button_map)
+        self._colors = DEFAULT_COLORS if colors is None else colors
         self._font_file_path = font_file_path
         self._fonts: dict[int, Font] = {}
         self._font(TIMES_FONT_SIZE)
@@ -88,10 +86,10 @@ class Renderer:
     def _draw_bar(self, draw: ImageDraw.ImageDraw, box: Box, fraction: float) -> None:
         """Draw a horizontal bar, filled from the left for the given fraction."""
         left, top, right, bottom = box
-        draw.rectangle(box, fill=TRACK_COLOR)
+        draw.rectangle(box, fill=self._colors.track)
         filled = round((right - left) * max(0.0, min(1.0, fraction)))
         if filled > 0:
-            draw.rectangle((left, top, left + filled, bottom), fill=ACCENT_COLOR)
+            draw.rectangle((left, top, left + filled, bottom), fill=self._colors.accented)
 
     def _draw_button_icons(self, draw: ImageDraw.ImageDraw) -> None:
         """Draw the icons of the playback actions of the buttons, in the bands at the sides.
@@ -115,9 +113,9 @@ class Renderer:
             hold, long, short = actions
             held = hold if long is None else long
             if short is not None:
-                draw_icon(draw, short, left, inner, DIM_COLOR)
+                draw_icon(draw, short, left, inner, self._colors.muted)
             if held is not None:
-                draw_icon(draw, held, left, outer, DIM_COLOR)
+                draw_icon(draw, held, left, outer, self._colors.muted)
 
     def _draw_menu(self, draw: ImageDraw.ImageDraw, menu: Menu) -> None:
         """Draw a menu: its title, the items around the selected one, and a scrollbar.
@@ -126,12 +124,12 @@ class Renderer:
         a setting that is on or off has a square: solid if on, empty if off.
         """
         font = self._font(20)
-        draw.rectangle((0, 0, WIDTH - 1, MENU_TITLE_HEIGHT - 1), fill=TRACK_COLOR)
+        draw.rectangle((0, 0, WIDTH - 1, MENU_TITLE_HEIGHT - 1), fill=self._colors.track)
         draw.text(
             (MARGIN, MENU_TITLE_HEIGHT // 2),
             self._fit(menu.title, font, WIDTH - 2 * MARGIN),
             anchor="lm",
-            fill=ACCENT_COLOR,
+            fill=self._colors.accented,
             font=font,
         )
         count = len(menu.items)
@@ -141,12 +139,15 @@ class Renderer:
         for row, item in enumerate(menu.items[first : first + MENU_VISIBLE_ROWS]):
             top = MENU_TITLE_HEIGHT + row * MENU_ROW_HEIGHT
             middle = top + MENU_ROW_HEIGHT // 2
-            color = TEXT_COLOR
+            color = self._colors.normal
             if first + row == menu.selected_index:
-                draw.rectangle((0, top, right, top + MENU_ROW_HEIGHT - 1), fill=ACCENT_COLOR)
-                color = BACKGROUND_COLOR
+                draw.rectangle(
+                    (0, top, right, top + MENU_ROW_HEIGHT - 1),
+                    fill=self._colors.accented,
+                )
+                color = self._colors.background
             elif item.command is None and item.submenu is None:
-                color = DIM_COLOR
+                color = self._colors.muted
             label_width = right - 2 * MARGIN
             if item.submenu is not None:
                 draw.text((right - MARGIN, middle), ">", anchor="rm", fill=color, font=font)
@@ -173,8 +174,11 @@ class Renderer:
             height = HEIGHT - MENU_TITLE_HEIGHT
             thumb_top = MENU_TITLE_HEIGHT + height * first // count
             thumb_bottom = MENU_TITLE_HEIGHT + height * (first + MENU_VISIBLE_ROWS) // count - 1
-            draw.rectangle((left, MENU_TITLE_HEIGHT, WIDTH - 1, HEIGHT - 1), fill=TRACK_COLOR)
-            draw.rectangle((left, thumb_top, WIDTH - 1, thumb_bottom), fill=DIM_COLOR)
+            draw.rectangle(
+                (left, MENU_TITLE_HEIGHT, WIDTH - 1, HEIGHT - 1),
+                fill=self._colors.track,
+            )
+            draw.rectangle((left, thumb_top, WIDTH - 1, thumb_bottom), fill=self._colors.muted)
 
     def _draw_playback(self, draw: ImageDraw.ImageDraw, state: AppState) -> None:
         """Draw the playback: the state, the track, its progress, the volume, and the icons.
@@ -213,7 +217,7 @@ class Renderer:
                     (WIDTH // 2, HEIGHT // 2 + offset),
                     line,
                     anchor="mm",
-                    fill=DIM_COLOR,
+                    fill=self._colors.muted,
                     font=self._font(20),
                 )
         else:
@@ -225,19 +229,24 @@ class Renderer:
                 (left, (ICON_BORDER + TOP_ICONS_BOTTOM + capital_height) // 2),
                 self._fit(status.artist, artist_font, width),
                 anchor="ls",
-                fill=DIM_COLOR,
+                fill=self._colors.muted,
                 font=artist_font,
             )
             title = status.title or Path(status.file_path).stem
             lines = self._wrap(title, title_font, width, TITLE_MAX_LINES)
             title_top = VOLUME_BAR_TOP - int(title_font.getbbox(lines[0])[1]) if lines else 0
             for index, line in enumerate(lines):
-                draw.text((left, title_top + 30 * index), line, fill=TEXT_COLOR, font=title_font)
+                draw.text(
+                    (left, title_top + 30 * index),
+                    line,
+                    fill=self._colors.normal,
+                    font=title_font,
+                )
             draw.text(
                 (left, HEIGHT - VOLUME_BAR_TOP),
                 self._fit(status.album, album_font, width),
                 anchor="ls",
-                fill=DIM_COLOR,
+                fill=self._colors.muted,
                 font=album_font,
             )
             total = status.total_seconds
@@ -251,7 +260,7 @@ class Renderer:
                 (left, HEIGHT - ICON_BORDER),
                 _format_seconds(status.current_seconds),
                 anchor="ls",
-                fill=TEXT_COLOR,
+                fill=self._colors.normal,
                 font=small_font,
             )
             if total is not None:
@@ -259,7 +268,7 @@ class Renderer:
                     (right, HEIGHT - ICON_BORDER),
                     _format_seconds(total),
                     anchor="rs",
-                    fill=TEXT_COLOR,
+                    fill=self._colors.normal,
                     font=small_font,
                 )
         draw_state_icon(
@@ -267,7 +276,7 @@ class Renderer:
             status.state,
             (WIDTH - ICON_SIZE) // 2,
             HEIGHT - ICON_BORDER - ICON_SIZE,
-            ACCENT_COLOR,
+            self._colors.accented,
         )
 
     def _draw_volume_bar(self, draw: ImageDraw.ImageDraw, volume: int) -> None:
@@ -279,10 +288,10 @@ class Renderer:
         top, bottom = VOLUME_BAR_TOP, HEIGHT - VOLUME_BAR_TOP - 1
         right = WIDTH - (BAND_WIDTH - VOLUME_BAR_WIDTH) // 2 - 1
         left = right - VOLUME_BAR_WIDTH + 1
-        draw.rectangle((left, top, right, bottom), fill=TRACK_COLOR)
+        draw.rectangle((left, top, right, bottom), fill=self._colors.track)
         filled = round((bottom - top) * max(0.0, min(1.0, volume / 100)))
         if filled > 0:
-            draw.rectangle((left, bottom - filled, right, bottom), fill=ACCENT_COLOR)
+            draw.rectangle((left, bottom - filled, right, bottom), fill=self._colors.accented)
 
     def _fit(self, text: str, font: Font, max_width: int) -> str:
         """Return the text, truncated with an ellipsis if wider than the given width."""
@@ -326,7 +335,7 @@ class Renderer:
 
         The frame is then rotated clockwise by the orientation of the display in the settings.
         """
-        image = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
+        image = Image.new("RGB", (WIDTH, HEIGHT), self._colors.background)
         draw = ImageDraw.Draw(image)
         menu = state.current_menu
         if menu is None:

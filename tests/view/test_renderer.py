@@ -13,22 +13,24 @@ from mocassino.model.menu import Menu, MenuCommand, MenuItem
 from mocassino.model.moc import MocState, MocStatus
 from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
+from mocassino.view.colors import DEFAULT_COLORS, Colors
 from mocassino.view.display.base import HEIGHT, WIDTH
 from mocassino.view.icons import ICON_SIZE, draw_icon, draw_state_icon
 from mocassino.view.renderer import (
-    ACCENT_COLOR,
-    BACKGROUND_COLOR,
     BAND_WIDTH,
     CONTENT_LEFT,
     CONTENT_RIGHT,
-    DIM_COLOR,
     ELLIPSIS,
     MENU_ROW_HEIGHT,
     MENU_TITLE_HEIGHT,
-    TRACK_COLOR,
     Renderer,
     _format_seconds,
 )
+
+ACCENT_COLOR = DEFAULT_COLORS.accented
+BACKGROUND_COLOR = DEFAULT_COLORS.background
+DIM_COLOR = DEFAULT_COLORS.muted
+TRACK_COLOR = DEFAULT_COLORS.track
 
 PLAYING = MocStatus(
     album="Album",
@@ -216,6 +218,26 @@ class TestRenderer:
         assert image.getpixel((2, row_top(4) + 2)) == BACKGROUND_COLOR
         assert image.getpixel((WIDTH - 2, HEIGHT - 2)) == DIM_COLOR
         assert image.getpixel((WIDTH - 2, MENU_TITLE_HEIGHT + 2)) == TRACK_COLOR
+
+    def test_colors(self):
+        colors = Colors(
+            accented=(255, 0, 0),
+            background=(0, 0, 255),
+            muted=(0, 255, 0),
+            normal=(255, 255, 0),
+            track=(255, 0, 255),
+        )
+        image = Renderer(colors=colors).render(AppState(menus=[letters_menu(10)]))
+        assert image.getpixel((2, row_top(0) + 2)) == colors.accented
+        assert image.getpixel((2, row_top(1) + 2)) == colors.background
+        assert image.getpixel((1, 1)) == colors.track
+        assert image.getpixel((WIDTH - 2, MENU_TITLE_HEIGHT + 2)) == colors.muted
+        assert image.getpixel((WIDTH - 2, HEIGHT - 2)) == colors.track
+        assert colors.normal in {color for _, color in image.getcolors(WIDTH * HEIGHT)}
+
+    def test_default_colors(self, renderer):
+        image = renderer.render(AppState())
+        assert image.getpixel((1, 1)) == DEFAULT_COLORS.background
 
     def test_menu_selected_item_is_highlighted(self, renderer):
         menu = letters_menu(3)

@@ -7,9 +7,11 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from mocassino.configuration import (
     ButtonsConfiguration,
+    ColorsConfiguration,
     Configuration,
     ConfigurationError,
     DisplayConfiguration,
@@ -81,6 +83,13 @@ class TestConfiguration:
             },
             "display": {
                 "brightness": 1.0,
+                "colors": {
+                    "accented": "limegreen",
+                    "background": "black",
+                    "muted": "silver",
+                    "normal": "white",
+                    "track": "dimgray",
+                },
                 "font_file_path": None,
                 "orientation": 0,
                 "show_progress_bar": True,
@@ -346,6 +355,69 @@ class TestLoadConfiguration:
             library=LibraryConfiguration(directory_path=Path("/other")),
             playback=PlaybackConfiguration(seek_step=40, volume_step=3),
         )
+
+    def test_colors(self, tmp_path):
+        path = write_yaml(
+            tmp_path,
+            "display:\n"
+            "  colors:\n"
+            "    accented: '#00F'\n"
+            "    background: '#FFFFFF'\n"
+            "    muted: DarkGray\n"
+            "    normal: black\n"
+            "    track: silver\n",
+        )
+        assert load_configuration(path).display.colors == ColorsConfiguration(
+            accented="#00F",
+            background="#FFFFFF",
+            muted="DarkGray",
+            normal="black",
+            track="silver",
+        )
+
+    def test_colors_partial(self, tmp_path):
+        path = write_yaml(tmp_path, "display:\n  colors:\n    accented: orange\n    muted:\n")
+        assert load_configuration(path).display.colors == ColorsConfiguration(accented="orange")
+
+    def test_colors_empty(self, tmp_path):
+        path = write_yaml(tmp_path, "display:\n  colors:\n")
+        assert load_configuration(path).display.colors == ColorsConfiguration()
+
+    def test_colors_are_written_back(self, tmp_path):
+        configuration = Configuration(
+            display=DisplayConfiguration(colors=ColorsConfiguration(track="#333"))
+        )
+        path = write_yaml(tmp_path, yaml.safe_dump(configuration.to_dict()))
+        assert "track: '#333'" in path.read_text(encoding="utf-8")
+        assert load_configuration(path) == configuration
+
+    @pytest.mark.parametrize(
+        ("role", "spec"),
+        [("accented", "blurple"), ("background", "#12345"), ("track", 5), ("muted", True)],
+    )
+    def test_colors_not_valid(self, tmp_path, role, spec):
+        path = write_yaml(tmp_path, yaml.safe_dump({"display": {"colors": {role: spec}}}))
+        with pytest.raises(
+            ConfigurationError,
+            match=f"Invalid value for 'display.colors.{role}': {spec!r}",
+        ):
+            load_configuration(path)
+
+    def test_colors_unknown(self, tmp_path):
+        path = write_yaml(tmp_path, "display:\n  colors:\n    shadow: gray\n    glow: red\n")
+        with pytest.raises(
+            ConfigurationError,
+            match="Unknown configuration keys: display.colors.glow, display.colors.shadow",
+        ):
+            load_configuration(path)
+
+    def test_colors_not_a_mapping(self, tmp_path):
+        path = write_yaml(tmp_path, "display:\n  colors: red\n")
+        with pytest.raises(
+            ConfigurationError,
+            match="Invalid value for 'display.colors': 'red' \\(expected a mapping\\)",
+        ):
+            load_configuration(path)
 
     def test_partial_section(self, tmp_path):
         path = write_yaml(tmp_path, "playback:\n  volume_default: 30\n")

@@ -23,6 +23,7 @@ from mocassino.model.settings import (
     StartupState,
     StartupVolume,
 )
+from mocassino.view.colors import DEFAULT_COLOR_SPECS, parse_color
 
 # "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
@@ -49,10 +50,25 @@ class ConfigurationError(Exception):
 
 
 @dataclass(frozen=True)
+class ColorsConfiguration:
+    """The colors of the display, each a name (e.g., "white") or an HTML code (e.g., "#FFF").
+
+    See the Colors class of the view for the role of each color.
+    """
+
+    accented: str = DEFAULT_COLOR_SPECS["accented"]
+    background: str = DEFAULT_COLOR_SPECS["background"]
+    muted: str = DEFAULT_COLOR_SPECS["muted"]
+    normal: str = DEFAULT_COLOR_SPECS["normal"]
+    track: str = DEFAULT_COLOR_SPECS["track"]
+
+
+@dataclass(frozen=True)
 class DisplayConfiguration:
     """The settings of the display."""
 
     brightness: float = 1.0
+    colors: ColorsConfiguration = field(default_factory=ColorsConfiguration)
     font_file_path: Path | None = None
     orientation: int = 0
     show_progress_bar: bool = True
@@ -151,6 +167,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         },
         "display": {
             "brightness": _to_float,
+            "colors": _to_colors,
             "font_file_path": _to_path,
             "orientation": _to_int,
             "show_progress_bar": _to_bool,
@@ -313,6 +330,33 @@ def _to_bool(value: object) -> bool:
     if not isinstance(value, bool):
         raise TypeError("expected true or false")
     return value
+
+
+def _to_colors(value: object) -> ColorsConfiguration:
+    """Coerce a mapping of colors, each a name or an HTML code, to the colors of the display.
+
+    The colors missing, or set to None, take their defaults.
+
+    :raises ConfigurationError: if a color is unknown or not valid
+    :raises TypeError: if the value is not a mapping
+    """
+    if not isinstance(value, Mapping):
+        raise TypeError("expected a mapping")
+    unknown = sorted(f"display.colors.{role}" for role in value if role not in DEFAULT_COLOR_SPECS)
+    if unknown:
+        raise ConfigurationError(f"Unknown configuration keys: {', '.join(unknown)}")
+    specs: dict[str, str] = {}
+    for role, spec in value.items():
+        if spec is None:
+            continue
+        try:
+            parse_color(spec)
+        except ValueError as exc:
+            raise ConfigurationError(
+                f"Invalid value for 'display.colors.{role}': {spec!r} ({exc})"
+            ) from exc
+        specs[role] = spec
+    return ColorsConfiguration(**specs)
 
 
 def _to_command(value: object) -> tuple[str, ...]:

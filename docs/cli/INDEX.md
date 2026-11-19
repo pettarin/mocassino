@@ -239,6 +239,12 @@ buttons:
   repeat_hold_time: 0.3
 display:
   brightness: 1.0
+  colors:
+    accented: limegreen
+    background: black
+    muted: silver
+    normal: white
+    track: dimgray
   font_file_path: null
   orientation: 0
   show_progress_bar: true
@@ -290,8 +296,13 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `buttons.long_press_time` | `0.6` | How long a button must be held for a long press, in seconds |
 | `buttons.origin` | `pirateaudio` | Where the button events come from: `pirateaudio` (or its synonym `gpio`), `none`, or `simulator` |
 | `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
-| `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
 | `display.brightness` | `1.0` | The brightness of the display, between `0.0` (backlight off) and `1.0` (full brightness); it only applies to the Pirate Audio display, not to the simulator; it can be changed from the `Settings` menu |
+| `display.colors.accented` | `limegreen` | The color of what is highlighted: the progress and volume bars, the state icon, the title of the menus, and the selected menu item (see below for the colors) |
+| `display.colors.background` | `black` | The color of the background, also used for the label of the selected menu item |
+| `display.colors.muted` | `silver` | The color of the secondary text (e.g., the album and the times), of the icons of the buttons, and of the scrollbar of the menus |
+| `display.colors.normal` | `white` | The color of the main text (e.g., the title of the track, and the menu items) |
+| `display.colors.track` | `dimgray` | The color of the background of the bars, of the title of the menus, and of the scrollbar |
+| `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
 | `display.orientation` | `0` | By how many degrees, clockwise, what is shown on the display is rotated: `0`, `90`, `180`, or `270`; it can be changed from the `Settings` menu |
 | `display.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode; it can be changed from the `Settings` menu |
 | `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode; it can be changed from the `Settings` menu |
@@ -316,6 +327,19 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 > accented letters are drawn as empty boxes.
 > Set `display.font_file_path` to a font with the characters of your music library,
 > e.g., `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf`.
+
+Each of the `display.colors` is either an HTML code, `#RGB` or `#RRGGBB` (e.g., `#00F` or `#0000FF`),
+or a [CSS color name](https://developer.mozilla.org/en-US/docs/Web/CSS/named-color)
+(e.g., `orange`, `darkgray`, or `white`; the case does not matter).
+The colors not set take their defaults.
+In the YAML file, the HTML codes have to be quoted, as `#` starts a comment:
+
+```yaml
+display:
+  colors:
+    accented: "#FFB000"
+    muted: gray
+```
 
 The command line options take precedence over the configuration file:
 

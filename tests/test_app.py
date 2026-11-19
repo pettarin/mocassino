@@ -505,6 +505,18 @@ class TestBuildApp:
         assert backlight_class.call_args.kwargs["initial_value"] == 0.3
         assert app._state.settings.display_brightness == 30
 
+    def test_colors_from_the_configuration(self):
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"colors": {"background": "#00F", "muted": "Red"}, "target": "none"},
+            }
+        )
+        colors = build_app(configuration)._renderer._colors
+        assert colors.background == (0, 0, 255)
+        assert colors.muted == (255, 0, 0)
+        assert colors.accented == (50, 205, 50)
+
     def test_no_hardware(self):
         app = build_app(self.configuration("none", "none", volume_default=30, volume_step=10))
         assert isinstance(app._button_source, NullButtonSource)

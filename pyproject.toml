@@ -29,6 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.1.0",
+    "colorzero>=2.0",
     "gpiod>=2.6.0",
     "gpiodevice>=0.1.0",
     "gpiozero>=2.0.1.post3",
