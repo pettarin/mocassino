@@ -182,6 +182,9 @@ class TkSimulator:
         root.mainloop()
         root.destroy()
 
+    def set_brightness(self, brightness: float) -> None:
+        """Ignore the brightness: the window is always shown at full brightness."""
+
     def show(self, image: Image.Image) -> None:
         """Show the given frame, an RGB image of WIDTH x HEIGHT pixels.
 

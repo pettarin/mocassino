@@ -51,6 +51,7 @@ class Settings:
     Their initial values come from the configuration; the changes are not saved to it.
     """
 
+    display_brightness: int = 100
     display_orientation: int = 0
     playback_seek_step: int = 10
     playback_volume_default: int = 50

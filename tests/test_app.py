@@ -56,6 +56,7 @@ TOGGLE_SIDE_ICONS = (
     ButtonEvent(Button.B),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
+    ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
 )
 
@@ -360,6 +361,14 @@ class TestApp:
         image = display.show.call_args.args[0]
         assert image.size == (240, 240)
 
+    def test_step_sets_the_brightness_only_when_changed(self, app, state, display):
+        app.step()
+        display.set_brightness.assert_not_called()
+        state.settings.display_brightness = 20
+        app.step()
+        app.step()
+        display.set_brightness.assert_called_once_with(0.2)
+
     def test_step_handles_all_the_events(self, app, state, moc, display):
         for _ in range(3):
             app.events.put(ButtonEvent(Button.X))
@@ -421,10 +430,18 @@ class TestBuildApp:
         [("gpio", "st7789"), ("pirateaudio", "pirateaudio")],
     )
     def test_hardware(self, mocker, origin, target):
+        backlight_class = mocker.patch("gpiozero.PWMOutputDevice")
         mocker.patch("st7789.ST7789")
-        app = build_app(self.configuration(origin, target))
+        configuration = self.configuration(origin, target)
+        configuration = replace(
+            configuration,
+            display=replace(configuration.display, brightness=0.3),
+        )
+        app = build_app(configuration)
         assert isinstance(app._button_source, GpioButtonSource)
         assert isinstance(app._display, St7789Display)
+        assert backlight_class.call_args.kwargs["initial_value"] == 0.3
+        assert app._state.settings.display_brightness == 30
 
     def test_no_hardware(self):
         app = build_app(self.configuration("none", "none", volume_default=30, volume_step=10))
@@ -506,6 +523,7 @@ class TestBuildApp:
             "  seek_step: 10\n"
             "  volume_step: 5\n"
             "display:\n"
+            "  brightness: 1.0\n"
             "  orientation: 0\n"
             "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
@@ -524,6 +542,7 @@ class TestBuildApp:
         path = tmp_path / ".config" / "mocassino" / "configuration.yaml"
         assert path.read_text(encoding="utf-8") == (
             "display:\n"
+            "  brightness: 1.0\n"
             "  orientation: 0\n"
             "  show_progress_bar: true\n"
             "  show_side_icons: false\n"
@@ -661,9 +680,10 @@ class TestBuildApp:
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
-            ButtonEvent(Button.X),
-            ButtonEvent(Button.X),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
         )
         for event in events:
@@ -676,6 +696,39 @@ class TestBuildApp:
             True,
             False,
         )
+
+    def test_display_brightness_from_the_configuration(self):
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"brightness": 0.42, "target": "none"},
+            }
+        )
+        assert build_app(configuration)._state.settings.display_brightness == 42
+
+    def test_display_brightness_setting_is_applied_and_saved(self, mocker, tmp_path):
+        moc = mocker.patch("mocassino.app.SubprocessMocClient", autospec=True).return_value
+        moc.status.return_value = PLAYING
+        path = tmp_path / "custom.yaml"
+        app = build_app(self.configuration("none", "none"), path)
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app.events.put(event)
+        assert app._display.brightness == 1.0
+        app.step()
+        assert app._state.settings.display_brightness == 85
+        assert app._display.brightness == 0.85
+        assert load_configuration(path).display.brightness == 0.85
 
     def test_display_orientation_from_the_configuration(self):
         configuration = load_configuration(
@@ -696,6 +749,7 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),

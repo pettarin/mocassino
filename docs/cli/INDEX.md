@@ -155,6 +155,9 @@ Usage: mocassino configuration [OPTIONS]
   Print the effective configuration, in YAML format.
 
 Options:
+  --brightness FLOAT RANGE      Set the brightness of the display
+                                (display.brightness), between 0.0 and 1.0.
+                                [0.0<=x<=1.0]
   --default                     Print the default values, ignoring the
                                 configuration file and the global options.
   --orientation [0|90|180|270]  Set the orientation of the display
@@ -191,6 +194,15 @@ $ # turn what is shown on the display upside down, keeping the rest of the confi
 $ mocassino configuration --orientation 180 -o -y
 ```
 
+Likewise, with `--brightness`, the configuration printed or written has that `display.brightness`,
+a value between `0.0` and `1.0`, whatever the configuration file says;
+it also applies with `--default`, and it can be given together with `--orientation`:
+
+```bash
+$ # dim the display to 60% for the next runs, keeping the rest of the configuration
+$ mocassino configuration --brightness 0.6 -o -y
+```
+
 With `--default`, it prints the default values instead,
 whatever the configuration file and the global options say.
 It works even if the configuration file is not valid,
@@ -220,6 +232,7 @@ buttons:
   origin: pirateaudio
   repeat_hold_time: 0.3
 display:
+  brightness: 1.0
   font_file_path: null
   orientation: 0
   show_progress_bar: true
@@ -268,6 +281,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 | `buttons.origin` | `pirateaudio` | Where the button events come from: `pirateaudio` (or its synonym `gpio`), `none`, or `simulator` |
 | `buttons.repeat_hold_time` | `0.3` | How often the hold press of a held button repeats, in seconds |
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
+| `display.brightness` | `1.0` | The brightness of the display, between `0.0` (backlight off) and `1.0` (full brightness); it only applies to the Pirate Audio display, not to the simulator; it can be changed from the `Settings` menu |
 | `display.orientation` | `0` | By how many degrees, clockwise, what is shown on the display is rotated: `0`, `90`, `180`, or `270`; it can be changed from the `Settings` menu |
 | `display.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode; it can be changed from the `Settings` menu |
 | `display.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode; it can be changed from the `Settings` menu |
@@ -515,6 +529,12 @@ The top level menu has the following items:
   The new value is also saved in the configuration file,
   so that it is kept when the service is started again.
   - `Display`: the settings of the display.
+    - `Brightness (%)` (`display.brightness`): a menu with the brightnesses from `0` to `100`,
+      in steps of 5; the current one has the solid square.
+      The change is immediate; it is saved as a value between `0.0` and `1.0`.
+      At `0` the backlight is off, and the display is dark:
+      the brightness can be raised again from the same menu, without seeing it,
+      or by editing the configuration file.
     - `Orientation` (`display.orientation`): a menu with the four choices
       `0`, `90`, `180`, and `270`; the current one has the solid square.
       The change is immediate (see below).

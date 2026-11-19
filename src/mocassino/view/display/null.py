@@ -10,16 +10,21 @@ from PIL import Image
 class NullDisplay:
     """A display that draws nothing.
 
-    It only remembers the last frame it was given, and whether it is turned on.
+    It only remembers the last frame it was given, its brightness, and whether it is turned on.
     """
 
     def __init__(self) -> None:
         """Initialize the display."""
+        self.brightness: float = 1.0
         self.is_on: bool = True
         self.last_image: Image.Image | None = None
 
     def close(self) -> None:
         """Release the display; there is nothing to release."""
+
+    def set_brightness(self, brightness: float) -> None:
+        """Remember the given brightness."""
+        self.brightness = brightness
 
     def show(self, image: Image.Image) -> None:
         """Remember the given frame, without drawing it."""

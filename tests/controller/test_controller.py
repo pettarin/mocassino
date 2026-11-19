@@ -241,7 +241,8 @@ class TestController:
         assert state.current_menu.selected.label == "Display"
         controller.handle(B)
         assert state.current_menu.title == "Display"
-        assert state.current_menu.selected.label == "Orientation"
+        assert state.current_menu.selected.label == "Brightness (%)"
+        controller.handle(Y)
         controller.handle(Y)
         controller.handle(Y)
         assert state.current_menu.selected.label == "Show side icons"
@@ -257,14 +258,15 @@ class TestController:
         controller.handle(B)
         controller.handle(Y)
         controller.handle(Y)
+        controller.handle(Y)
         assert state.current_menu.selected.checked is True
 
     @pytest.mark.parametrize(
         ("moves", "label", "attribute"),
         [
-            (1, "Show progress bar", "show_progress_bar"),
-            (2, "Show side icons", "show_side_icons"),
-            (3, "Show volume bar", "show_volume_bar"),
+            (2, "Show progress bar", "show_progress_bar"),
+            (3, "Show side icons", "show_side_icons"),
+            (4, "Show volume bar", "show_volume_bar"),
         ],
     )
     def test_menu_select_toggles_of_the_display(
@@ -295,7 +297,7 @@ class TestController:
         assert getattr(state.settings, attribute) is True
         assert state.current_menu.selected.checked is True
 
-    def test_menu_select_display_orientation(self, mocker, state, moc, library, host):
+    def test_menu_select_display_brightness(self, mocker, state, moc, library, host):
         save_settings = mocker.Mock()
         controller = Controller(
             state,
@@ -306,6 +308,41 @@ class TestController:
             save_settings=save_settings,
         )
         for event in (A_LONG, Y, B, B, B):
+            controller.handle(event)
+        titles = ["Menu", "Settings", "Display", "Brightness (%)"]
+        assert [menu.title for menu in state.menus] == titles
+        menu = state.current_menu
+        assert len(menu.items) == 21
+        assert menu.selected.label == "100"
+        assert menu.selected.checked is True
+        save_settings.assert_not_called()
+        for event in (X, X, B):
+            controller.handle(event)
+        assert state.settings.display_brightness == 90
+        save_settings.assert_called_once_with(state.settings)
+        menu = state.current_menu
+        assert [menu.title for menu in state.menus] == titles
+        assert menu.selected.label == "90"
+        assert [item.label for item in menu.items if item.checked] == ["90"]
+
+    def test_menu_select_display_brightness_without_value(self, controller, state):
+        item = MenuItem(label="Broken", command=MenuCommand.SET_DISPLAY_BRIGHTNESS)
+        open_single_item_menu(state, item)
+        controller.handle(B)
+        assert state.settings.display_brightness == 100
+        assert state.current_menu.title == "Above"
+
+    def test_menu_select_display_orientation(self, mocker, state, moc, library, host):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            host,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, B, Y, B):
             controller.handle(event)
         titles = ["Menu", "Settings", "Display", "Orientation"]
         assert [menu.title for menu in state.menus] == titles
@@ -323,7 +360,7 @@ class TestController:
         assert state.current_menu.selected.label == "180"
 
     def test_menu_select_display_orientation_without_saving(self, controller, state):
-        for event in (A_LONG, Y, B, B, B, Y, B):
+        for event in (A_LONG, Y, B, B, Y, B, Y, B):
             controller.handle(event)
         assert state.settings.display_orientation == 90
 
@@ -599,7 +636,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, B, Y, Y):
+        for event in (A_LONG, Y, B, B, Y, Y, Y):
             controller.handle(event)
         save_settings.assert_not_called()
         controller.handle(B)

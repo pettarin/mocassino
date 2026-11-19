@@ -51,6 +51,7 @@ class ConfigurationError(Exception):
 class DisplayConfiguration:
     """The settings of the display."""
 
+    brightness: float = 1.0
     font_file_path: Path | None = None
     orientation: int = 0
     show_progress_bar: bool = True
@@ -145,6 +146,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "repeat_hold_time": _to_float,
         },
         "display": {
+            "brightness": _to_float,
             "font_file_path": _to_path,
             "orientation": _to_int,
             "show_progress_bar": _to_bool,
@@ -212,6 +214,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "buttons.repeat_hold_time": (
             configuration.buttons.repeat_hold_time,
             configuration.buttons.repeat_hold_time > 0,
+        ),
+        "display.brightness": (
+            configuration.display.brightness,
+            0.0 <= configuration.display.brightness <= 1.0,
         ),
         "display.orientation": (
             configuration.display.orientation,

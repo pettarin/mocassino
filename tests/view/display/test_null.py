@@ -18,6 +18,12 @@ class TestNullDisplay:
         display.close()
         assert display.last_image is None
 
+    def test_set_brightness(self):
+        display = NullDisplay()
+        assert display.brightness == 1.0
+        display.set_brightness(0.35)
+        assert display.brightness == 0.35
+
     def test_show(self):
         image = Image.new("RGB", (WIDTH, HEIGHT))
         display = NullDisplay()

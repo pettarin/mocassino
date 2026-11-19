@@ -25,8 +25,9 @@ from mocassino.model.settings import (
     StartupVolume,
 )
 
-# The seek steps, in seconds, the default volumes, and the volume steps
-# that can be chosen from the menu
+# The brightnesses of the display, the seek steps, in seconds, the default volumes,
+# and the volume steps that can be chosen from the menu, all but the seek steps in percent
+BRIGHTNESS_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
 SEEK_STEP_CHOICES: tuple[int, ...] = (1, 2, 5, 10, 30, 60)
 VOLUME_DEFAULT_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
 VOLUME_STEP_CHOICES: tuple[int, ...] = (1, 2, 4, 5, 10)
@@ -56,6 +57,7 @@ class MenuCommand(StrEnum):
 
     BACK = "back"
     PLAY = "play"
+    SET_DISPLAY_BRIGHTNESS = "set_display_brightness"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
     SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
     SET_PLAYBACK_VOLUME_DEFAULT = "set_playback_volume_default"
@@ -153,6 +155,19 @@ def _build_shutdown_menu() -> Menu:
     )
 
 
+def build_display_brightness_menu(settings: Settings) -> Menu:
+    """Build the menu choosing the brightness of the display, in percent.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_number_menu(
+        "Brightness (%)",
+        BRIGHTNESS_CHOICES,
+        settings.display_brightness,
+        MenuCommand.SET_DISPLAY_BRIGHTNESS,
+    )
+
+
 def build_display_menu(settings: Settings) -> Menu:
     """Build the menu showing the settings of the display, and changing them.
 
@@ -161,6 +176,10 @@ def build_display_menu(settings: Settings) -> Menu:
     return Menu(
         title="Display",
         items=(
+            MenuItem(
+                label="Brightness (%)",
+                submenu=partial(build_display_brightness_menu, settings),
+            ),
             MenuItem(
                 label="Orientation",
                 submenu=partial(build_display_orientation_menu, settings),

@@ -18,6 +18,9 @@ class Display(Protocol):
     def close(self) -> None:
         """Release the display; no frame can be shown afterwards."""
 
+    def set_brightness(self, brightness: float) -> None:
+        """Set the brightness, between 0.0 and 1.0; while turned off, it applies once on."""
+
     def show(self, image: Image.Image) -> None:
         """Show the given frame, an RGB image of WIDTH x HEIGHT pixels."""
 

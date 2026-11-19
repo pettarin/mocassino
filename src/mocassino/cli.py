@@ -123,6 +123,11 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 
 @click.command()
 @click.option(
+    "--brightness",
+    type=click.FloatRange(0.0, 1.0),
+    help="Set the brightness of the display (display.brightness), between 0.0 and 1.0.",
+)
+@click.option(
     "--default",
     is_flag=True,
     help="Print the default values, ignoring the configuration file and the global options.",
@@ -150,6 +155,7 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 @click.pass_obj
 def configuration(
     options: GlobalOptions,
+    brightness: float | None,
     default: bool,
     orientation: str | None,
     output_file_path: Path | None,
@@ -157,6 +163,11 @@ def configuration(
 ) -> None:
     """Print the effective configuration, in YAML format, or write it to a file."""
     effective = Configuration() if default else _load_configuration(options)
+    if brightness is not None:
+        effective = replace(
+            effective,
+            display=replace(effective.display, brightness=brightness),
+        )
     if orientation is not None:
         effective = replace(
             effective,

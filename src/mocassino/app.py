@@ -84,6 +84,8 @@ class App:
         :param simulator: the simulator used as display or button source, if any
         :param state_file: the file where the state is saved, if any
         """
+        # The brightness, in percent, the display has
+        self._brightness = state.settings.display_brightness
         self._button_source = button_source
         self._controller = controller
         self._display = display
@@ -100,6 +102,13 @@ class App:
         self._tick = tick
         # Last, as it needs the state
         self._saved_signature = self._signature()
+
+    def _apply_brightness(self) -> None:
+        """Set the brightness of the display, if the setting has changed."""
+        brightness = self._state.settings.display_brightness
+        if brightness != self._brightness:
+            self._display.set_brightness(brightness / 100)
+            self._brightness = brightness
 
     def _draw(self) -> None:
         """Draw the state on the display, unless the frame is the one already shown."""
@@ -245,6 +254,7 @@ class App:
         self._refresh()
         if self._signature() != self._saved_signature:
             self._save_state()
+        self._apply_brightness()
         self._draw()
 
     def stop(self) -> None:
@@ -274,7 +284,7 @@ def _build_display(configuration: Configuration, simulator: TkSimulator | None) 
     if target == "simulator" and simulator is not None:
         return simulator
     if target in ("pirateaudio", "st7789"):
-        return St7789Display()
+        return St7789Display(brightness=configuration.display.brightness)
     return NullDisplay()
 
 
@@ -285,6 +295,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
     """
     updates: dict[str, dict[str, object]] = {
         "display": {
+            "brightness": settings.display_brightness / 100,
             "orientation": settings.display_orientation,
             "show_progress_bar": settings.show_progress_bar,
             "show_side_icons": settings.show_side_icons,
@@ -353,6 +364,7 @@ def build_app(
         volume = configuration.playback.volume_default
     state = AppState(
         settings=Settings(
+            display_brightness=round(configuration.display.brightness * 100),
             display_orientation=configuration.display.orientation,
             playback_seek_step=configuration.playback.seek_step,
             playback_volume_default=configuration.playback.volume_default,

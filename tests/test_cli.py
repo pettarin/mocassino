@@ -84,6 +84,62 @@ class TestConfigurationCommand:
         assert result.exit_code == 0
         assert yaml.safe_load(result.output) == Configuration().to_dict()
 
+    @pytest.mark.parametrize(("brightness", "value"), [("0", 0.0), ("0.35", 0.35), ("1", 1.0)])
+    def test_brightness(self, runner, brightness, value):
+        result = runner.invoke(main, ["configuration", "--brightness", brightness])
+        assert result.exit_code == 0
+        output = yaml.safe_load(result.output)
+        assert output["display"]["brightness"] == value
+        expected = Configuration().to_dict()
+        expected["display"]["brightness"] = value
+        assert output == expected
+
+    @pytest.mark.parametrize("brightness", ["-0.1", "1.5", "50", "bright"])
+    def test_brightness_not_valid(self, runner, brightness):
+        result = runner.invoke(main, ["configuration", "--brightness", brightness])
+        assert result.exit_code == 2
+        assert "Invalid value for '--brightness'" in result.output
+
+    def test_brightness_overrides_the_configuration_file(self, runner, tmp_path):
+        path = tmp_path / "custom.yaml"
+        path.write_text("display:\n  brightness: 0.8\n  tick: 0.25\n", encoding="utf-8")
+        result = runner.invoke(main, ["-c", str(path), "configuration"])
+        assert yaml.safe_load(result.output)["display"]["brightness"] == 0.8
+        result = runner.invoke(main, ["-c", str(path), "configuration", "--brightness", "0.2"])
+        assert result.exit_code == 0
+        output = yaml.safe_load(result.output)
+        assert output["display"]["brightness"] == 0.2
+        assert output["display"]["tick"] == 0.25
+
+    def test_brightness_with_default(self, runner, home):
+        directory = home / ".config" / "mocassino"
+        directory.mkdir(parents=True)
+        (directory / "configuration.yaml").write_text(
+            "display:\n  tick: 0.25\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(main, ["configuration", "--default", "--brightness", "0.6"])
+        assert result.exit_code == 0
+        output = yaml.safe_load(result.output)
+        assert output["display"]["brightness"] == 0.6
+        assert output["display"]["tick"] == 0.5
+
+    def test_brightness_is_written_to_the_output_file(self, runner, tmp_path):
+        path = tmp_path / "written.yaml"
+        arguments = ["-s", "configuration", "--brightness", "0.7", "-o", str(path)]
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        written = load_configuration(path)
+        assert written.display.brightness == 0.7
+        assert written.display.target == "simulator"
+
+    def test_brightness_and_orientation(self, runner):
+        arguments = ["configuration", "--brightness", "0.5", "--orientation", "90"]
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        output = yaml.safe_load(result.output)
+        assert (output["display"]["brightness"], output["display"]["orientation"]) == (0.5, 90)
+
     @pytest.mark.parametrize("orientation", ["0", "90", "180", "270"])
     def test_orientation(self, runner, orientation):
         result = runner.invoke(main, ["configuration", "--orientation", orientation])

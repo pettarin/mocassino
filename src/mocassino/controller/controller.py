@@ -14,6 +14,7 @@ from mocassino.model.library import Library
 from mocassino.model.menu import (
     Menu,
     MenuCommand,
+    build_display_brightness_menu,
     build_display_menu,
     build_display_orientation_menu,
     build_library_menu,
@@ -36,6 +37,11 @@ SETTERS: dict[
     MenuCommand,
     tuple[str, Callable[[str], object], Callable[[Settings], Menu]],
 ] = {
+    MenuCommand.SET_DISPLAY_BRIGHTNESS: (
+        "display_brightness",
+        int,
+        build_display_brightness_menu,
+    ),
     MenuCommand.SET_DISPLAY_ORIENTATION: (
         "display_orientation",
         int,

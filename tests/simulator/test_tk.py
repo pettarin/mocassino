@@ -208,6 +208,13 @@ class TestTkSimulator:
         assert enlarged.getpixel((0, 0)) == (0, 255, 0)
         assert tk.root.after.call_args.args == (POLL_INTERVAL_MS, simulator._poll)
 
+    def test_set_brightness_is_ignored(self, simulator, tk):
+        frame = Image.new("RGB", (WIDTH, HEIGHT), (255, 0, 0))
+        simulator.show(frame)
+        simulator.set_brightness(0.2)
+        simulator._poll()
+        assert tk.image_tk.PhotoImage.call_args.args[0].getpixel((0, 0)) == (255, 0, 0)
+
     def test_turn_off_and_on(self, simulator, tk):
         frame = Image.new("RGB", (WIDTH, HEIGHT), (255, 0, 0))
         later = Image.new("RGB", (WIDTH, HEIGHT), (0, 255, 0))

@@ -77,6 +77,7 @@ class TestConfiguration:
                 "repeat_hold_time": 0.3,
             },
             "display": {
+                "brightness": 1.0,
                 "font_file_path": None,
                 "orientation": 0,
                 "show_progress_bar": True,
@@ -151,6 +152,7 @@ class TestLoadConfiguration:
             "  origin: none\n"
             "  repeat_hold_time: 0.5\n"
             "display:\n"
+            "  brightness: 0.5\n"
             "  font_file_path: ~/font.ttf\n"
             "  show_side_icons: false\n"
             "  target: simulator\n"
@@ -172,6 +174,7 @@ class TestLoadConfiguration:
         assert load_configuration(path) == Configuration(
             buttons=ButtonsConfiguration(long_press_time=2.0, origin="none", repeat_hold_time=0.5),
             display=DisplayConfiguration(
+                brightness=0.5,
                 font_file_path=tmp_path / "font.ttf",
                 show_side_icons=False,
                 target="simulator",
@@ -203,6 +206,11 @@ class TestLoadConfiguration:
             ("buttons", "origin", 5),
             ("buttons", "repeat_hold_time", 0),
             ("buttons", "repeat_hold_time", "fast"),
+            ("display", "brightness", -0.1),
+            ("display", "brightness", 1.1),
+            ("display", "brightness", 2),
+            ("display", "brightness", "bright"),
+            ("display", "brightness", True),
             ("display", "font_file_path", 5),
             ("display", "orientation", 45),
             ("display", "orientation", 360),
