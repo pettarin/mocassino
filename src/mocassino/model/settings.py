@@ -13,6 +13,9 @@ from mocassino.model.colors import COLOR_ROLES, DEFAULT_COLOR_SPECS
 
 # By how many degrees, clockwise, the display can be rotated
 ORIENTATIONS: tuple[int, ...] = (0, 90, 180, 270)
+# The pins the Y button of the Pirate Audio hat can be on:
+# 20 on the boards made before 23 January 2020, 24 on the later ones
+PIN_BUTTON_Y_CHOICES: tuple[int, ...] = (20, 24)
 
 
 class MocStateOnExit(StrEnum):
@@ -85,6 +88,7 @@ class Settings:
     startup_state: StartupState = StartupState.USE_SAVED
     startup_volume: StartupVolume = StartupVolume.USE_SAVED
     system_moc_state_on_exit: MocStateOnExit = MocStateOnExit.DO_NOTHING
+    system_pin_button_y: int = 24
 
     def color_specs(self) -> dict[str, str]:
         """Return the colors of the display, as names or HTML codes, by role."""

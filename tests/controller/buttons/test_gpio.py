@@ -13,7 +13,7 @@ import pytest
 from gpiozero import Device
 from gpiozero.pins.mock import MockFactory
 
-from mocassino.controller.buttons.gpio import BUTTON_PINS, GpioButtonSource
+from mocassino.controller.buttons.gpio import BUTTON_PINS, DEFAULT_PIN_BUTTON_Y, GpioButtonSource
 from mocassino.controller.events import Button, ButtonEvent, Press
 
 LONG_PRESS_TIME = 0.05
@@ -43,9 +43,14 @@ def source(factory, events):
     source.close()
 
 
-def press(factory, button: Button, duration: float) -> None:
+def press(factory, button: Button, duration: float, pin_button_y: int = 24) -> None:
     """Press a button (its pin is pulled up, so it is driven low) and release it."""
-    pin = factory.pin(BUTTON_PINS[button])
+    press_pin(factory, {**BUTTON_PINS, Button.Y: pin_button_y}[button], duration)
+
+
+def press_pin(factory, number: int, duration: float) -> None:
+    """Drive a pin low, as a pressed button does, and high again."""
+    pin = factory.pin(number)
     pin.drive_low()
     time.sleep(duration)
     pin.drive_high()
@@ -110,7 +115,68 @@ class TestGpioButtonSource:
             events.get(timeout=3 * REPEAT_HOLD_TIME)
 
     def test_pins(self):
-        assert BUTTON_PINS == {Button.A: 5, Button.B: 6, Button.X: 16, Button.Y: 24}
+        assert BUTTON_PINS == {Button.A: 5, Button.B: 6, Button.X: 16}
+        assert DEFAULT_PIN_BUTTON_Y == 24
+        source = GpioButtonSource(
+            long_press_time=LONG_PRESS_TIME, repeat_hold_time=REPEAT_HOLD_TIME
+        )
+        assert source.pins == {Button.A: 5, Button.B: 6, Button.X: 16, Button.Y: 24}
+
+    def test_pin_button_y_of_old_boards(self, factory, events):
+        source = GpioButtonSource(
+            long_press_time=LONG_PRESS_TIME, repeat_hold_time=REPEAT_HOLD_TIME, pin_button_y=20
+        )
+        assert source.pins[Button.Y] == 20
+        source.start(events)
+        press_pin(factory, 24, 0.0)
+        with pytest.raises(Empty):
+            events.get(timeout=0.2)
+        press_pin(factory, 20, 0.0)
+        assert events.get(timeout=1) == ButtonEvent(Button.Y)
+        source.close()
+
+    def test_set_pin_button_y_before_start(self, factory, events):
+        source = GpioButtonSource(
+            long_press_time=LONG_PRESS_TIME, repeat_hold_time=REPEAT_HOLD_TIME
+        )
+        source.set_pin_button_y(20)
+        source.start(events)
+        press_pin(factory, 20, 0.0)
+        assert events.get(timeout=1) == ButtonEvent(Button.Y)
+        source.close()
+
+    def test_set_pin_button_y_while_running(self, factory, events, source):
+        press_pin(factory, 24, 0.0)
+        assert events.get(timeout=1) == ButtonEvent(Button.Y)
+        source.set_pin_button_y(20)
+        assert source.pins[Button.Y] == 20
+        press_pin(factory, 24, 0.0)
+        with pytest.raises(Empty):
+            events.get(timeout=0.2)
+        press_pin(factory, 20, 0.0)
+        assert events.get(timeout=1) == ButtonEvent(Button.Y)
+        press(factory, Button.A, 0.0)
+        assert events.get(timeout=1) == ButtonEvent(Button.A)
+        source.set_pin_button_y(24)
+        press_pin(factory, 24, 0.0)
+        assert events.get(timeout=1) == ButtonEvent(Button.Y)
+
+    def test_set_pin_button_y_stops_repeating(self, factory, events, source):
+        factory.pin(24).drive_low()
+        assert events.get(timeout=1) == ButtonEvent(Button.Y, Press.LONG)
+        assert events.get(timeout=1) == ButtonEvent(Button.Y, Press.HOLD)
+        source.set_pin_button_y(20)
+        time.sleep(2 * REPEAT_HOLD_TIME)
+        while not events.empty():
+            events.get_nowait()
+        with pytest.raises(Empty):
+            events.get(timeout=3 * REPEAT_HOLD_TIME)
+        factory.pin(24).drive_high()
+
+    def test_set_pin_button_y_to_the_same_pin(self, factory, events, source):
+        device = source._devices[Button.Y]
+        source.set_pin_button_y(24)
+        assert source._devices[Button.Y] is device
 
     @pytest.mark.parametrize("button", list(Button))
     def test_short_press(self, factory, events, source, button):

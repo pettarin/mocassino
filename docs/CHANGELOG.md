@@ -19,6 +19,8 @@ All notable changes to this project will be documented in this file.
   to show or hide the side icons and the progress, playlist, and volume bars
   (development versions used `display.show_side_icons` etc.: a configuration file written by them
   has to be updated, or it is backed up and replaced with the default values)
+- The `system.pin_button_y` configuration key, and the `Pin button Y` menu of the settings,
+  to read the `Y` button on pin 20, as on the Pirate Audio boards made before 23 January 2020
 - The `display.brightness` configuration key, the `Brightness (%)` menu of the display settings,
   and the `--brightness` option of the `configuration` command, to set the brightness of the display
 

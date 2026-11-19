@@ -16,5 +16,8 @@ class ButtonSource(Protocol):
     def close(self) -> None:
         """Stop producing events, and release the source."""
 
+    def set_pin_button_y(self, pin: int) -> None:
+        """Read the Y button on the given pin, if the source reads the GPIO pins."""
+
     def start(self, events: Queue[ButtonEvent]) -> None:
         """Start putting the events in the given queue."""

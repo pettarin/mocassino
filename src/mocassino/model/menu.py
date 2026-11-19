@@ -19,6 +19,7 @@ from mocassino.model.colors import COLOR_NAMES, COLOR_ROLES, color_name
 from mocassino.model.library import Library
 from mocassino.model.settings import (
     ORIENTATIONS,
+    PIN_BUTTON_Y_CHOICES,
     MocStateOnExit,
     Settings,
     StartupPlaylist,
@@ -80,6 +81,7 @@ class MenuCommand(StrEnum):
     SET_STARTUP_STATE = "set_startup_state"
     SET_STARTUP_VOLUME = "set_startup_volume"
     SET_SYSTEM_MOC_STATE_ON_EXIT = "set_system_moc_state_on_exit"
+    SET_SYSTEM_PIN_BUTTON_Y = "set_system_pin_button_y"
     SHUTDOWN = "shutdown"
     TOGGLE_PLAYLIST_BAR = "toggle_playlist_bar"
     TOGGLE_PROGRESS_BAR = "toggle_progress_bar"
@@ -461,6 +463,10 @@ def build_settings_menu(settings: Settings) -> Menu:
                 label="MOC state on exit",
                 submenu=partial(build_system_moc_state_on_exit_menu, settings),
             ),
+            MenuItem(
+                label="Pin button Y",
+                submenu=partial(build_system_pin_button_y_menu, settings),
+            ),
             MenuItem(label="Startup", submenu=partial(build_startup_menu, settings)),
             MenuItem(label="Reset all settings", submenu=_build_reset_all_settings_menu),
         ),
@@ -544,4 +550,17 @@ def build_system_moc_state_on_exit_menu(settings: Settings) -> Menu:
         tuple(MocStateOnExit),
         settings.system_moc_state_on_exit,
         MenuCommand.SET_SYSTEM_MOC_STATE_ON_EXIT,
+    )
+
+
+def build_system_pin_button_y_menu(settings: Settings) -> Menu:
+    """Build the menu choosing the pin of the Y button: 24, or 20 on boards made before 2020.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_number_menu(
+        "Pin button Y",
+        PIN_BUTTON_Y_CHOICES,
+        settings.system_pin_button_y,
+        MenuCommand.SET_SYSTEM_PIN_BUTTON_Y,
     )

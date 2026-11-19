@@ -20,6 +20,7 @@ from mocassino.controller.actions import resolve_button_map
 from mocassino.model.colors import DEFAULT_COLOR_SPECS, parse_color
 from mocassino.model.settings import (
     ORIENTATIONS,
+    PIN_BUTTON_Y_CHOICES,
     MocStateOnExit,
     StartupPlaylist,
     StartupState,
@@ -137,6 +138,7 @@ class SystemConfiguration:
 
     moc_state_on_exit: str = "do_nothing"
     mocp_file_path: str = "mocp"
+    pin_button_y: int = 24
     reboot_command: tuple[str, ...] = ("sudo", "reboot")
     shutdown_command: tuple[str, ...] = ("sudo", "shutdown", "-h", "now")
 
@@ -206,6 +208,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "system": {
             "moc_state_on_exit": _to_str,
             "mocp_file_path": _to_str,
+            "pin_button_y": _to_int,
             "reboot_command": _to_command,
             "shutdown_command": _to_command,
         },
@@ -300,6 +303,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "system.moc_state_on_exit": (
             configuration.system.moc_state_on_exit,
             configuration.system.moc_state_on_exit in list(MocStateOnExit),
+        ),
+        "system.pin_button_y": (
+            configuration.system.pin_button_y,
+            configuration.system.pin_button_y in PIN_BUTTON_Y_CHOICES,
         ),
     }
     for name, (value, valid) in checks.items():

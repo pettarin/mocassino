@@ -15,5 +15,8 @@ class NullButtonSource:
     def close(self) -> None:
         """Release the source; there is nothing to release."""
 
+    def set_pin_button_y(self, pin: int) -> None:
+        """Ignore the pin of the Y button: there is no button to read."""
+
     def start(self, events: Queue[ButtonEvent]) -> None:
         """Start producing events; none will ever be put in the queue."""

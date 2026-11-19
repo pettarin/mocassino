@@ -17,6 +17,6 @@ class TestButtonSource:
     @pytest.mark.parametrize("source_class", [GpioButtonSource, NullButtonSource])
     def test_implementations(self, source_class):
         methods = [name for name in vars(ButtonSource) if not name.startswith("_")]
-        assert sorted(methods) == ["close", "start"]
+        assert sorted(methods) == ["close", "set_pin_button_y", "start"]
         for name in methods:
             assert callable(getattr(source_class, name))

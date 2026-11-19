@@ -76,6 +76,7 @@ class TestConfiguration:
         assert configuration.system == SystemConfiguration(
             moc_state_on_exit="do_nothing",
             mocp_file_path="mocp",
+            pin_button_y=24,
             reboot_command=("sudo", "reboot"),
             shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
@@ -119,6 +120,7 @@ class TestConfiguration:
             "system": {
                 "moc_state_on_exit": "do_nothing",
                 "mocp_file_path": "mocp",
+                "pin_button_y": 24,
                 "reboot_command": ["sudo", "reboot"],
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
             },
@@ -272,6 +274,9 @@ class TestLoadConfiguration:
             ("system", "moc_state_on_exit", "Do nothing"),
             ("system", "moc_state_on_exit", True),
             ("system", "mocp_file_path", ["mocp"]),
+            ("system", "pin_button_y", 23),
+            ("system", "pin_button_y", "20"),
+            ("system", "pin_button_y", True),
             ("system", "reboot_command", 5),
             ("system", "shutdown_command", "'unbalanced"),
             ("system", "shutdown_command", ""),
@@ -282,6 +287,11 @@ class TestLoadConfiguration:
     def test_invalid_value(self, section, key, value):
         with pytest.raises(ConfigurationError, match=f"Invalid value for '{section}.{key}'"):
             load_configuration(overrides={section: {key: value}})
+
+    @pytest.mark.parametrize("pin", [20, 24])
+    def test_pin_button_y(self, pin):
+        configuration = load_configuration(overrides={"system": {"pin_button_y": pin}})
+        assert configuration.system.pin_button_y == pin
 
     @pytest.mark.parametrize("origin", ["gpio", "none", "pirateaudio", "simulator"])
     def test_buttons_origins(self, origin):

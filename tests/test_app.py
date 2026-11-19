@@ -458,6 +458,14 @@ class TestApp:
         app.step()
         assert state.playlist == (str(tmp_path / "01.mp3"), str(tmp_path / "02.mp3"))
 
+    def test_step_sets_the_pin_button_y_only_when_changed(self, app, state, button_source):
+        app.step()
+        button_source.set_pin_button_y.assert_not_called()
+        state.settings.system_pin_button_y = 20
+        app.step()
+        app.step()
+        button_source.set_pin_button_y.assert_called_once_with(20)
+
     def test_step_sets_the_brightness_only_when_changed(self, app, state, display):
         app.step()
         display.set_brightness.assert_not_called()
@@ -536,9 +544,43 @@ class TestBuildApp:
         )
         app = build_app(configuration)
         assert isinstance(app._button_source, GpioButtonSource)
+        assert app._button_source.pins[Button.Y] == 24
         assert isinstance(app._display, St7789Display)
         assert backlight_class.call_args.kwargs["initial_value"] == 0.3
         assert app._state.settings.display_brightness == 30
+
+    def test_pin_button_y_from_the_configuration(self, mocker):
+        mocker.patch("gpiozero.PWMOutputDevice")
+        mocker.patch("st7789.ST7789")
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "pirateaudio"},
+                "display": {"target": "none"},
+                "system": {"pin_button_y": 20},
+            }
+        )
+        app = build_app(configuration)
+        assert app._button_source.pins[Button.Y] == 20
+        assert app._state.settings.system_pin_button_y == 20
+
+    def test_pin_button_y_setting_is_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        app = build_app(self.configuration("none", "none"), path)
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.settings.system_pin_button_y == 20
+        assert load_configuration(path).system.pin_button_y == 20
 
     def test_colors_from_the_configuration(self):
         configuration = load_configuration(
@@ -654,6 +696,7 @@ class TestBuildApp:
             "  volume: use_saved\n"
             "system:\n"
             "  moc_state_on_exit: do_nothing\n"
+            "  pin_button_y: 24\n"
         )
         assert load_configuration(path).display.ui_elements.show_side_icons is False
 
@@ -687,6 +730,7 @@ class TestBuildApp:
             "  volume: use_saved\n"
             "system:\n"
             "  moc_state_on_exit: do_nothing\n"
+            "  pin_button_y: 24\n"
         )
 
     def test_settings_cannot_be_saved(self, tmp_path, caplog):

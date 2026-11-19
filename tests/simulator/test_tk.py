@@ -208,6 +208,10 @@ class TestTkSimulator:
         assert enlarged.getpixel((0, 0)) == (0, 255, 0)
         assert tk.root.after.call_args.args == (POLL_INTERVAL_MS, simulator._poll)
 
+    def test_set_pin_button_y_is_ignored(self, simulator, events):
+        simulator.set_pin_button_y(20)
+        assert events.empty()
+
     def test_set_brightness_is_ignored(self, simulator, tk):
         frame = Image.new("RGB", (WIDTH, HEIGHT), (255, 0, 0))
         simulator.show(frame)

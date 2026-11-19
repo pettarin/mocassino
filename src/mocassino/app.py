@@ -102,6 +102,8 @@ class App:
         self._last_error: str | None = None
         self._last_frame: bytes | None = None
         self._moc = moc
+        # The pin of the Y button the button source reads
+        self._pin_button_y = state.settings.system_pin_button_y
         # What the playlist of the state has been built from (see _update_playlist)
         self._playlist_source: str | None = None
         self._renderer = renderer
@@ -120,6 +122,13 @@ class App:
         if brightness != self._brightness:
             self._display.set_brightness(brightness / 100)
             self._brightness = brightness
+
+    def _apply_pin_button_y(self) -> None:
+        """Make the button source read the Y button on its pin, if the setting has changed."""
+        pin = self._state.settings.system_pin_button_y
+        if pin != self._pin_button_y:
+            self._button_source.set_pin_button_y(pin)
+            self._pin_button_y = pin
 
     def _draw(self) -> None:
         """Draw the state on the display, unless the frame is the one already shown."""
@@ -291,6 +300,7 @@ class App:
         if self._signature() != self._saved_signature:
             self._save_state()
         self._apply_brightness()
+        self._apply_pin_button_y()
         self._draw()
 
     def _update_playlist(self) -> None:
@@ -321,6 +331,7 @@ def _build_button_source(
         return GpioButtonSource(
             long_press_time=configuration.buttons.long_press_time,
             repeat_hold_time=configuration.buttons.repeat_hold_time,
+            pin_button_y=configuration.system.pin_button_y,
         )
     if origin == "simulator" and simulator is not None:
         return simulator
@@ -358,6 +369,7 @@ def _build_settings(configuration: Configuration) -> Settings:
         startup_state=StartupState(configuration.startup.state),
         startup_volume=StartupVolume(configuration.startup.volume),
         system_moc_state_on_exit=MocStateOnExit(configuration.system.moc_state_on_exit),
+        system_pin_button_y=configuration.system.pin_button_y,
     )
 
 
@@ -415,6 +427,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
         },
         "system": {
             "moc_state_on_exit": settings.system_moc_state_on_exit.value,
+            "pin_button_y": settings.system_pin_button_y,
         },
     }
     try:

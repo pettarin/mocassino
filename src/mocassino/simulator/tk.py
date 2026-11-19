@@ -185,6 +185,9 @@ class TkSimulator:
     def set_brightness(self, brightness: float) -> None:
         """Ignore the brightness: the window is always shown at full brightness."""
 
+    def set_pin_button_y(self, pin: int) -> None:
+        """Ignore the pin of the Y button: the buttons of the window have no pins."""
+
     def show(self, image: Image.Image) -> None:
         """Show the given frame, an RGB image of WIDTH x HEIGHT pixels.
 
