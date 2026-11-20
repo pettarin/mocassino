@@ -221,7 +221,7 @@ $ mocassino configuration --brightness 0.6 -o -y
 ```
 
 With `--default`, it prints the default values instead,
-whatever the configuration file and the global options say.
+whatever the configuration file and the global options other than `-s / --simulator` say.
 It works even if the configuration file is not valid,
 and its output can be used as a starting point for a configuration file:
 
@@ -267,7 +267,7 @@ display:
     show_side_icons: true
     show_volume_bar: true
 library:
-  directory_path: /music
+  directory_path: /home/pi
 playback:
   seek_step: 10
   volume_default: 50
@@ -336,7 +336,7 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `display.ui_elements.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode; it can be changed from the `Settings` menu |
 | `display.ui_elements.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode, with the playlist and volume bars next to them; it can be changed from the `Settings` menu |
 | `display.ui_elements.show_volume_bar` | `true` | Whether the volume bar is shown in playback mode, if `display.ui_elements.show_side_icons` is `true`; it can be changed from the `Settings` menu |
-| `library.directory_path` | `/music` | The music root directory |
+| `library.directory_path` | `~` | The music root directory; by default, the home directory of the user running the service (e.g., `/home/pi`) |
 | `playback.seek_step` | `10` | The amount of each seek, in seconds; it can be changed from the `Settings` menu |
 | `playback.volume_default` | `50` | The default volume, between 0 and 100: the one set when the service starts if `startup.volume` is `use_default`, or if there is no saved volume; it can be changed from the `Settings` menu |
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100; it can be changed from the `Settings` menu |

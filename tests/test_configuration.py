@@ -48,7 +48,7 @@ def write_yaml(directory: Path, content: str) -> Path:
 class TestConfiguration:
     """Tests for the Configuration class"""
 
-    def test_defaults(self):
+    def test_defaults(self, home):
         configuration = Configuration()
         assert configuration.buttons == ButtonsConfiguration(
             long_press_time=0.6, origin="pirateaudio", repeat_hold_time=0.3
@@ -65,7 +65,7 @@ class TestConfiguration:
             show_side_icons=True,
             show_volume_bar=True,
         )
-        assert configuration.library == LibraryConfiguration(directory_path=Path("/music"))
+        assert configuration.library == LibraryConfiguration(directory_path=home)
         assert configuration.playback == PlaybackConfiguration(
             seek_step=10, volume_default=50, volume_step=5
         )
@@ -80,7 +80,7 @@ class TestConfiguration:
             shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
 
-    def test_to_dict(self):
+    def test_to_dict(self, home):
         assert Configuration().to_dict() == {
             "buttons": {
                 "button_map": DEFAULT_BUTTON_MAP,
@@ -109,7 +109,7 @@ class TestConfiguration:
                     "show_volume_bar": True,
                 },
             },
-            "library": {"directory_path": "/music"},
+            "library": {"directory_path": str(home)},
             "playback": {"seek_step": 10, "volume_default": 50, "volume_step": 5},
             "run": {"mode": "background"},
             "startup": {

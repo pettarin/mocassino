@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- The default music root directory (`library.directory_path`) is the home directory
+  of the user running the service, instead of `/music`
 - The default values of the configuration are defined in the new `mocassino.defaults` module
 - The choices of the settings (e.g., `buttons.origin`), the volume limits,
   the modes of the application, the actions, the buttons,

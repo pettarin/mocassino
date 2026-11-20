@@ -127,9 +127,13 @@ class DisplayConfiguration:
 
 @dataclass(frozen=True)
 class LibraryConfiguration:
-    """The settings of the music library."""
+    """The settings of the music library.
 
-    directory_path: Path = DEFAULT_LIBRARY_DIRECTORY_PATH
+    The default music root directory is expanded (e.g., "~" to "/home/pi") when these
+    settings are made, as are the paths read from the configuration file.
+    """
+
+    directory_path: Path = field(default_factory=DEFAULT_LIBRARY_DIRECTORY_PATH.expanduser)
 
 
 @dataclass(frozen=True)
