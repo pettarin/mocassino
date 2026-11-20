@@ -20,6 +20,14 @@ from mocassino.configuration import (
     update_configuration_file,
     write_configuration_file,
 )
+from mocassino.constants import (
+    ButtonsOrigin,
+    DisplayTarget,
+    MocStateOnExit,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.controller.buttons.base import ButtonSource
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
@@ -41,13 +49,7 @@ from mocassino.model.resume import (
     playing_from,
     resume_playback,
 )
-from mocassino.model.settings import (
-    MocStateOnExit,
-    Settings,
-    StartupPlaylist,
-    StartupState,
-    StartupVolume,
-)
+from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.model.system import System
@@ -363,12 +365,12 @@ def _build_button_source(
 ) -> ButtonSource:
     """Build the button source selected by the configuration."""
     origin = configuration.buttons.origin
-    if origin in ("gpio", "pirateaudio"):
+    if origin in (ButtonsOrigin.GPIO, ButtonsOrigin.PIRATEAUDIO):
         return GpioButtonSource(
             long_press_time=configuration.buttons.long_press_time,
             repeat_hold_time=configuration.buttons.repeat_hold_time,
         )
-    if origin == "simulator" and simulator is not None:
+    if origin == ButtonsOrigin.SIMULATOR and simulator is not None:
         return simulator
     return NullButtonSource()
 
@@ -376,9 +378,9 @@ def _build_button_source(
 def _build_display(configuration: Configuration, simulator: TkSimulator | None) -> Display:
     """Build the display selected by the configuration."""
     target = configuration.display.target
-    if target == "simulator" and simulator is not None:
+    if target == DisplayTarget.SIMULATOR and simulator is not None:
         return simulator
-    if target in ("pirateaudio", "st7789"):
+    if target in (DisplayTarget.PIRATEAUDIO, DisplayTarget.ST7789):
         return St7789Display(brightness=configuration.display.brightness)
     return NullDisplay()
 
@@ -421,8 +423,8 @@ def _reset_all_settings(
     :param configuration: the configuration of this run
     """
     defaults = simulated_defaults(
-        buttons=configuration.buttons.origin == "simulator",
-        display=configuration.display.target == "simulator",
+        buttons=configuration.buttons.origin == ButtonsOrigin.SIMULATOR,
+        display=configuration.display.target == DisplayTarget.SIMULATOR,
     )
     try:
         path = write_configuration_file(configuration_file_path, defaults)
@@ -500,7 +502,10 @@ def build_app(
     :raises OSError: if the font or the display cannot be accessed
     """
     simulator: TkSimulator | None = None
-    if "simulator" in (configuration.buttons.origin, configuration.display.target):
+    if (
+        configuration.buttons.origin == ButtonsOrigin.SIMULATOR
+        or configuration.display.target == DisplayTarget.SIMULATOR
+    ):
         simulator = TkSimulator(
             long_press_time=configuration.buttons.long_press_time,
             repeat_hold_time=configuration.buttons.repeat_hold_time,

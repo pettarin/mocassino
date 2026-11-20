@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - The default values of the configuration are defined in the new `mocassino.defaults` module
+- The choices of the settings (e.g., `buttons.origin`), the volume limits,
+  the modes of the application, the actions, the buttons,
+  and the kinds of button press (`Press`, renamed `ButtonPress`)
+  are defined in the new `mocassino.constants` module
 
 
 ## [0.0.2] - 2026-11-20

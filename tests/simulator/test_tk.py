@@ -12,7 +12,8 @@ from types import SimpleNamespace
 import pytest
 from PIL import Image
 
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.constants import Button, ButtonPress
+from mocassino.controller.events import ButtonEvent
 from mocassino.simulator.tk import (
     BUTTON_CELLS,
     HINT,
@@ -102,8 +103,8 @@ class TestTkSimulator:
     )
     def test_arrow_key_with_shift(self, simulator, events, name, button):
         simulator._on_key(arrow(name, shift=True))
-        assert events.get_nowait() == ButtonEvent(button, Press.LONG)
-        assert events.get_nowait() == ButtonEvent(button, Press.HOLD)
+        assert events.get_nowait() == ButtonEvent(button, ButtonPress.LONG)
+        assert events.get_nowait() == ButtonEvent(button, ButtonPress.HOLD)
         assert events.empty()
 
     def test_click(self, simulator, tk, events):
@@ -153,8 +154,8 @@ class TestTkSimulator:
     def test_key_uppercase(self, simulator, tk, events, character, button):
         calls = tk.root.after.call_count
         simulator._on_key(key(character))
-        assert events.get_nowait() == ButtonEvent(button, Press.LONG)
-        assert events.get_nowait() == ButtonEvent(button, Press.HOLD)
+        assert events.get_nowait() == ButtonEvent(button, ButtonPress.LONG)
+        assert events.get_nowait() == ButtonEvent(button, ButtonPress.HOLD)
         assert events.empty()
         assert tk.root.after.call_count == calls
 
@@ -172,8 +173,8 @@ class TestTkSimulator:
         simulator._on_press(Button.B)
         _, on_held = tk.root.after.call_args.args
         on_held()
-        assert events.get_nowait() == ButtonEvent(Button.B, Press.LONG)
-        assert events.get_nowait() == ButtonEvent(Button.B, Press.HOLD)
+        assert events.get_nowait() == ButtonEvent(Button.B, ButtonPress.LONG)
+        assert events.get_nowait() == ButtonEvent(Button.B, ButtonPress.HOLD)
         simulator._on_release(Button.B)
         assert events.empty()
         simulator._on_press(Button.B)
@@ -189,7 +190,13 @@ class TestTkSimulator:
             assert delay == 200
             on_repeat()
         presses = [events.get_nowait().press for _ in range(5)]
-        assert presses == [Press.LONG, Press.HOLD, Press.HOLD, Press.HOLD, Press.HOLD]
+        assert presses == [
+            ButtonPress.LONG,
+            ButtonPress.HOLD,
+            ButtonPress.HOLD,
+            ButtonPress.HOLD,
+            ButtonPress.HOLD,
+        ]
         timer = tk.root.after.call_args.args
         simulator._on_release(Button.X)
         tk.root.after_cancel.assert_called_once_with(timer)

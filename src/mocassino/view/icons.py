@@ -12,7 +12,7 @@ from functools import cache
 
 from PIL import Image, ImageDraw
 
-from mocassino.controller.actions import Action
+from mocassino.constants import Action
 from mocassino.model.moc import MocState
 
 ICON_SIZE: int = 16

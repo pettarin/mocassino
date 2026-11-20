@@ -6,7 +6,8 @@
 
 import pytest
 
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.constants import Button, ButtonPress
+from mocassino.controller.events import ButtonEvent
 
 
 class TestButtonEvent:
@@ -22,7 +23,7 @@ class TestButtonEvent:
         ],
     )
     def test_rotated(self, orientation, expected):
-        for press in Press:
+        for press in ButtonPress:
             rotated = {
                 button.value: ButtonEvent(button, press).rotated(orientation) for button in Button
             }
@@ -31,7 +32,7 @@ class TestButtonEvent:
 
     def test_rotated_four_times_by_a_quarter_turn_is_unchanged(self):
         for button in Button:
-            event = ButtonEvent(button, Press.LONG)
+            event = ButtonEvent(button, ButtonPress.LONG)
             turned = event
             for _ in range(4):
                 turned = turned.rotated(90)
@@ -40,13 +41,13 @@ class TestButtonEvent:
             assert turned == event
 
     def test_short_by_default(self):
-        assert ButtonEvent(Button.A) == ButtonEvent(Button.A, Press.SHORT)
-        assert ButtonEvent(Button.A) != ButtonEvent(Button.A, Press.LONG)
+        assert ButtonEvent(Button.A) == ButtonEvent(Button.A, ButtonPress.SHORT)
+        assert ButtonEvent(Button.A) != ButtonEvent(Button.A, ButtonPress.LONG)
 
     def test_three_kinds_of_press(self):
-        events = {ButtonEvent(Button.A, press) for press in Press}
+        events = {ButtonEvent(Button.A, press) for press in ButtonPress}
         assert len(events) == 3
-        assert [press.value for press in Press] == ["hold", "long", "short"]
+        assert [press.value for press in ButtonPress] == ["hold", "long", "short"]
 
     def test_usable_as_key(self):
         assert {ButtonEvent(Button.X): 1}[ButtonEvent(Button("X"))] == 1

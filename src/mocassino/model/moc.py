@@ -16,6 +16,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
+from mocassino.constants import VOLUME_MAX, VOLUME_MIN
 from mocassino.defaults import DEFAULT_SYSTEM_MOCP_FILE_PATH
 
 # When the MOC server is busy, it may refuse a command: the command is then tried again,
@@ -202,8 +203,10 @@ class SubprocessMocClient:
 
     def set_volume(self, level: int) -> None:
         """Set the volume to the given level, between 0 and 100."""
-        if not 0 <= level <= 100:
-            raise ValueError(f"The volume level must be between 0 and 100: {level}")
+        if not VOLUME_MIN <= level <= VOLUME_MAX:
+            raise ValueError(
+                f"The volume level must be between {VOLUME_MIN} and {VOLUME_MAX}: {level}"
+            )
         self._run(f"--volume={level}")
 
     def start_server(self) -> None:

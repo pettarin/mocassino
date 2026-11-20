@@ -6,6 +6,7 @@
 
 import pytest
 
+from mocassino.constants import MocStateOnExit, StartupPlaylist, StartupState, StartupVolume
 from mocassino.model.colors import COLOR_NAMES
 from mocassino.model.library import Library
 from mocassino.model.menu import (
@@ -34,13 +35,7 @@ from mocassino.model.menu import (
     build_system_menu,
     build_system_moc_state_on_exit_menu,
 )
-from mocassino.model.settings import (
-    MocStateOnExit,
-    Settings,
-    StartupPlaylist,
-    StartupState,
-    StartupVolume,
-)
+from mocassino.model.settings import Settings
 from mocassino.model.system import System
 
 

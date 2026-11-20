@@ -16,6 +16,19 @@ from typing import Any
 
 import yaml
 
+from mocassino.constants import (
+    DISPLAY_TIMEOUT_CHOICES,
+    ORIENTATIONS,
+    VOLUME_MAX,
+    VOLUME_MIN,
+    ButtonsOrigin,
+    DisplayTarget,
+    MocStateOnExit,
+    RunMode,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.controller.actions import resolve_button_map
 from mocassino.defaults import (
     DEFAULT_BUTTONS_LONG_PRESS_TIME,
@@ -47,19 +60,6 @@ from mocassino.defaults import (
     DEFAULT_SYSTEM_SHUTDOWN_COMMAND,
 )
 from mocassino.model.colors import parse_color
-from mocassino.model.settings import (
-    DISPLAY_TIMEOUT_CHOICES,
-    ORIENTATIONS,
-    MocStateOnExit,
-    StartupPlaylist,
-    StartupState,
-    StartupVolume,
-)
-
-# "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
-BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
-DISPLAY_TARGETS: tuple[str, ...] = ("none", "pirateaudio", "simulator", "st7789")
-RUN_MODES: tuple[str, ...] = ("background", "foreground")
 
 
 @dataclass(frozen=True)
@@ -281,7 +281,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         ),
         "buttons.origin": (
             configuration.buttons.origin,
-            configuration.buttons.origin in BUTTONS_ORIGINS,
+            configuration.buttons.origin in list(ButtonsOrigin),
         ),
         "buttons.repeat_hold_time": (
             configuration.buttons.repeat_hold_time,
@@ -301,7 +301,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         ),
         "display.target": (
             configuration.display.target,
-            configuration.display.target in DISPLAY_TARGETS,
+            configuration.display.target in list(DisplayTarget),
         ),
         "display.tick": (configuration.display.tick, configuration.display.tick > 0),
         "playback.seek_step": (
@@ -310,15 +310,15 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         ),
         "playback.volume_default": (
             configuration.playback.volume_default,
-            0 <= configuration.playback.volume_default <= 100,
+            VOLUME_MIN <= configuration.playback.volume_default <= VOLUME_MAX,
         ),
         "playback.volume_step": (
             configuration.playback.volume_step,
-            1 <= configuration.playback.volume_step <= 100,
+            1 <= configuration.playback.volume_step <= VOLUME_MAX,
         ),
         "run.mode": (
             configuration.run.mode,
-            configuration.run.mode in RUN_MODES,
+            configuration.run.mode in list(RunMode),
         ),
         "startup.playlist": (
             configuration.startup.playlist,
@@ -554,9 +554,13 @@ def simulated_defaults(buttons: bool, display: bool) -> Configuration:
     """
     defaults = Configuration()
     if buttons:
-        defaults = replace(defaults, buttons=replace(defaults.buttons, origin="simulator"))
+        defaults = replace(
+            defaults, buttons=replace(defaults.buttons, origin=ButtonsOrigin.SIMULATOR.value)
+        )
     if display:
-        defaults = replace(defaults, display=replace(defaults.display, target="simulator"))
+        defaults = replace(
+            defaults, display=replace(defaults.display, target=DisplayTarget.SIMULATOR.value)
+        )
     return defaults
 
 

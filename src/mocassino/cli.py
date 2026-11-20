@@ -21,8 +21,6 @@ import yaml
 from mocassino import __version__
 from mocassino.app import App, build_app
 from mocassino.configuration import (
-    BUTTONS_ORIGINS,
-    DISPLAY_TARGETS,
     Configuration,
     ConfigurationError,
     ConfigurationReadError,
@@ -30,8 +28,8 @@ from mocassino.configuration import (
     replace_invalid_configuration_file,
     simulated_defaults,
 )
+from mocassino.constants import ORIENTATIONS, ButtonsOrigin, DisplayTarget, RunMode
 from mocassino.defaults import DEFAULT_CONFIGURATION_FILE_PATH
-from mocassino.model.settings import ORIENTATIONS
 from mocassino.simulator.tk import TkSimulator
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -87,8 +85,8 @@ def _load_configuration(options: GlobalOptions, recover: bool = False) -> Config
     """
     buttons_origin, display_target = options.buttons_origin, options.display_target
     if options.simulator:
-        buttons_origin = buttons_origin or "simulator"
-        display_target = display_target or "simulator"
+        buttons_origin = buttons_origin or ButtonsOrigin.SIMULATOR.value
+        display_target = display_target or DisplayTarget.SIMULATOR.value
     overrides = {
         "buttons": {"origin": buttons_origin},
         "display": {"target": display_target},
@@ -98,7 +96,10 @@ def _load_configuration(options: GlobalOptions, recover: bool = False) -> Config
     try:
         return load_configuration(path, overrides)
     except ConfigurationError as exc:
-        simulated = (buttons_origin == "simulator", display_target == "simulator")
+        simulated = (
+            buttons_origin == ButtonsOrigin.SIMULATOR,
+            display_target == DisplayTarget.SIMULATOR,
+        )
         if not (recover and _recover_configuration_file(path, *simulated)):
             raise click.ClickException(str(exc)) from exc
     try:
@@ -232,8 +233,8 @@ def configuration(
     if default and options.simulator:
         effective = replace(
             effective,
-            buttons=replace(effective.buttons, origin="simulator"),
-            display=replace(effective.display, target="simulator"),
+            buttons=replace(effective.buttons, origin=ButtonsOrigin.SIMULATOR.value),
+            display=replace(effective.display, target=DisplayTarget.SIMULATOR.value),
         )
     content = yaml.safe_dump(effective.to_dict(), sort_keys=True)
     if output_file_path is None:
@@ -255,7 +256,7 @@ def configuration(
 @click.group()
 @click.option(
     "--buttons-origin",
-    type=click.Choice(BUTTONS_ORIGINS),
+    type=click.Choice([origin.value for origin in ButtonsOrigin]),
     help="Where the button events come from (buttons.origin).",
 )
 @click.option(
@@ -266,7 +267,7 @@ def configuration(
 )
 @click.option(
     "--display-target",
-    type=click.Choice(DISPLAY_TARGETS),
+    type=click.Choice([target.value for target in DisplayTarget]),
     help="Where the screen is drawn (display.target).",
 )
 @click.option(
@@ -327,7 +328,7 @@ def run(options: GlobalOptions, background: bool | None) -> None:
     """
     effective = _load_configuration(options, recover=True)
     if background is None:
-        background = effective.run.mode == "background"
+        background = effective.run.mode == RunMode.BACKGROUND
     if not effective.library.directory_path.is_dir():
         raise click.ClickException(
             f"The music root directory '{effective.library.directory_path}' does not exist"

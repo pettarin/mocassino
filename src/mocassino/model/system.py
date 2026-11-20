@@ -8,6 +8,9 @@ import logging
 import socket
 import subprocess
 
+# Where a UDP socket is connected to find the IP address of the host: any address outside
+# the local host works, as nothing is sent
+IP_PROBE_ADDRESS: tuple[str, int] = ("10.255.255.255", 1)
 LOGGER: logging.Logger = logging.getLogger(__name__)
 SHUTDOWN_TIMEOUT: float = 30.0
 
@@ -72,7 +75,7 @@ class System:
         """
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                sock.connect(("10.255.255.255", 1))
+                sock.connect(IP_PROBE_ADDRESS)
                 return str(sock.getsockname()[0])
         except OSError:
             return None

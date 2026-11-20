@@ -7,8 +7,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
-from enum import StrEnum
 
+from mocassino.constants import MocStateOnExit, StartupPlaylist, StartupState, StartupVolume
 from mocassino.defaults import (
     DEFAULT_COLOR_SPECS,
     DEFAULT_DISPLAY_BRIGHTNESS,
@@ -27,56 +27,6 @@ from mocassino.defaults import (
     DEFAULT_SYSTEM_MOC_STATE_ON_EXIT,
 )
 from mocassino.model.colors import COLOR_ROLES
-
-# By how many degrees, clockwise, the display can be rotated
-ORIENTATIONS: tuple[int, ...] = (0, 90, 180, 270)
-# After how many seconds without a button press the display can be turned off; 0 for never
-DISPLAY_TIMEOUT_CHOICES: tuple[int, ...] = (0, 5, 10, 15, 20, 30, 60, 120, 300)
-
-
-class MocStateOnExit(StrEnum):
-    """What the service does to MOC when it exits.
-
-    Defined before the settings, as they refer to it.
-    """
-
-    DO_NOTHING = "do_nothing"
-    PAUSE = "pause"
-    QUIT = "quit"
-    STOP = "stop"
-
-
-class StartupPlaylist(StrEnum):
-    """What the service does about the playlist when it starts.
-
-    Defined before the settings, as they refer to it.
-    """
-
-    OPEN_LIBRARY = "open_library"
-    USE_MOC_STATE = "use_moc_state"
-    USE_SAVED = "use_saved"
-
-
-class StartupState(StrEnum):
-    """What playback state the service sets when it starts.
-
-    Defined before the settings, as they refer to it.
-    """
-
-    PAUSE = "pause"
-    PLAY = "play"
-    STOP = "stop"
-    USE_SAVED = "use_saved"
-
-
-class StartupVolume(StrEnum):
-    """What volume the service sets when it starts.
-
-    Defined before the settings, as they refer to it.
-    """
-
-    USE_DEFAULT = "use_default"
-    USE_SAVED = "use_saved"
 
 
 @dataclass

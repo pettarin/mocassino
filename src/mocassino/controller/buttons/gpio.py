@@ -10,7 +10,8 @@ from functools import partial
 from queue import Queue
 from typing import Any
 
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.constants import Button, ButtonPress
+from mocassino.controller.events import ButtonEvent
 
 BOUNCE_TIME: float = 0.1
 # The pins of the buttons but Y (see BUTTON_Y_PINS)
@@ -47,8 +48,8 @@ class GpioButtonSource:
     def _on_held(self, events: Queue[ButtonEvent], button: Button) -> None:
         """Report a long press and a hold press, and start repeating the latter."""
         released = self._released[button] = threading.Event()
-        events.put(ButtonEvent(button, Press.LONG))
-        events.put(ButtonEvent(button, Press.HOLD))
+        events.put(ButtonEvent(button, ButtonPress.LONG))
+        events.put(ButtonEvent(button, ButtonPress.HOLD))
         threading.Thread(
             target=self._repeat,
             args=(events, button, released),
@@ -92,7 +93,7 @@ class GpioButtonSource:
     ) -> None:
         """Report a hold press at each repeat time, until the button is released."""
         while not released.wait(self._repeat_hold_time):
-            events.put(ButtonEvent(button, Press.HOLD))
+            events.put(ButtonEvent(button, ButtonPress.HOLD))
 
     def close(self) -> None:
         """Stop producing events, and release the GPIO pins."""

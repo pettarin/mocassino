@@ -8,7 +8,8 @@ import logging
 from collections.abc import Callable, Mapping
 from functools import partial
 
-from mocassino.controller.actions import Action, parse_button_map
+from mocassino.constants import Action, MocStateOnExit, StartupPlaylist, StartupState, StartupVolume
+from mocassino.controller.actions import parse_button_map
 from mocassino.controller.events import ButtonEvent
 from mocassino.model.colors import COLOR_ROLES
 from mocassino.model.library import Library
@@ -31,13 +32,7 @@ from mocassino.model.menu import (
     build_system_moc_state_on_exit_menu,
 )
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
-from mocassino.model.settings import (
-    MocStateOnExit,
-    Settings,
-    StartupPlaylist,
-    StartupState,
-    StartupVolume,
-)
+from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
 from mocassino.model.system import System, SystemShutdownError
 

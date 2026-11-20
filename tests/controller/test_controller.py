@@ -8,9 +8,18 @@ import logging
 
 import pytest
 
+from mocassino.constants import (
+    Button,
+    ButtonPress,
+    MocStateOnExit,
+    Mode,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.controller.actions import resolve_button_map
 from mocassino.controller.controller import Controller
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.controller.events import ButtonEvent
 from mocassino.defaults import DEFAULT_BUTTON_MAP
 from mocassino.model.library import Library
 from mocassino.model.menu import Menu, MenuCommand, MenuItem
@@ -21,26 +30,20 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import (
-    MocStateOnExit,
-    Settings,
-    StartupPlaylist,
-    StartupState,
-    StartupVolume,
-)
-from mocassino.model.state import AppState, Mode
+from mocassino.model.settings import Settings
+from mocassino.model.state import AppState
 from mocassino.model.system import System, SystemShutdownError
 
 A = ButtonEvent(Button.A)
-A_LONG = ButtonEvent(Button.A, Press.LONG)
+A_LONG = ButtonEvent(Button.A, ButtonPress.LONG)
 B = ButtonEvent(Button.B)
-B_LONG = ButtonEvent(Button.B, Press.LONG)
+B_LONG = ButtonEvent(Button.B, ButtonPress.LONG)
 X = ButtonEvent(Button.X)
-X_HOLD = ButtonEvent(Button.X, Press.HOLD)
-X_LONG = ButtonEvent(Button.X, Press.LONG)
+X_HOLD = ButtonEvent(Button.X, ButtonPress.HOLD)
+X_LONG = ButtonEvent(Button.X, ButtonPress.LONG)
 Y = ButtonEvent(Button.Y)
-Y_HOLD = ButtonEvent(Button.Y, Press.HOLD)
-Y_LONG = ButtonEvent(Button.Y, Press.LONG)
+Y_HOLD = ButtonEvent(Button.Y, ButtonPress.HOLD)
+Y_LONG = ButtonEvent(Button.Y, ButtonPress.LONG)
 
 
 @pytest.fixture
@@ -619,7 +622,7 @@ class TestController:
         controller.handle(ButtonEvent(volume_down))
         controller.handle(ButtonEvent(volume_down))
         moc.set_volume.assert_called_with(45)
-        controller.handle(ButtonEvent(play_pause, Press.LONG))
+        controller.handle(ButtonEvent(play_pause, ButtonPress.LONG))
         assert state.mode == Mode.MENU
         controller.handle(ButtonEvent(volume_down))
         assert state.current_menu.selected.label == "Settings"

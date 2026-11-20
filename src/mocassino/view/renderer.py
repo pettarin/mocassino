@@ -11,13 +11,14 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from mocassino.constants import Button, ButtonPress, Mode
 from mocassino.controller.actions import parse_button_map, resolve_button_map
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.controller.events import ButtonEvent
 from mocassino.model.colors import parse_color
 from mocassino.model.menu import Menu
 from mocassino.model.moc import MocState
 from mocassino.model.playlist import playlist_fraction
-from mocassino.model.state import AppState, Mode
+from mocassino.model.state import AppState
 from mocassino.view.colors import DEFAULT_COLORS, parse_colors
 from mocassino.view.display.base import HEIGHT, WIDTH
 from mocassino.view.icons import ICON_SIZE, draw_icon, draw_state_icon
@@ -111,7 +112,8 @@ class Renderer:
             if button in (Button.B, Button.Y):
                 outer, inner = HEIGHT - step, HEIGHT - 2 * step
             actions = [
-                self._button_map.get((Mode.PLAYBACK, ButtonEvent(button, press))) for press in Press
+                self._button_map.get((Mode.PLAYBACK, ButtonEvent(button, press)))
+                for press in ButtonPress
             ]
             hold, long, short = actions
             held = hold if long is None else long

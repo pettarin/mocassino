@@ -15,17 +15,19 @@ from enum import StrEnum
 from functools import partial
 from pathlib import Path
 
-from mocassino.model.colors import COLOR_NAMES, COLOR_ROLES, color_name
-from mocassino.model.library import Library
-from mocassino.model.settings import (
+from mocassino.constants import (
     DISPLAY_TIMEOUT_CHOICES,
     ORIENTATIONS,
+    VOLUME_MAX,
+    VOLUME_MIN,
     MocStateOnExit,
-    Settings,
     StartupPlaylist,
     StartupState,
     StartupVolume,
 )
+from mocassino.model.colors import COLOR_NAMES, COLOR_ROLES, color_name
+from mocassino.model.library import Library
+from mocassino.model.settings import Settings
 from mocassino.model.system import System
 
 # The words written in capitals in the labels of the choices
@@ -36,7 +38,7 @@ BRIGHTNESS_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
 # What follows the label of the current color in the menus choosing a color
 CURRENT_MARK: str = "[X]"
 SEEK_STEP_CHOICES: tuple[int, ...] = (1, 2, 5, 10, 30, 60)
-VOLUME_DEFAULT_CHOICES: tuple[int, ...] = tuple(range(0, 101, 5))
+VOLUME_DEFAULT_CHOICES: tuple[int, ...] = tuple(range(VOLUME_MIN, VOLUME_MAX + 1, 5))
 VOLUME_STEP_CHOICES: tuple[int, ...] = (1, 2, 4, 5, 10)
 
 

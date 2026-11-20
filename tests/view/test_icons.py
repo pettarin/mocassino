@@ -7,7 +7,7 @@
 import pytest
 from PIL import Image, ImageDraw
 
-from mocassino.controller.actions import Action
+from mocassino.constants import Action
 from mocassino.model.moc import MocState
 from mocassino.view.icons import (
     ICON_SIZE,

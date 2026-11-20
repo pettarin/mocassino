@@ -7,8 +7,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import StrEnum
 
+from mocassino.constants import VOLUME_MAX, VOLUME_MIN, Mode
+from mocassino.defaults import DEFAULT_PLAYBACK_VOLUME_DEFAULT
 from mocassino.model.menu import Menu
 from mocassino.model.moc import MocStatus
 from mocassino.model.settings import Settings
@@ -33,11 +34,11 @@ class AppState:
     settings: Settings = field(default_factory=Settings)
     shutting_down: bool = False
     status: MocStatus = field(default_factory=MocStatus)
-    volume: int = 50
+    volume: int = DEFAULT_PLAYBACK_VOLUME_DEFAULT
 
     def change_volume(self, delta: int) -> int:
         """Change the volume by the given amount, within 0 and 100, and return it."""
-        self.volume = max(0, min(100, self.volume + delta))
+        self.volume = max(VOLUME_MIN, min(VOLUME_MAX, self.volume + delta))
         return self.volume
 
     def close_menus(self) -> None:
@@ -74,10 +75,3 @@ class AppState:
             self.menus[-1] = menu
         else:
             self.menus.append(menu)
-
-
-class Mode(StrEnum):
-    """The mode of the application."""
-
-    MENU = "menu"
-    PLAYBACK = "playback"

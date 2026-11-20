@@ -7,8 +7,8 @@
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
-from mocassino.controller.actions import Action, resolve_button_map
-from mocassino.controller.events import Button
+from mocassino.constants import Action, Button
+from mocassino.controller.actions import resolve_button_map
 from mocassino.model.menu import Menu, MenuCommand, MenuItem
 from mocassino.model.moc import MocState, MocStatus
 from mocassino.model.settings import Settings

@@ -4,10 +4,11 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
+from mocassino.constants import Mode, StartupPlaylist, StartupVolume
 from mocassino.model.menu import Menu, MenuItem
 from mocassino.model.moc import MocStatus
-from mocassino.model.settings import Settings, StartupPlaylist, StartupVolume
-from mocassino.model.state import AppState, Mode
+from mocassino.model.settings import Settings
+from mocassino.model.state import AppState
 
 
 class TestAppState:

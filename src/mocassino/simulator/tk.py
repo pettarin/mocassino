@@ -18,7 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 from PIL import Image
 
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.constants import Button, ButtonPress
+from mocassino.controller.events import ButtonEvent
 from mocassino.view.display.base import HEIGHT, WIDTH
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ class TkSimulator:
     def _on_held(self, button: Button) -> None:
         """Report a long press and a hold press, and start repeating the latter."""
         self._held.add(button)
-        self._emit(ButtonEvent(button, Press.LONG))
+        self._emit(ButtonEvent(button, ButtonPress.LONG))
         self._on_repeat(button)
 
     def _on_key(self, tk_event: tkinter.Event[tkinter.Misc]) -> None:
@@ -102,8 +103,8 @@ class TkSimulator:
         else:
             return
         if held:
-            self._emit(ButtonEvent(button, Press.LONG))
-            self._emit(ButtonEvent(button, Press.HOLD))
+            self._emit(ButtonEvent(button, ButtonPress.LONG))
+            self._emit(ButtonEvent(button, ButtonPress.HOLD))
         else:
             self._emit(ButtonEvent(button))
 
@@ -125,7 +126,7 @@ class TkSimulator:
 
     def _on_repeat(self, button: Button) -> None:
         """Report a hold press, and schedule the next one."""
-        self._emit(ButtonEvent(button, Press.HOLD))
+        self._emit(ButtonEvent(button, ButtonPress.HOLD))
         delay = int(self._repeat_hold_time * 1000)
         self._timers[button] = self._root.after(delay, partial(self._on_repeat, button))
 

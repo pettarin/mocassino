@@ -7,38 +7,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 
-
-class Button(StrEnum):
-    """The four buttons of the Pirate Audio hat.
-
-    A is top-left, B is bottom-left, X is top-right, and Y is bottom-right.
-    """
-
-    A = "A"
-    B = "B"
-    X = "X"
-    Y = "Y"
-
+from mocassino.constants import Button, ButtonPress
 
 # The buttons in the order they are met going clockwise around the display, from the top-left
 BUTTONS_CLOCKWISE: tuple[Button, ...] = (Button.A, Button.X, Button.Y, Button.B)
-
-
-class Press(StrEnum):
-    """The kinds of press of a button.
-
-    A button released early gives one short press.
-    A button held gives one long press, as soon as it has been held long enough,
-    and a hold press at the same time and then repeatedly, until it is released.
-
-    Defined before the button event, as the latter refers to it.
-    """
-
-    HOLD = "hold"
-    LONG = "long"
-    SHORT = "short"
 
 
 @dataclass(frozen=True)
@@ -46,7 +19,7 @@ class ButtonEvent:
     """A press of a button, of a given kind."""
 
     button: Button
-    press: Press = Press.SHORT
+    press: ButtonPress = ButtonPress.SHORT
 
     def rotated(self, orientation: int) -> ButtonEvent:
         """Return this event as if pressed on the button taking the place of its button.

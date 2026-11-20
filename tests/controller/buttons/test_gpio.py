@@ -15,13 +15,14 @@ import pytest
 from gpiozero import Device
 from gpiozero.pins.mock import MockFactory
 
+from mocassino.constants import Button, ButtonPress
 from mocassino.controller.buttons.gpio import (
     BUTTON_PINS,
     BUTTON_Y_PINS,
     ButtonPinError,
     GpioButtonSource,
 )
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.controller.events import ButtonEvent
 
 LONG_PRESS_TIME = 0.05
 REPEAT_HOLD_TIME = 0.1
@@ -98,8 +99,8 @@ class TestGpioButtonSource:
         )
         source.start(events)
         factory.pin(BUTTON_PINS[Button.A]).drive_low()
-        assert events.get(timeout=1) == ButtonEvent(Button.A, Press.LONG)
-        assert events.get(timeout=1) == ButtonEvent(Button.A, Press.HOLD)
+        assert events.get(timeout=1) == ButtonEvent(Button.A, ButtonPress.LONG)
+        assert events.get(timeout=1) == ButtonEvent(Button.A, ButtonPress.HOLD)
         source.close()
         time.sleep(2 * REPEAT_HOLD_TIME)
         while not events.empty():
@@ -109,30 +110,30 @@ class TestGpioButtonSource:
 
     def test_long_press(self, factory, events, source):
         press(factory, Button.A, LONG_PRESS_TIME + REPEAT_HOLD_TIME / 2)
-        assert events.get(timeout=1) == ButtonEvent(Button.A, Press.LONG)
-        assert events.get(timeout=1) == ButtonEvent(Button.A, Press.HOLD)
+        assert events.get(timeout=1) == ButtonEvent(Button.A, ButtonPress.LONG)
+        assert events.get(timeout=1) == ButtonEvent(Button.A, ButtonPress.HOLD)
         with pytest.raises(Empty):
             events.get(timeout=3 * REPEAT_HOLD_TIME)
 
     def test_long_press_is_reported_while_held(self, factory, events, source):
         pin = factory.pin(BUTTON_PINS[Button.B])
         pin.drive_low()
-        assert events.get(timeout=1) == ButtonEvent(Button.B, Press.LONG)
+        assert events.get(timeout=1) == ButtonEvent(Button.B, ButtonPress.LONG)
         pin.drive_high()
 
     def test_long_press_repeats_while_held(self, factory, events, source):
         pin = factory.pin(BUTTON_PINS[Button.X])
         pin.drive_low()
-        assert events.get(timeout=1) == ButtonEvent(Button.X, Press.LONG)
+        assert events.get(timeout=1) == ButtonEvent(Button.X, ButtonPress.LONG)
         started = time.monotonic()
         for _ in range(4):
-            assert events.get(timeout=1) == ButtonEvent(Button.X, Press.HOLD)
+            assert events.get(timeout=1) == ButtonEvent(Button.X, ButtonPress.HOLD)
         elapsed = time.monotonic() - started
         assert 2 * REPEAT_HOLD_TIME < elapsed < 6 * REPEAT_HOLD_TIME
         pin.drive_high()
         time.sleep(2 * REPEAT_HOLD_TIME)
         while not events.empty():
-            assert events.get_nowait() == ButtonEvent(Button.X, Press.HOLD)
+            assert events.get_nowait() == ButtonEvent(Button.X, ButtonPress.HOLD)
         with pytest.raises(Empty):
             events.get(timeout=3 * REPEAT_HOLD_TIME)
 
@@ -189,7 +190,7 @@ class TestGpioButtonSource:
 
     def test_short_press_after_long_press(self, factory, events, source):
         press(factory, Button.A, LONG_PRESS_TIME + REPEAT_HOLD_TIME / 2)
-        assert events.get(timeout=1) == ButtonEvent(Button.A, Press.LONG)
-        assert events.get(timeout=1) == ButtonEvent(Button.A, Press.HOLD)
+        assert events.get(timeout=1) == ButtonEvent(Button.A, ButtonPress.LONG)
+        assert events.get(timeout=1) == ButtonEvent(Button.A, ButtonPress.HOLD)
         press(factory, Button.A, 0.0)
         assert events.get(timeout=1) == ButtonEvent(Button.A)

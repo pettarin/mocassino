@@ -13,11 +13,20 @@ import pytest
 import mocassino.app
 from mocassino.app import App, build_app
 from mocassino.configuration import ColorsConfiguration, Configuration, load_configuration
-from mocassino.controller.actions import Action
+from mocassino.constants import (
+    Action,
+    Button,
+    ButtonPress,
+    MocStateOnExit,
+    Mode,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
 from mocassino.controller.controller import Controller
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.controller.events import ButtonEvent
 from mocassino.defaults import DEFAULT_BUTTON_MAP
 from mocassino.model.library import Library
 from mocassino.model.moc import (
@@ -27,14 +36,8 @@ from mocassino.model.moc import (
     MocStatus,
     SubprocessMocClient,
 )
-from mocassino.model.settings import (
-    MocStateOnExit,
-    Settings,
-    StartupPlaylist,
-    StartupState,
-    StartupVolume,
-)
-from mocassino.model.state import AppState, Mode
+from mocassino.model.settings import Settings
+from mocassino.model.state import AppState
 from mocassino.model.state_file import SavedState, StateFile
 from mocassino.model.system import System, SystemShutdownError
 from mocassino.simulator.tk import TkSimulator
@@ -48,7 +51,7 @@ PLAYING = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Title
 # From playback mode: open the menu, go up to System, open it, go up to Shut down,
 # open it, go down to Shut down now, and select it
 SHUT_DOWN = (
-    ButtonEvent(Button.A, Press.LONG),
+    ButtonEvent(Button.A, ButtonPress.LONG),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
     ButtonEvent(Button.X),
@@ -59,7 +62,7 @@ SHUT_DOWN = (
 # From playback mode: open the menu, go up to System, open it, go up twice to Reboot,
 # open it, go down to Reboot now, and select it
 REBOOT = (
-    ButtonEvent(Button.A, Press.LONG),
+    ButtonEvent(Button.A, ButtonPress.LONG),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
     ButtonEvent(Button.X),
@@ -71,7 +74,7 @@ REBOOT = (
 # From playback mode: open the menu, go down to Settings, open it, go up to Reset all settings,
 # open it, go down to Reset now, and select it
 RESET_ALL_SETTINGS = (
-    ButtonEvent(Button.A, Press.LONG),
+    ButtonEvent(Button.A, ButtonPress.LONG),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
     ButtonEvent(Button.X),
@@ -84,7 +87,7 @@ TICK = 0.01
 # go up to UI elements (its last item), open it, go to Show side icons (its third item),
 # and select it
 TOGGLE_SIDE_ICONS = (
-    ButtonEvent(Button.A, Press.LONG),
+    ButtonEvent(Button.A, ButtonPress.LONG),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
     ButtonEvent(Button.B),
@@ -205,8 +208,8 @@ class TestDisplayTimeout:
         shown = display.show.call_count
         for event in (
             ButtonEvent(Button.X),
-            ButtonEvent(Button.X, Press.LONG),
-            ButtonEvent(Button.X, Press.HOLD),
+            ButtonEvent(Button.X, ButtonPress.LONG),
+            ButtonEvent(Button.X, ButtonPress.HOLD),
         ):
             app.events.put(event)
         app.step()
@@ -596,7 +599,7 @@ class TestApp:
     def test_step_handles_all_the_events(self, app, state, moc, display):
         for _ in range(3):
             app.events.put(ButtonEvent(Button.X))
-        app.events.put(ButtonEvent(Button.A, Press.LONG))
+        app.events.put(ButtonEvent(Button.A, ButtonPress.LONG))
         app.step()
         assert state.volume == 55
         assert state.mode == Mode.MENU
@@ -689,7 +692,7 @@ class TestBuildApp:
         assert app.simulator is None
         assert app._state.volume == 30
         assert app._tick == 0.5
-        app.events.put(ButtonEvent(Button.A, Press.LONG))
+        app.events.put(ButtonEvent(Button.A, ButtonPress.LONG))
         app._controller.handle(app.events.get())
         assert app._state.mode == Mode.MENU
 
@@ -700,14 +703,14 @@ class TestBuildApp:
         assert app._state.settings.playback_volume_step == 4
         app._controller.handle(ButtonEvent(Button.X))
         moc.set_volume.assert_called_once_with(54)
-        app._controller.handle(ButtonEvent(Button.X, Press.HOLD))
+        app._controller.handle(ButtonEvent(Button.X, ButtonPress.HOLD))
         moc.seek.assert_called_once_with(30)
 
     def test_playback_steps_settings_are_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
         app = build_app(self.configuration("none", "none"), path)
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
@@ -901,7 +904,7 @@ class TestBuildApp:
         path = tmp_path / "custom.yaml"
         app = build_app(self.configuration("none", "none"), path)
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
@@ -945,7 +948,7 @@ class TestBuildApp:
         path = tmp_path / "custom.yaml"
         app = build_app(self.configuration("none", "none"), path)
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
@@ -980,7 +983,7 @@ class TestBuildApp:
         app = build_app(configuration, path)
         assert app._state.settings.system_moc_state_on_exit is MocStateOnExit.PAUSE
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
@@ -1016,7 +1019,7 @@ class TestBuildApp:
         )
         app = build_app(configuration, path)
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
@@ -1052,7 +1055,7 @@ class TestBuildApp:
         )
         app = build_app(configuration, path)
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
@@ -1077,7 +1080,7 @@ class TestBuildApp:
         path = tmp_path / "custom.yaml"
         app = build_app(self.configuration("none", "none"), path)
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
@@ -1106,7 +1109,7 @@ class TestBuildApp:
         app = build_app(configuration, path)
         assert app._state.settings.display_timeout == 0
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
@@ -1136,7 +1139,7 @@ class TestBuildApp:
         path = tmp_path / "custom.yaml"
         app = build_app(self.configuration("none", "none"), path)
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.B),
@@ -1157,7 +1160,7 @@ class TestBuildApp:
         assert app._state.settings.playback_volume_default == 30
         assert app._state.volume == 30
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
@@ -1179,7 +1182,7 @@ class TestBuildApp:
         app = build_app(self.configuration("none", "none"), path)
         assert app._state.settings.startup_volume is StartupVolume.USE_SAVED
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),
@@ -1386,7 +1389,7 @@ class TestBuildApp:
         app = build_app(self.configuration("none", "none"), path)
         assert app._state.settings.startup_state is StartupState.USE_SAVED
         events = (
-            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.X),

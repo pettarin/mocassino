@@ -12,30 +12,12 @@ and the "_hold" suffix for the hold presses, which repeat while the button is he
 from __future__ import annotations
 
 from collections.abc import Mapping
-from enum import StrEnum
 
-from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.constants import Action, Button, ButtonPress, Mode
+from mocassino.controller.events import ButtonEvent
 from mocassino.defaults import DEFAULT_BUTTON_MAP
-from mocassino.model.state import Mode
 
 type ButtonMap = dict[tuple[Mode, ButtonEvent], Action]
-
-
-class Action(StrEnum):
-    """What a button event can ask for."""
-
-    MENU_BACK = "menu_back"
-    MENU_DOWN = "menu_down"
-    MENU_SELECT = "menu_select"
-    MENU_UP = "menu_up"
-    NEXT = "next"
-    OPEN_MENU = "open_menu"
-    PLAY_PAUSE = "play_pause"
-    PREVIOUS = "previous"
-    SEEK_BACKWARD = "seek_backward"
-    SEEK_FORWARD = "seek_forward"
-    VOLUME_DOWN = "volume_down"
-    VOLUME_UP = "volume_up"
 
 
 def parse_button_map(button_map: Mapping[str, Mapping[str, str]]) -> ButtonMap:
@@ -47,9 +29,11 @@ def parse_button_map(button_map: Mapping[str, Mapping[str, str]]) -> ButtonMap:
     for mode, actions in button_map.items():
         for key, action in actions.items():
             button, separator, suffix = key.partition("_")
-            if separator and suffix not in (Press.HOLD, Press.LONG):
+            if separator and suffix not in (ButtonPress.HOLD, ButtonPress.LONG):
                 raise ValueError(f"'{key}' is not a valid button press")
-            event = ButtonEvent(Button(button), Press(suffix) if separator else Press.SHORT)
+            event = ButtonEvent(
+                Button(button), ButtonPress(suffix) if separator else ButtonPress.SHORT
+            )
             parsed[(Mode(mode), event)] = Action(action)
     return parsed
 

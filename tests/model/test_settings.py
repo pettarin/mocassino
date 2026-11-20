@@ -4,13 +4,8 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
-from mocassino.model.settings import (
-    MocStateOnExit,
-    Settings,
-    StartupPlaylist,
-    StartupState,
-    StartupVolume,
-)
+from mocassino.constants import MocStateOnExit, StartupPlaylist, StartupState, StartupVolume
+from mocassino.model.settings import Settings
 
 
 class TestSettings:

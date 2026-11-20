@@ -20,6 +20,7 @@ from typing import Any
 
 import yaml
 
+from mocassino.constants import VOLUME_MAX, VOLUME_MIN
 from mocassino.defaults import DEFAULT_STATE_FILE_PATH
 from mocassino.model.moc import MocState
 
@@ -95,7 +96,7 @@ class StateFile:
             "file_path": _is_text(playback.get("file_path")),
             "seek": _is_integer(playback.get("seek"), 0, None),
             "state": playback.get("state") in names,
-            "volume": _is_integer(playback.get("volume"), 0, 100),
+            "volume": _is_integer(playback.get("volume"), VOLUME_MIN, VOLUME_MAX),
         }
         for key, valid in checks.items():
             if not valid and playback.get(key) is not None:
