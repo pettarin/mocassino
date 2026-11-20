@@ -34,6 +34,7 @@ from mocassino.model.menu import (
     build_playback_volume_default_menu,
     build_playback_volume_step_menu,
     build_root_menu,
+    build_save_state_menu,
     build_startup_playlist_menu,
     build_startup_state_menu,
     build_startup_volume_menu,
@@ -116,13 +117,31 @@ SETTERS: dict[
     ),
 }
 
-# For each menu command turning on or off a setting of the display: the setting
-TOGGLES: dict[MenuCommand, str] = {
-    MenuCommand.TOGGLE_PLAYLIST_BAR: "show_playlist_bar",
-    MenuCommand.TOGGLE_PROGRESS_BAR: "show_progress_bar",
-    MenuCommand.TOGGLE_SIDE_ICONS: "show_side_icons",
-    MenuCommand.TOGGLE_TIMERS: "show_timers",
-    MenuCommand.TOGGLE_VOLUME_BAR: "show_volume_bar",
+# For each menu command turning on or off a setting: the setting, and the menu to show again
+TOGGLES: dict[MenuCommand, tuple[str, Callable[[Settings], Menu]]] = {
+    MenuCommand.TOGGLE_PLAYLIST_BAR: ("show_playlist_bar", build_display_ui_elements_menu),
+    MenuCommand.TOGGLE_PROGRESS_BAR: ("show_progress_bar", build_display_ui_elements_menu),
+    MenuCommand.TOGGLE_SAVE_STATE_ON_EXIT: ("save_state_on_exit", build_save_state_menu),
+    MenuCommand.TOGGLE_SAVE_STATE_ON_PLAYBACK_TICK: (
+        "save_state_on_playback_tick",
+        build_save_state_menu,
+    ),
+    MenuCommand.TOGGLE_SAVE_STATE_ON_STARTUP: ("save_state_on_startup", build_save_state_menu),
+    MenuCommand.TOGGLE_SAVE_STATE_ON_STATE_CHANGE: (
+        "save_state_on_state_change",
+        build_save_state_menu,
+    ),
+    MenuCommand.TOGGLE_SAVE_STATE_ON_TRACK_CHANGE: (
+        "save_state_on_track_change",
+        build_save_state_menu,
+    ),
+    MenuCommand.TOGGLE_SAVE_STATE_ON_VOLUME_CHANGE: (
+        "save_state_on_volume_change",
+        build_save_state_menu,
+    ),
+    MenuCommand.TOGGLE_SIDE_ICONS: ("show_side_icons", build_display_ui_elements_menu),
+    MenuCommand.TOGGLE_TIMERS: ("show_timers", build_display_ui_elements_menu),
+    MenuCommand.TOGGLE_VOLUME_BAR: ("show_volume_bar", build_display_ui_elements_menu),
 }
 
 
@@ -240,9 +259,9 @@ class Controller:
             self._halt(self._system.shutdown)
         elif item.command in TOGGLES:
             settings = self._state.settings
-            attribute = TOGGLES[item.command]
+            attribute, build_menu = TOGGLES[item.command]
             setattr(settings, attribute, not getattr(settings, attribute))
-            self._state.replace_menu(build_display_ui_elements_menu(settings))
+            self._state.replace_menu(build_menu(settings))
             if self._save_settings is not None:
                 self._save_settings(settings)
 

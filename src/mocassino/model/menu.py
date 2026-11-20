@@ -89,6 +89,12 @@ class MenuCommand(StrEnum):
     SHUTDOWN = "shutdown"
     TOGGLE_PLAYLIST_BAR = "toggle_playlist_bar"
     TOGGLE_PROGRESS_BAR = "toggle_progress_bar"
+    TOGGLE_SAVE_STATE_ON_EXIT = "toggle_save_state_on_exit"
+    TOGGLE_SAVE_STATE_ON_PLAYBACK_TICK = "toggle_save_state_on_playback_tick"
+    TOGGLE_SAVE_STATE_ON_STARTUP = "toggle_save_state_on_startup"
+    TOGGLE_SAVE_STATE_ON_STATE_CHANGE = "toggle_save_state_on_state_change"
+    TOGGLE_SAVE_STATE_ON_TRACK_CHANGE = "toggle_save_state_on_track_change"
+    TOGGLE_SAVE_STATE_ON_VOLUME_CHANGE = "toggle_save_state_on_volume_change"
     TOGGLE_SIDE_ICONS = "toggle_side_icons"
     TOGGLE_TIMERS = "toggle_timers"
     TOGGLE_VOLUME_BAR = "toggle_volume_bar"
@@ -497,11 +503,53 @@ def build_root_menu(library: Library, system: System, settings: Settings) -> Men
     )
 
 
+def build_save_state_menu(settings: Settings) -> Menu:
+    """Build the menu showing when the state is saved to the state file, and changing it.
+
+    Like the display menu, it has to be built again when a setting changes.
+    """
+    return Menu(
+        title="Save state",
+        items=(
+            MenuItem(
+                label="On exit",
+                checked=settings.save_state_on_exit,
+                command=MenuCommand.TOGGLE_SAVE_STATE_ON_EXIT,
+            ),
+            MenuItem(
+                label="On playback tick",
+                checked=settings.save_state_on_playback_tick,
+                command=MenuCommand.TOGGLE_SAVE_STATE_ON_PLAYBACK_TICK,
+            ),
+            MenuItem(
+                label="On startup",
+                checked=settings.save_state_on_startup,
+                command=MenuCommand.TOGGLE_SAVE_STATE_ON_STARTUP,
+            ),
+            MenuItem(
+                label="On state change",
+                checked=settings.save_state_on_state_change,
+                command=MenuCommand.TOGGLE_SAVE_STATE_ON_STATE_CHANGE,
+            ),
+            MenuItem(
+                label="On track change",
+                checked=settings.save_state_on_track_change,
+                command=MenuCommand.TOGGLE_SAVE_STATE_ON_TRACK_CHANGE,
+            ),
+            MenuItem(
+                label="On volume change",
+                checked=settings.save_state_on_volume_change,
+                command=MenuCommand.TOGGLE_SAVE_STATE_ON_VOLUME_CHANGE,
+            ),
+        ),
+    )
+
+
 def build_settings_menu(settings: Settings) -> Menu:
     """Build the menu leading to the settings, grouped by what they are about.
 
-    It also leads to the setting of what is done to MOC on exit,
-    and resets all the settings, after a confirmation.
+    It also leads to the setting of what is done to MOC on exit, to the settings of when
+    the state is saved, and resets all the settings, after a confirmation.
     """
     return Menu(
         title="Settings",
@@ -512,6 +560,7 @@ def build_settings_menu(settings: Settings) -> Menu:
                 label="MOC state on exit",
                 submenu=partial(build_system_moc_state_on_exit_menu, settings),
             ),
+            MenuItem(label="Save state", submenu=partial(build_save_state_menu, settings)),
             MenuItem(label="Startup", submenu=partial(build_startup_menu, settings)),
             MenuItem(label="Reset all settings", submenu=_build_reset_all_settings_menu),
         ),

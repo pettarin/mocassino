@@ -38,6 +38,8 @@ class TestSettings:
             playback_volume_default=20,
             playback_volume_step=2,
             right_timer_value=RightTimerValue.REMAINING_TIME,
+            save_state_on_exit=False,
+            save_state_on_playback_tick=True,
             show_progress_bar=False,
             show_side_icons=False,
             show_timers=False,

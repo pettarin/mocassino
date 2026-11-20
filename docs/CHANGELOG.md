@@ -18,9 +18,13 @@ All notable changes to this project will be documented in this file.
 - The `display.ui_elements.right_timer_value` setting, and the `Right timer value` menu
   in the `UI elements` menu, to have the timer on the right show the time remaining
   (`remaining_time`) instead of the end time, the length of the track (`end_time`)
+- The `save_state` section (`on_exit`, `on_playback_tick`, `on_startup`, `on_state_change`,
+  `on_track_change`, `on_volume_change`), and the `Save state` menu in the `Settings` menu,
+  to choose when the state file is written
 
 ### Changed
 
+- The state file is no longer written when a setting is changed from the menus
 - `mocassino configuration --default` honors the global options
   `-l / --library-directory-path` and `-s / --simulator`
 - In playback mode, without the progress bar, the album moves down to its place,

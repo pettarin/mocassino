@@ -19,6 +19,7 @@ from mocassino.configuration import (
     LibraryConfiguration,
     PlaybackConfiguration,
     RunConfiguration,
+    SaveStateConfiguration,
     StartupConfiguration,
     SystemConfiguration,
     UiElementsConfiguration,
@@ -72,6 +73,14 @@ class TestConfiguration:
             seek_step=10, volume_default=50, volume_step=5
         )
         assert configuration.run == RunConfiguration(mode="background")
+        assert configuration.save_state == SaveStateConfiguration(
+            on_exit=True,
+            on_playback_tick=False,
+            on_startup=True,
+            on_state_change=True,
+            on_track_change=True,
+            on_volume_change=True,
+        )
         assert configuration.startup == StartupConfiguration(
             playlist="use_saved", state="use_saved", volume="use_saved"
         )
@@ -116,6 +125,14 @@ class TestConfiguration:
             "library": {"directory_path": str(home)},
             "playback": {"seek_step": 10, "volume_default": 50, "volume_step": 5},
             "run": {"mode": "background"},
+            "save_state": {
+                "on_exit": True,
+                "on_playback_tick": False,
+                "on_startup": True,
+                "on_state_change": True,
+                "on_track_change": True,
+                "on_volume_change": True,
+            },
             "startup": {
                 "playlist": "use_saved",
                 "state": "use_saved",
@@ -307,6 +324,33 @@ class TestLoadConfiguration:
     def test_display_targets(self, target):
         configuration = load_configuration(overrides={"display": {"target": target}})
         assert configuration.display.target == target
+
+    def test_save_state(self, tmp_path):
+        path = write_yaml(tmp_path, "save_state:\n  on_exit: false\n  on_playback_tick: true\n")
+        assert load_configuration(path).save_state == SaveStateConfiguration(
+            on_exit=False, on_playback_tick=True
+        )
+
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "on_exit",
+            "on_playback_tick",
+            "on_startup",
+            "on_state_change",
+            "on_track_change",
+            "on_volume_change",
+        ],
+    )
+    def test_save_state_not_valid(self, key):
+        with pytest.raises(ConfigurationError, match=f"Invalid value for 'save_state.{key}': 'no'"):
+            load_configuration(overrides={"save_state": {key: "no"}})
+
+    def test_save_state_unknown(self):
+        with pytest.raises(
+            ConfigurationError, match="Unknown configuration keys: save_state.on_pause"
+        ):
+            load_configuration(overrides={"save_state": {"on_pause": True}})
 
     @pytest.mark.parametrize("playlist", ["open_library", "use_moc_state", "use_saved"])
     def test_startup_playlists(self, tmp_path, playlist):

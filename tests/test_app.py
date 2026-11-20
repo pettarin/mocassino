@@ -275,19 +275,20 @@ class TestApp:
         state_file.save.assert_called_with(
             replace(playing, file_path="/music/b.flac", seek=7, state=MocState.PAUSE, volume=45)
         )
+        # a setting changed from the menus is saved to the configuration, not to the state
         for event in TOGGLE_SIDE_ICONS:
             app.events.put(event)
         app.step()
-        assert state_file.save.call_count == 4
+        assert state_file.save.call_count == 3
         app.step()
-        assert state_file.save.call_count == 4
+        assert state_file.save.call_count == 3
         moc.status.return_value = MocStatus(
             current_seconds=60, file_path="/music/b.flac", state=MocState.PAUSE
         )
         app.step()
-        assert state_file.save.call_count == 4
+        assert state_file.save.call_count == 3
         app.close()
-        assert state_file.save.call_count == 5
+        assert state_file.save.call_count == 4
         state_file.save.assert_called_with(
             replace(playing, file_path="/music/b.flac", seek=60, state=MocState.PAUSE, volume=45)
         )
@@ -388,6 +389,92 @@ class TestApp:
         app.close()
         assert state_file.save.call_count == 2
 
+    def test_state_is_not_saved_on_exit(self, saving_app, state_file, state):
+        state.settings.save_state_on_exit = False
+        saving_app.step()
+        assert state_file.save.call_count == 1
+        saving_app.close()
+        assert state_file.save.call_count == 1
+
+    def test_state_is_not_saved_on_shutdown(self, saving_app, state_file, state, moc):
+        state.settings.save_state_on_exit = False
+        saving_app.step()
+        assert state_file.save.call_count == 1
+        state.shutting_down = True
+        moc.status.return_value = MocStatus(state=MocState.STOP)
+        saving_app.step()
+        saving_app.close()
+        assert state_file.save.call_count == 1
+
+    @pytest.mark.parametrize(
+        "attribute",
+        ["save_state_on_state_change", "save_state_on_track_change", "save_state_on_volume_change"],
+    )
+    def test_state_is_not_saved_on_a_change(self, saving_app, state_file, state, moc, attribute):
+        setattr(state.settings, attribute, False)
+        saving_app.step()
+        assert state_file.save.call_count == 1
+        if attribute == "save_state_on_state_change":
+            moc.status.return_value = MocStatus(file_path="/music/a.flac", state=MocState.PAUSE)
+        elif attribute == "save_state_on_track_change":
+            moc.status.return_value = MocStatus(file_path="/music/b.flac", state=MocState.PLAY)
+        else:
+            saving_app.events.put(ButtonEvent(Button.X))
+        saving_app.step()
+        saving_app.step()
+        assert state_file.save.call_count == 1
+
+    def test_change_not_saved_is_saved_with_the_next_one(self, saving_app, state_file, state, moc):
+        state.settings.save_state_on_volume_change = False
+        saving_app.step()
+        saving_app.events.put(ButtonEvent(Button.X))
+        saving_app.step()
+        assert state_file.save.call_count == 1
+        moc.status.return_value = MocStatus(file_path="/music/b.flac", state=MocState.PLAY)
+        saving_app.step()
+        assert state_file.save.call_count == 2
+        state_file.save.assert_called_with(
+            SavedState(
+                directory_path="/music", file_path="/music/b.flac", state=MocState.PLAY, volume=45
+            )
+        )
+
+    def test_state_is_saved_at_every_tick(self, saving_app, state_file, state, moc):
+        settings = state.settings
+        settings.save_state_on_state_change = False
+        settings.save_state_on_track_change = False
+        settings.save_state_on_volume_change = False
+        settings.save_state_on_playback_tick = True
+        for count in range(1, 4):
+            moc.status.return_value = MocStatus(
+                current_seconds=count, file_path="/music/a.flac", state=MocState.PLAY
+            )
+            saving_app.step()
+            assert state_file.save.call_count == count
+            state_file.save.assert_called_with(
+                SavedState(
+                    directory_path="/music",
+                    file_path="/music/a.flac",
+                    seek=count,
+                    state=MocState.PLAY,
+                    volume=40,
+                )
+            )
+
+    def test_state_is_never_saved(self, saving_app, state_file, state, moc):
+        settings = state.settings
+        settings.save_state_on_exit = False
+        settings.save_state_on_state_change = False
+        settings.save_state_on_track_change = False
+        settings.save_state_on_volume_change = False
+        saving_app.step()
+        saving_app.events.put(ButtonEvent(Button.X))
+        saving_app.step()
+        moc.status.return_value = MocStatus(file_path="/music/b.flac", state=MocState.PAUSE)
+        saving_app.step()
+        saving_app.close()
+        state_file.save.assert_not_called()
+
     def test_start_resumes_the_saved_playback(self, saving_app, state_file, state, moc, mocker):
         saved = SavedState(directory_path="/music", file_path="/music/a.flac", volume=40)
         state_file.load.return_value = saved
@@ -409,6 +496,8 @@ class TestApp:
                 volume=40,
             )
         )
+        saving_app.step()
+        state_file.save.assert_called_once()
 
     def test_start_using_the_moc_state(self, saving_app, state_file, state, moc, mocker):
         state.settings.startup_playlist = StartupPlaylist.USE_MOC_STATE
@@ -430,6 +519,8 @@ class TestApp:
                 volume=40,
             )
         )
+        saving_app.step()
+        state_file.save.assert_called_once()
 
     def test_start_using_the_moc_state_when_moc_plays_something_else(
         self, saving_app, state_file, state, moc
@@ -457,6 +548,23 @@ class TestApp:
         assert state.played_path is None
         moc.set_volume.assert_called_once_with(40)
         state_file.save.assert_called_once_with(SavedState(volume=40))
+        saving_app.step()
+        state_file.save.assert_called_once()
+
+    def test_start_without_saving_the_state(self, saving_app, state_file, state, moc, mocker):
+        state.settings.save_state_on_startup = False
+        state_file.load.return_value = SavedState(
+            directory_path="/music", file_path="/music/a.flac", volume=40
+        )
+        mocker.patch("mocassino.app.resume_playback", return_value="/music")
+        saving_app.start()
+        state_file.save.assert_not_called()
+        # what is played at the start is not a change of the track, nor of the playback state
+        saving_app.step()
+        state_file.save.assert_not_called()
+        moc.status.return_value = MocStatus(file_path="/music/a.flac", state=MocState.PAUSE)
+        saving_app.step()
+        state_file.save.assert_called_once()
 
     def test_start_without_state_file(self, app, state, moc, mocker):
         resume = mocker.patch("mocassino.app.resume_playback", return_value=None)
@@ -474,6 +582,8 @@ class TestApp:
         saving_app.start()
         assert state.played_path is None
         state_file.save.assert_called_once_with(SavedState(volume=40))
+        saving_app.step()
+        state_file.save.assert_called_once()
 
     def test_start_when_resuming_fails(self, saving_app, state_file, moc, mocker, caplog):
         mocker.patch("mocassino.app.resume_playback", side_effect=MocError("broken"))
@@ -483,6 +593,8 @@ class TestApp:
         assert "Cannot set up the playlist: broken" in caplog.text
         moc.set_volume.assert_called_once_with(40)
         state_file.save.assert_called_once_with(SavedState(volume=40))
+        saving_app.step()
+        state_file.save.assert_called_once()
 
     def test_close(self, app, moc, display, button_source):
         app.close()
@@ -788,6 +900,13 @@ class TestBuildApp:
             "    show_side_icons: false\n"
             "    show_timers: true\n"
             "    show_volume_bar: true\n"
+            "save_state:\n"
+            "  on_exit: true\n"
+            "  on_playback_tick: false\n"
+            "  on_startup: true\n"
+            "  on_state_change: true\n"
+            "  on_track_change: true\n"
+            "  on_volume_change: true\n"
             "startup:\n"
             "  playlist: use_saved\n"
             "  state: use_saved\n"
@@ -824,6 +943,13 @@ class TestBuildApp:
             "  seek_step: 10\n"
             "  volume_default: 50\n"
             "  volume_step: 5\n"
+            "save_state:\n"
+            "  on_exit: true\n"
+            "  on_playback_tick: false\n"
+            "  on_startup: true\n"
+            "  on_state_change: true\n"
+            "  on_track_change: true\n"
+            "  on_volume_change: true\n"
             "startup:\n"
             "  playlist: use_saved\n"
             "  state: use_saved\n"

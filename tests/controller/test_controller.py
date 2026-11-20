@@ -425,6 +425,42 @@ class TestController:
         assert getattr(state.settings, attribute) is True
         assert state.current_menu.selected.checked is True
 
+    @pytest.mark.parametrize(
+        ("moves", "label", "attribute"),
+        [
+            (0, "On exit", "save_state_on_exit"),
+            (1, "On playback tick", "save_state_on_playback_tick"),
+            (2, "On startup", "save_state_on_startup"),
+            (3, "On state change", "save_state_on_state_change"),
+            (4, "On track change", "save_state_on_track_change"),
+            (5, "On volume change", "save_state_on_volume_change"),
+        ],
+    )
+    def test_menu_select_toggles_of_the_save_state(
+        self, mocker, state, moc, library, system, moves, label, attribute
+    ):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, Y, Y, Y, B, *[Y] * moves):
+            controller.handle(event)
+        assert state.current_menu.title == "Save state"
+        assert state.current_menu.selected.label == label
+        before = getattr(state.settings, attribute)
+        assert state.current_menu.selected.checked is before
+        controller.handle(B)
+        assert getattr(state.settings, attribute) is not before
+        assert state.current_menu.title == "Save state"
+        assert state.current_menu.selected.label == label
+        assert state.current_menu.selected.checked is not before
+        save_settings.assert_called_once_with(state.settings)
+
     def test_menu_select_right_timer_value(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(

@@ -1,7 +1,7 @@
 """Configuration of the service: defaults, YAML file, and overrides.
 
 The settings are grouped in sections, one per concern:
-buttons, display, library, playback, run, startup, and system.
+buttons, display, library, playback, run, save_state, startup, and system.
 
 :copyright: Copyright (C) 2026 Alberto Pettarin
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
@@ -54,6 +54,12 @@ from mocassino.defaults import (
     DEFAULT_PLAYBACK_VOLUME_DEFAULT,
     DEFAULT_PLAYBACK_VOLUME_STEP,
     DEFAULT_RUN_MODE,
+    DEFAULT_SAVE_STATE_ON_EXIT,
+    DEFAULT_SAVE_STATE_ON_PLAYBACK_TICK,
+    DEFAULT_SAVE_STATE_ON_STARTUP,
+    DEFAULT_SAVE_STATE_ON_STATE_CHANGE,
+    DEFAULT_SAVE_STATE_ON_TRACK_CHANGE,
+    DEFAULT_SAVE_STATE_ON_VOLUME_CHANGE,
     DEFAULT_STARTUP_PLAYLIST,
     DEFAULT_STARTUP_STATE,
     DEFAULT_STARTUP_VOLUME,
@@ -163,6 +169,23 @@ class RunConfiguration:
 
 
 @dataclass(frozen=True)
+class SaveStateConfiguration:
+    """The settings of when the state is saved to the state file.
+
+    On startup, on exit, when the playback state (playing, paused, or stopped) changes,
+    when the track changes, when the volume changes, and at every tick of the main loop,
+    during the playback (the file is written only when its content changes, e.g., the position).
+    """
+
+    on_exit: bool = DEFAULT_SAVE_STATE_ON_EXIT
+    on_playback_tick: bool = DEFAULT_SAVE_STATE_ON_PLAYBACK_TICK
+    on_startup: bool = DEFAULT_SAVE_STATE_ON_STARTUP
+    on_state_change: bool = DEFAULT_SAVE_STATE_ON_STATE_CHANGE
+    on_track_change: bool = DEFAULT_SAVE_STATE_ON_TRACK_CHANGE
+    on_volume_change: bool = DEFAULT_SAVE_STATE_ON_VOLUME_CHANGE
+
+
+@dataclass(frozen=True)
 class StartupConfiguration:
     """The settings of what the service does when it starts."""
 
@@ -193,6 +216,7 @@ class Configuration:
     library: LibraryConfiguration = field(default_factory=LibraryConfiguration)
     playback: PlaybackConfiguration = field(default_factory=PlaybackConfiguration)
     run: RunConfiguration = field(default_factory=RunConfiguration)
+    save_state: SaveStateConfiguration = field(default_factory=SaveStateConfiguration)
     startup: StartupConfiguration = field(default_factory=StartupConfiguration)
     system: SystemConfiguration = field(default_factory=SystemConfiguration)
 
@@ -239,6 +263,14 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "volume_step": _to_int,
         },
         "run": {"mode": _to_str},
+        "save_state": {
+            "on_exit": _to_bool,
+            "on_playback_tick": _to_bool,
+            "on_startup": _to_bool,
+            "on_state_change": _to_bool,
+            "on_track_change": _to_bool,
+            "on_volume_change": _to_bool,
+        },
         "startup": {
             "playlist": _to_str,
             "state": _to_str,
@@ -281,6 +313,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         library=LibraryConfiguration(**merged["library"]),
         playback=PlaybackConfiguration(**merged["playback"]),
         run=RunConfiguration(**merged["run"]),
+        save_state=SaveStateConfiguration(**merged["save_state"]),
         startup=StartupConfiguration(**merged["startup"]),
         system=SystemConfiguration(**merged["system"]),
     )

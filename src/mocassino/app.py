@@ -8,7 +8,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import astuple, replace
+from dataclasses import replace
 from functools import partial
 from pathlib import Path
 from queue import Empty, Queue
@@ -75,8 +75,9 @@ class App:
     At each step, it handles the button events, asks MOC for its status,
     and draws the state on the display, if what is shown would change.
 
-    The state is saved to the state file, if there is one, when the track, the volume,
-    or a setting changes, and when the application is closed.
+    The state is saved to the state file, if there is one, as the save state settings say:
+    on startup, when the track, the playback state, or the volume changes, at every tick,
+    and on exit.
     When the application starts, the playback saved there is resumed, if possible.
     """
 
@@ -123,8 +124,9 @@ class App:
         self._state_frozen = False
         self._stop = threading.Event()
         self._tick = tick
-        # Last, as it needs the state
-        self._saved_signature = self._signature()
+        # What the state was at the last step, to tell what changed (see _save_state_on_changes);
+        # last, as it needs the state
+        self._last_signature = self._signature()
 
     def _apply_brightness(self) -> None:
         """Set the brightness of the display, if the setting has changed."""
@@ -215,22 +217,33 @@ class App:
                     volume=state.volume,
                 )
             )
-        self._saved_signature = self._signature()
 
-    def _signature(self) -> tuple[object, ...]:
-        """Return what, when it changes, makes the state be saved.
+    def _save_state_on_changes(self) -> None:
+        """Save the state, if the settings ask so for what changed since the last step.
 
-        That is: the track, the playback state (playing, paused, or stopped), the volume,
-        and the settings changed through the menus. The position in the track is not,
-        so that the state file is not written at every step: it is saved with the rest.
+        The changes are those of the track, of the playback state, and of the volume;
+        the state can also be saved at every step, whatever changed (the state file
+        is written only when its content changes, e.g., the position in the track).
+        """
+        settings = self._state.settings
+        track, playback_state, volume = signature = self._signature()
+        last_track, last_playback_state, last_volume = self._last_signature
+        self._last_signature = signature
+        if (
+            settings.save_state_on_playback_tick
+            or (settings.save_state_on_track_change and track != last_track)
+            or (settings.save_state_on_state_change and playback_state != last_playback_state)
+            or (settings.save_state_on_volume_change and volume != last_volume)
+        ):
+            self._save_state()
+
+    def _signature(self) -> tuple[str, MocState, int]:
+        """Return what, when it changes, can make the state be saved.
+
+        That is: the track, the playback state (playing, paused, or stopped), and the volume.
         """
         state = self._state
-        return (
-            state.status.file_path,
-            state.status.state,
-            state.volume,
-            astuple(state.settings),
-        )
+        return (state.status.file_path, state.status.state, state.volume)
 
     def _update_playlist(self) -> None:
         """Rebuild the playlist of the state, if the current track is played from elsewhere.
@@ -248,9 +261,11 @@ class App:
     def close(self) -> None:
         """Save the state, leave MOC as the settings say, and release the buttons and the display.
 
-        The state is saved first, so that what was playing can be resumed on the next start.
+        The state is saved first, so that what was playing can be resumed on the next start,
+        unless the settings say not to save it on exit.
         """
-        self._save_state()
+        if self._state.settings.save_state_on_exit:
+            self._save_state()
         self._leave_moc()
         self._button_source.close()
         self._display.close()
@@ -287,7 +302,8 @@ class App:
         Unless the menu of the library is shown, the startup state setting then tells
         whether the playback is left playing, paused, stopped, or as it was saved
         (which, when MOC is left with its playlist, is how MOC is found).
-        The state file is then updated to say what is playing.
+        The state file is then updated to say what is playing, if the settings say so;
+        the changes of the track, of the playback state, and of the volume count from then on.
         The volume is set after the playlist is set up, as resuming needs it at zero.
 
         :raises MocError: if the MOC server cannot be started or the volume cannot be set
@@ -316,7 +332,9 @@ class App:
             LOGGER.error("Cannot set up the playlist: %s", exc)
         self._moc.set_volume(self._state.volume)
         self._refresh()
-        self._save_state()
+        self._last_signature = self._signature()
+        if self._state.settings.save_state_on_startup:
+            self._save_state()
         self._button_source.start(self._events)
         self._last_press = self._clock()
 
@@ -324,7 +342,7 @@ class App:
         """Perform one step of the main loop.
 
         Wait for a button event, for one tick at most; handle all the events in the queue;
-        then update the state from MOC, save it if needed, and draw it,
+        then update the state from MOC, save it if the settings say so, and draw it,
         unless the display has been turned off by the timeout.
         A button press turns the display back on, if off: then, it does nothing else,
         and neither do the other events in the queue (e.g., those of a held button).
@@ -344,12 +362,13 @@ class App:
         except Empty:
             pass
         if self._state.shutting_down and not self._state_frozen:
-            # Save what is playing before the shutdown stops it, and keep it as saved
-            self._save_state()
+            # The shutdown is an exit: save what is playing before the shutdown stops it,
+            # if the settings say so, and keep the state file as it is from then on
+            if self._state.settings.save_state_on_exit:
+                self._save_state()
             self._state_frozen = True
         self._refresh()
-        if self._signature() != self._saved_signature:
-            self._save_state()
+        self._save_state_on_changes()
         self._apply_brightness()
         self._apply_timeout()
         if self._display_on:
@@ -401,6 +420,12 @@ def _build_settings(configuration: Configuration) -> Settings:
         playback_volume_default=configuration.playback.volume_default,
         playback_volume_step=configuration.playback.volume_step,
         right_timer_value=RightTimerValue(configuration.display.ui_elements.right_timer_value),
+        save_state_on_exit=configuration.save_state.on_exit,
+        save_state_on_playback_tick=configuration.save_state.on_playback_tick,
+        save_state_on_startup=configuration.save_state.on_startup,
+        save_state_on_state_change=configuration.save_state.on_state_change,
+        save_state_on_track_change=configuration.save_state.on_track_change,
+        save_state_on_volume_change=configuration.save_state.on_volume_change,
         show_playlist_bar=configuration.display.ui_elements.show_playlist_bar,
         show_progress_bar=configuration.display.ui_elements.show_progress_bar,
         show_side_icons=configuration.display.ui_elements.show_side_icons,
@@ -462,6 +487,14 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
             "seek_step": settings.playback_seek_step,
             "volume_default": settings.playback_volume_default,
             "volume_step": settings.playback_volume_step,
+        },
+        "save_state": {
+            "on_exit": settings.save_state_on_exit,
+            "on_playback_tick": settings.save_state_on_playback_tick,
+            "on_startup": settings.save_state_on_startup,
+            "on_state_change": settings.save_state_on_state_change,
+            "on_track_change": settings.save_state_on_track_change,
+            "on_volume_change": settings.save_state_on_volume_change,
         },
         "startup": {
             "playlist": settings.startup_playlist.value,
