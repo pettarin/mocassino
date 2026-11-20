@@ -430,10 +430,16 @@ class TestRenderer:
         hidden = renderer.render(AppState(settings=settings, status=PLAYING))
         shown = renderer.render(AppState(status=PLAYING))
         assert shown.getpixel((30, 211)) == ACCENT_COLOR
-        assert not has_content(hidden, (CONTENT_LEFT, 204, CONTENT_RIGHT, 220))
-        above = (0, 0, WIDTH, 204)
-        below = (CONTENT_LEFT, 220, CONTENT_RIGHT, HEIGHT)
-        sides = [(0, 204, CONTENT_LEFT, HEIGHT), (CONTENT_RIGHT, 204, WIDTH, HEIGHT)]
+        assert hidden.getpixel((30, 211)) != ACCENT_COLOR
+        # the album moves down by 16 pixels, and nothing else changes
+        album_shown = shown.crop((CONTENT_LEFT, 180, CONTENT_RIGHT, 206))
+        album_hidden = hidden.crop((CONTENT_LEFT, 196, CONTENT_RIGHT, 222))
+        assert has_content(album_shown, (0, 0, *album_shown.size))
+        assert album_hidden.tobytes() == album_shown.tobytes()
+        assert not has_content(hidden, (CONTENT_LEFT, 180, CONTENT_RIGHT, 196))
+        above = (0, 0, WIDTH, 180)
+        below = (CONTENT_LEFT, 222, CONTENT_RIGHT, HEIGHT)
+        sides = [(0, 180, CONTENT_LEFT, HEIGHT), (CONTENT_RIGHT, 180, WIDTH, HEIGHT)]
         for box in (above, below, *sides):
             assert hidden.crop(box).tobytes() == shown.crop(box).tobytes()
         assert has_content(hidden, below)
@@ -541,6 +547,50 @@ class TestRenderer:
         assert ACCENT_COLOR in {color for _, color in image.crop(box).getcolors()}
         assert not has_content(image, (80, 218, left, HEIGHT))
         assert not has_content(image, (left + ICON_SIZE, 218, 160, HEIGHT))
+
+    @pytest.mark.parametrize("state", list(MocState))
+    def test_playback_state_icon_hidden_with_the_timers(self, renderer, state):
+        settings = Settings(show_progress_bar=False, show_timers=False)
+        status = MocStatus(file_path="/music/a.flac", state=state)
+        image = renderer.render(AppState(settings=settings, status=status))
+        assert not has_content(image, (CONTENT_LEFT, 236, CONTENT_RIGHT, HEIGHT))
+        left, top = (WIDTH - ICON_SIZE) // 2, HEIGHT - 2 - ICON_SIZE
+        assert not has_content(image, (left, top, left + ICON_SIZE, top + ICON_SIZE))
+
+    @pytest.mark.parametrize("show_side_icons", [False, True])
+    def test_playback_timers_hidden(self, renderer, show_side_icons):
+        left = CONTENT_LEFT if show_side_icons else 10
+        right = CONTENT_RIGHT if show_side_icons else WIDTH - 10
+        shown = renderer.render(
+            AppState(settings=Settings(show_side_icons=show_side_icons), status=PLAYING)
+        )
+        settings = Settings(show_side_icons=show_side_icons, show_timers=False)
+        hidden = renderer.render(AppState(settings=settings, status=PLAYING))
+        # the album and the progress bar move down by one row of icons, into that of the times
+        moved = shown.crop((left, 180, right, 216))
+        assert has_content(moved, (0, 0, *moved.size))
+        assert hidden.crop((left, 198, right, 234)).tobytes() == moved.tobytes()
+        assert not has_content(hidden, (left, 180, right, 198))
+        assert not has_content(hidden, (left, 234, right, HEIGHT))
+        rows = [has_content(hidden, (left, y, left + 40, y + 1)) for y in range(222, HEIGHT)]
+        bar = [y + 222 for y, drawn in enumerate(rows) if drawn]
+        assert bar == list(range(226, 234))
+        assert bar[0] - 222 == 237 - bar[-1]
+        # nothing else changes
+        above = (0, 0, WIDTH, 180)
+        sides = [(0, 180, left, HEIGHT), (right, 180, WIDTH, HEIGHT)]
+        for box in (above, *sides):
+            assert hidden.crop(box).tobytes() == shown.crop(box).tobytes()
+
+    @pytest.mark.parametrize("album", ["Album", "ABBA GOLD", "moe."])
+    def test_playback_timers_and_progress_bar_hidden(self, renderer, album):
+        status = MocStatus(album=album, file_path="/music/a.flac", state=MocState.PLAY)
+        settings = Settings(show_progress_bar=False, show_timers=False)
+        image = renderer.render(AppState(settings=settings, status=status))
+        # the album takes the place of the progress bar, moved into the row of the times
+        _, _, _, album_bottom = image.crop((CONTENT_LEFT, 186, CONTENT_RIGHT, HEIGHT)).getbbox()
+        assert album_bottom + 186 == 234
+        assert not has_content(image, (CONTENT_LEFT, 180, CONTENT_RIGHT, 216))
 
     def test_playback_state_icon_is_level_with_the_bottom_button_icons(self, renderer):
         image = renderer.render(AppState(status=PLAYING))
@@ -755,6 +805,16 @@ class TestRenderer:
         band = image.crop((WIDTH - BAND_WIDTH + 6, 36, WIDTH - 6, 204))
         _, _, _, volume_bar_bottom = band.getbbox()
         assert album_bottom + 170 == volume_bar_bottom + 36 == 200
+
+    @pytest.mark.parametrize("album", ["Album", "ABBA GOLD", "moe."])
+    def test_playback_album_ends_at_the_bottom_of_the_hidden_progress_bar(self, renderer, album):
+        status = MocStatus(album=album, file_path="/music/a.flac", state=MocState.PLAY)
+        shown = renderer.render(AppState(status=status))
+        settings = Settings(show_progress_bar=False)
+        hidden = renderer.render(AppState(settings=settings, status=status))
+        _, _, _, album_bottom = hidden.crop((CONTENT_LEFT, 186, CONTENT_RIGHT, 222)).getbbox()
+        _, _, _, bar_bottom = shown.crop((CONTENT_LEFT, 204, CONTENT_RIGHT, 220)).getbbox()
+        assert album_bottom + 186 == bar_bottom + 204 == 216
 
     def test_wrap(self, renderer):
         font = ImageFont.load_default(26)

@@ -267,6 +267,7 @@ display:
     show_playlist_bar: true
     show_progress_bar: true
     show_side_icons: true
+    show_timers: true
     show_volume_bar: true
 library:
   directory_path: /home/pi
@@ -335,8 +336,9 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `display.timeout` | `60` | After how many seconds without a button press the display is turned off: `0` (never), `5`, `10`, `15`, `20`, `30`, `60`, `120`, or `300`; the time counts from the start of the service, or from the last button press; any button turns the display on again, without doing anything else; it can be changed from the `Settings` menu |
 | `display.ui_elements.show_playlist_bar` | `true` | Whether the playlist bar is shown in playback mode, if `display.ui_elements.show_side_icons` is `true`; it can be changed from the `Settings` menu |
-| `display.ui_elements.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode; it can be changed from the `Settings` menu |
+| `display.ui_elements.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode (if not, the album takes its place, right above the times); it can be changed from the `Settings` menu |
 | `display.ui_elements.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode, with the playlist and volume bars next to them; it can be changed from the `Settings` menu |
+| `display.ui_elements.show_timers` | `true` | Whether the times of the track and the icon of the state of the playback are shown in playback mode (if not, the progress bar and the album move down into their row); it can be changed from the `Settings` menu |
 | `display.ui_elements.show_volume_bar` | `true` | Whether the volume bar is shown in playback mode, if `display.ui_elements.show_side_icons` is `true`; it can be changed from the `Settings` menu |
 | `library.directory_path` | `~` | The music root directory; by default, the home directory of the user running the service (e.g., `/home/pi`) |
 | `playback.seek_step` | `10` | The amount of each seek, in seconds; it can be changed from the `Settings` menu |
@@ -565,8 +567,10 @@ Set `display.ui_elements.show_side_icons` to `false` to hide the icons, and with
 whatever `display.ui_elements.show_playlist_bar` and `display.ui_elements.show_volume_bar` say:
 the two bands are then used by the playback information.
 Set `display.ui_elements.show_progress_bar` to `false` to hide the progress bar:
-the times and the state of the playback are still shown below its place.
-The four can also be shown or hidden while the service runs, from the `UI elements` menu
+the album takes its place, right above the times and the state of the playback.
+Set `display.ui_elements.show_timers` to `false` to hide the times and the icon of the state
+of the playback: the progress bar and the album move down into their row.
+The five can also be shown or hidden while the service runs, from the `UI elements` menu
 of the `Display` settings.
 
 
@@ -647,6 +651,8 @@ The top level menu has the following items:
       - `Show side icons` (`display.ui_elements.show_side_icons`):
         whether the icons of the buttons are shown,
         with the playlist and volume bars next to them.
+      - `Show timers` (`display.ui_elements.show_timers`):
+        whether the times of the track and the icon of the state of the playback are shown.
       - `Show volume bar` (`display.ui_elements.show_volume_bar`):
         whether the volume bar is shown, if the side icons are.
   - `Playback`: the amount of each seek, the default volume, and the amount of each volume change.

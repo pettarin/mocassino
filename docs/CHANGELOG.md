@@ -11,10 +11,17 @@ All notable changes to this project will be documented in this file.
 
 ## [0.0.3] - To be released
 
+### Added
+
+- The `display.ui_elements.show_timers` setting, and the `Show timers` item
+  of the `UI elements` menu, to hide the times and the icon of the state of the playback
+
 ### Changed
 
 - `mocassino configuration --default` honors the global options
   `-l / --library-directory-path` and `-s / --simulator`
+- In playback mode, without the progress bar, the album moves down to its place,
+  right above the times
 - The default music root directory (`library.directory_path`) is the home directory
   of the user running the service, instead of `/music`
 - The default values of the configuration are defined in the new `mocassino.defaults` module

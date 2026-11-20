@@ -63,6 +63,7 @@ class TestConfiguration:
             show_playlist_bar=True,
             show_progress_bar=True,
             show_side_icons=True,
+            show_timers=True,
             show_volume_bar=True,
         )
         assert configuration.library == LibraryConfiguration(directory_path=home)
@@ -106,6 +107,7 @@ class TestConfiguration:
                     "show_playlist_bar": True,
                     "show_progress_bar": True,
                     "show_side_icons": True,
+                    "show_timers": True,
                     "show_volume_bar": True,
                 },
             },
@@ -332,10 +334,10 @@ class TestLoadConfiguration:
     def test_ui_elements(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "display:\n  ui_elements:\n    show_progress_bar: false\n    show_volume_bar: false\n",
+            "display:\n  ui_elements:\n    show_progress_bar: false\n    show_timers: false\n",
         )
         assert load_configuration(path).display.ui_elements == UiElementsConfiguration(
-            show_progress_bar=False, show_volume_bar=False
+            show_progress_bar=False, show_timers=False
         )
 
     def test_ui_elements_partial_or_empty(self, tmp_path):
@@ -350,6 +352,7 @@ class TestLoadConfiguration:
             ("show_playlist_bar", "no"),
             ("show_progress_bar", "yes"),
             ("show_side_icons", 1),
+            ("show_timers", "off"),
             ("show_volume_bar", 0),
         ],
     )
@@ -370,7 +373,14 @@ class TestLoadConfiguration:
             load_configuration(overrides={"display": {"ui_elements": True}})
 
     @pytest.mark.parametrize(
-        "key", ["show_playlist_bar", "show_progress_bar", "show_side_icons", "show_volume_bar"]
+        "key",
+        [
+            "show_playlist_bar",
+            "show_progress_bar",
+            "show_side_icons",
+            "show_timers",
+            "show_volume_bar",
+        ],
     )
     def test_ui_elements_old_keys_are_unknown(self, tmp_path, key):
         path = write_yaml(tmp_path, f"display:\n  {key}: false\n")

@@ -16,7 +16,7 @@ from mocassino.controller.actions import parse_button_map, resolve_button_map
 from mocassino.controller.events import ButtonEvent
 from mocassino.model.colors import parse_color
 from mocassino.model.menu import Menu
-from mocassino.model.moc import MocState
+from mocassino.model.moc import MocState, MocStatus
 from mocassino.model.playlist import playlist_fraction
 from mocassino.model.state import AppState
 from mocassino.view.colors import DEFAULT_COLORS, parse_colors
@@ -202,16 +202,18 @@ class Renderer:
         The bottom is level with the two rows of icons of the buttons there:
         the progress bar is centred on the upper row, and the times, with the icon
         of the state between them, take the lower row.
-        The icons of the buttons, the progress bar, the playlist bar, and the volume bar
-        are drawn only if the settings say so; the playlist bar and the volume bar,
-        only if the icons are drawn too. The bands on the left and on the right
-        are reserved to the icons and to the bars, only when the icons are drawn.
+        The icons of the buttons, the progress bar, the playlist bar, the volume bar,
+        and the times with the icon of the state are drawn only if the settings say so;
+        the playlist bar and the volume bar, only if the icons are drawn too.
+        The bands on the left and on the right are reserved to the icons and to the bars,
+        only when the icons are drawn. Without the times, the progress bar and the album
+        move down by one row of icons, into the row the times leave.
         """
         status = state.status
-        small_font = self._font(TIMES_FONT_SIZE)
-        upper_icon_top = HEIGHT - 2 * (ICON_SIZE + ICON_BORDER)
-        bar_top = upper_icon_top + (ICON_SIZE - PROGRESS_BAR_HEIGHT) // 2
         settings = state.settings
+        shift = 0 if settings.show_timers else ICON_SIZE + ICON_BORDER
+        upper_icon_top = HEIGHT - 2 * (ICON_SIZE + ICON_BORDER)
+        bar_top = upper_icon_top + shift + (ICON_SIZE - PROGRESS_BAR_HEIGHT) // 2
         left, right = MARGIN, WIDTH - MARGIN
         if settings.show_side_icons:
             left, right = CONTENT_LEFT, CONTENT_RIGHT
@@ -254,7 +256,7 @@ class Renderer:
                     font=title_font,
                 )
             album_bottom = (
-                HEIGHT - VOLUME_BAR_TOP
+                HEIGHT - VOLUME_BAR_TOP + shift
                 if settings.show_progress_bar
                 else bar_top + PROGRESS_BAR_HEIGHT
             )
@@ -272,28 +274,8 @@ class Renderer:
                     (left, bar_top, right - 1, bar_top + PROGRESS_BAR_HEIGHT - 1),
                     status.current_seconds / total if total else 0.0,
                 )
-            draw.text(
-                (left, HEIGHT - ICON_BORDER),
-                _format_seconds(status.current_seconds),
-                anchor="ls",
-                fill=self._colors.normal,
-                font=small_font,
-            )
-            if total is not None:
-                draw.text(
-                    (right, HEIGHT - ICON_BORDER),
-                    _format_seconds(total),
-                    anchor="rs",
-                    fill=self._colors.normal,
-                    font=small_font,
-                )
-        draw_state_icon(
-            draw,
-            status.state,
-            (WIDTH - ICON_SIZE) // 2,
-            HEIGHT - ICON_BORDER - ICON_SIZE,
-            self._colors.accented,
-        )
+        if settings.show_timers:
+            self._draw_timers(draw, status, left, right)
 
     def _draw_playlist_bar(self, draw: ImageDraw.ImageDraw, fraction: float) -> None:
         """Draw how far the playback has advanced through the playlist, in the band on the left.
@@ -308,6 +290,39 @@ class Renderer:
         filled = round((bottom - top) * max(0.0, min(1.0, fraction)))
         if filled > 0:
             draw.rectangle((left, top, right, top + filled), fill=self._colors.accented)
+
+    def _draw_timers(
+        self, draw: ImageDraw.ImageDraw, status: MocStatus, left: int, right: int
+    ) -> None:
+        """Draw the times of the track, unless stopped, with the icon of the state between them.
+
+        They take the lower row of the bottom icons: the bottom of the digits of the times
+        leaves the same border as the icons.
+        """
+        if status.state is not MocState.STOP:
+            font = self._font(TIMES_FONT_SIZE)
+            draw.text(
+                (left, HEIGHT - ICON_BORDER),
+                _format_seconds(status.current_seconds),
+                anchor="ls",
+                fill=self._colors.normal,
+                font=font,
+            )
+            if status.total_seconds is not None:
+                draw.text(
+                    (right, HEIGHT - ICON_BORDER),
+                    _format_seconds(status.total_seconds),
+                    anchor="rs",
+                    fill=self._colors.normal,
+                    font=font,
+                )
+        draw_state_icon(
+            draw,
+            status.state,
+            (WIDTH - ICON_SIZE) // 2,
+            HEIGHT - ICON_BORDER - ICON_SIZE,
+            self._colors.accented,
+        )
 
     def _draw_volume_bar(self, draw: ImageDraw.ImageDraw, volume: int) -> None:
         """Draw the volume as a vertical bar in the band on the right, filled from the bottom.

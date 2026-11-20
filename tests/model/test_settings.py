@@ -33,6 +33,7 @@ class TestSettings:
             playback_volume_step=2,
             show_progress_bar=False,
             show_side_icons=False,
+            show_timers=False,
             show_volume_bar=False,
             startup_playlist=StartupPlaylist.OPEN_LIBRARY,
             startup_state=StartupState.PLAY,

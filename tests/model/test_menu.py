@@ -241,12 +241,14 @@ class TestBuildDisplayUiElementsMenu:
             "Show playlist bar",
             "Show progress bar",
             "Show side icons",
+            "Show timers",
             "Show volume bar",
         ]
         assert [item.command for item in menu.items] == [
             MenuCommand.TOGGLE_PLAYLIST_BAR,
             MenuCommand.TOGGLE_PROGRESS_BAR,
             MenuCommand.TOGGLE_SIDE_ICONS,
+            MenuCommand.TOGGLE_TIMERS,
             MenuCommand.TOGGLE_VOLUME_BAR,
         ]
         assert all(item.submenu is None for item in menu.items)
@@ -257,7 +259,8 @@ class TestBuildDisplayUiElementsMenu:
             (0, "show_playlist_bar"),
             (1, "show_progress_bar"),
             (2, "show_side_icons"),
-            (3, "show_volume_bar"),
+            (3, "show_timers"),
+            (4, "show_volume_bar"),
         ],
     )
     @pytest.mark.parametrize("show", [True, False])
@@ -265,7 +268,7 @@ class TestBuildDisplayUiElementsMenu:
         settings = Settings(**{attribute: show})
         menu = build_display_ui_elements_menu(settings)
         assert menu.items[index].checked is show
-        assert [item.checked for item in menu.items].count(True) == (4 if show else 3)
+        assert [item.checked for item in menu.items].count(True) == (5 if show else 4)
 
 
 class TestBuildDisplayBrightnessMenu:

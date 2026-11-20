@@ -12,7 +12,12 @@ import pytest
 
 import mocassino.app
 from mocassino.app import App, build_app
-from mocassino.configuration import ColorsConfiguration, Configuration, load_configuration
+from mocassino.configuration import (
+    ColorsConfiguration,
+    Configuration,
+    UiElementsConfiguration,
+    load_configuration,
+)
 from mocassino.constants import (
     Action,
     Button,
@@ -778,6 +783,7 @@ class TestBuildApp:
             "    show_playlist_bar: true\n"
             "    show_progress_bar: true\n"
             "    show_side_icons: false\n"
+            "    show_timers: true\n"
             "    show_volume_bar: true\n"
             "startup:\n"
             "  playlist: use_saved\n"
@@ -808,6 +814,7 @@ class TestBuildApp:
             "    show_playlist_bar: true\n"
             "    show_progress_bar: true\n"
             "    show_side_icons: false\n"
+            "    show_timers: true\n"
             "    show_volume_bar: true\n"
             "playback:\n"
             "  seek_step: 10\n"
@@ -934,15 +941,27 @@ class TestBuildApp:
                 "buttons": {"origin": "none"},
                 "display": {
                     "target": "none",
-                    "ui_elements": {"show_progress_bar": False, "show_volume_bar": False},
+                    "ui_elements": {
+                        "show_progress_bar": False,
+                        "show_timers": False,
+                        "show_volume_bar": False,
+                    },
                 },
             }
         )
         settings = build_app(configuration)._state.settings
-        assert (settings.show_progress_bar, settings.show_volume_bar) == (False, False)
+        assert (settings.show_progress_bar, settings.show_timers, settings.show_volume_bar) == (
+            False,
+            False,
+            False,
+        )
         assert settings.show_side_icons is True
         default = build_app(self.configuration("none", "none"))._state.settings
-        assert (default.show_progress_bar, default.show_volume_bar) == (True, True)
+        assert (default.show_progress_bar, default.show_timers, default.show_volume_bar) == (
+            True,
+            True,
+            True,
+        )
 
     def test_display_bars_settings_are_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
@@ -959,16 +978,17 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
         )
         for event in events:
             app._controller.handle(event)
         assert app._state.settings.show_progress_bar is False
+        assert app._state.settings.show_timers is False
         assert app._state.settings.show_volume_bar is False
         saved = load_configuration(path).display.ui_elements
-        assert (saved.show_progress_bar, saved.show_side_icons, saved.show_volume_bar) == (
-            False,
-            True,
-            False,
+        assert saved == UiElementsConfiguration(
+            show_progress_bar=False, show_timers=False, show_volume_bar=False
         )
 
     def test_moc_state_on_exit_from_the_configuration_and_saved(self, tmp_path):

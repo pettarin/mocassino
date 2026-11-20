@@ -88,6 +88,7 @@ class MenuCommand(StrEnum):
     TOGGLE_PLAYLIST_BAR = "toggle_playlist_bar"
     TOGGLE_PROGRESS_BAR = "toggle_progress_bar"
     TOGGLE_SIDE_ICONS = "toggle_side_icons"
+    TOGGLE_TIMERS = "toggle_timers"
     TOGGLE_VOLUME_BAR = "toggle_volume_bar"
 
 
@@ -363,6 +364,11 @@ def build_display_ui_elements_menu(settings: Settings) -> Menu:
                 label="Show side icons",
                 checked=settings.show_side_icons,
                 command=MenuCommand.TOGGLE_SIDE_ICONS,
+            ),
+            MenuItem(
+                label="Show timers",
+                checked=settings.show_timers,
+                command=MenuCommand.TOGGLE_TIMERS,
             ),
             MenuItem(
                 label="Show volume bar",

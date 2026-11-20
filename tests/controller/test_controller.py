@@ -383,7 +383,8 @@ class TestController:
             (0, "Show playlist bar", "show_playlist_bar"),
             (1, "Show progress bar", "show_progress_bar"),
             (2, "Show side icons", "show_side_icons"),
-            (3, "Show volume bar", "show_volume_bar"),
+            (3, "Show timers", "show_timers"),
+            (4, "Show volume bar", "show_volume_bar"),
         ],
     )
     def test_menu_select_toggles_of_the_display(
@@ -409,6 +410,7 @@ class TestController:
             "show_playlist_bar",
             "show_progress_bar",
             "show_side_icons",
+            "show_timers",
             "show_volume_bar",
         } - {attribute}
         assert all(getattr(state.settings, other) is True for other in others)

@@ -108,6 +108,7 @@ TOGGLES: dict[MenuCommand, str] = {
     MenuCommand.TOGGLE_PLAYLIST_BAR: "show_playlist_bar",
     MenuCommand.TOGGLE_PROGRESS_BAR: "show_progress_bar",
     MenuCommand.TOGGLE_SIDE_ICONS: "show_side_icons",
+    MenuCommand.TOGGLE_TIMERS: "show_timers",
     MenuCommand.TOGGLE_VOLUME_BAR: "show_volume_bar",
 }
 
