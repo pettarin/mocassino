@@ -24,6 +24,7 @@ from mocassino.constants import (
     ButtonPress,
     MocStateOnExit,
     Mode,
+    RightTimerValue,
     StartupPlaylist,
     StartupState,
     StartupVolume,
@@ -89,7 +90,7 @@ RESET_ALL_SETTINGS = (
 )
 TICK = 0.01
 # From playback mode: open the menu, go to Settings, open it, open Display (its first item),
-# go up to UI elements (its last item), open it, go to Show side icons (its third item),
+# go up to UI elements (its last item), open it, go to Show side icons (its fourth item),
 # and select it
 TOGGLE_SIDE_ICONS = (
     ButtonEvent(Button.A, ButtonPress.LONG),
@@ -98,6 +99,7 @@ TOGGLE_SIDE_ICONS = (
     ButtonEvent(Button.B),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
+    ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
@@ -780,6 +782,7 @@ class TestBuildApp:
             "  orientation: 0\n"
             "  timeout: 60\n"
             "  ui_elements:\n"
+            "    right_timer_value: end_time\n"
             "    show_playlist_bar: true\n"
             "    show_progress_bar: true\n"
             "    show_side_icons: false\n"
@@ -811,6 +814,7 @@ class TestBuildApp:
             "  orientation: 0\n"
             "  timeout: 60\n"
             "  ui_elements:\n"
+            "    right_timer_value: end_time\n"
             "    show_playlist_bar: true\n"
             "    show_progress_bar: true\n"
             "    show_side_icons: false\n"
@@ -974,6 +978,7 @@ class TestBuildApp:
             ButtonEvent(Button.X),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
@@ -1017,6 +1022,35 @@ class TestBuildApp:
             app._controller.handle(event)
         assert app._state.settings.system_moc_state_on_exit is MocStateOnExit.STOP
         assert load_configuration(path).system.moc_state_on_exit == "stop"
+
+    def test_right_timer_value_from_the_configuration_and_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {
+                    "target": "none",
+                    "ui_elements": {"right_timer_value": "remaining_time"},
+                },
+            }
+        )
+        app = build_app(configuration, path)
+        assert app._state.settings.right_timer_value is RightTimerValue.REMAINING_TIME
+        events = (
+            ButtonEvent(Button.A, ButtonPress.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.settings.right_timer_value is RightTimerValue.END_TIME
+        assert load_configuration(path).display.ui_elements.right_timer_value == "end_time"
 
     def test_display_brightness_from_the_configuration(self):
         configuration = load_configuration(

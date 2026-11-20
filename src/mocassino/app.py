@@ -24,6 +24,7 @@ from mocassino.constants import (
     ButtonsOrigin,
     DisplayTarget,
     MocStateOnExit,
+    RightTimerValue,
     StartupPlaylist,
     StartupState,
     StartupVolume,
@@ -399,6 +400,7 @@ def _build_settings(configuration: Configuration) -> Settings:
         playback_seek_step=configuration.playback.seek_step,
         playback_volume_default=configuration.playback.volume_default,
         playback_volume_step=configuration.playback.volume_step,
+        right_timer_value=RightTimerValue(configuration.display.ui_elements.right_timer_value),
         show_playlist_bar=configuration.display.ui_elements.show_playlist_bar,
         show_progress_bar=configuration.display.ui_elements.show_progress_bar,
         show_side_icons=configuration.display.ui_elements.show_side_icons,
@@ -448,6 +450,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
             "orientation": settings.display_orientation,
             "timeout": settings.display_timeout,
             "ui_elements": {
+                "right_timer_value": settings.right_timer_value.value,
                 "show_playlist_bar": settings.show_playlist_bar,
                 "show_progress_bar": settings.show_progress_bar,
                 "show_side_icons": settings.show_side_icons,

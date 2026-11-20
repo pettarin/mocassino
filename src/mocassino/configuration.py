@@ -24,6 +24,7 @@ from mocassino.constants import (
     ButtonsOrigin,
     DisplayTarget,
     MocStateOnExit,
+    RightTimerValue,
     RunMode,
     StartupPlaylist,
     StartupState,
@@ -42,6 +43,7 @@ from mocassino.defaults import (
     DEFAULT_DISPLAY_TARGET,
     DEFAULT_DISPLAY_TICK,
     DEFAULT_DISPLAY_TIMEOUT,
+    DEFAULT_DISPLAY_UI_ELEMENTS_RIGHT_TIMER_VALUE,
     DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR,
     DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR,
     DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS,
@@ -100,12 +102,14 @@ class ColorsConfiguration:
 
 @dataclass(frozen=True)
 class UiElementsConfiguration:
-    """Which elements are shown on the display in playback mode.
+    """Which elements are shown on the display in playback mode, and how.
 
     Defined before the settings of the display, as they refer to it.
     The playlist bar and the volume bar are shown only if the side icons are too.
+    The right timer value is a value of RightTimerValue.
     """
 
+    right_timer_value: str = DEFAULT_DISPLAY_UI_ELEMENTS_RIGHT_TIMER_VALUE
     show_playlist_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR
     show_progress_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR
     show_side_icons: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS
@@ -310,6 +314,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             configuration.display.target in list(DisplayTarget),
         ),
         "display.tick": (configuration.display.tick, configuration.display.tick > 0),
+        "display.ui_elements.right_timer_value": (
+            configuration.display.ui_elements.right_timer_value,
+            configuration.display.ui_elements.right_timer_value in list(RightTimerValue),
+        ),
         "playback.seek_step": (
             configuration.playback.seek_step,
             configuration.playback.seek_step >= 1,
@@ -466,14 +474,18 @@ def _to_str(value: object) -> str:
 
 
 def _to_ui_elements(value: object) -> UiElementsConfiguration:
-    """Coerce a mapping of booleans to the elements shown on the display.
+    """Coerce a mapping to the elements shown on the display: booleans, but the right timer value.
 
     The elements missing, or set to None, take their defaults.
+    Whether the right timer value is one of its choices is checked with the other settings.
 
-    :raises ConfigurationError: if an element is unknown, or its value is not a boolean
+    :raises ConfigurationError: if an element is unknown, or its value is not of its type
     :raises TypeError: if the value is not a mapping
     """
-    coercers = dict.fromkeys(asdict(UiElementsConfiguration()), _to_bool)
+    coercers: dict[str, Callable[[Any], Any]] = dict.fromkeys(
+        asdict(UiElementsConfiguration()), _to_bool
+    )
+    coercers["right_timer_value"] = _to_str
     return UiElementsConfiguration(**_to_nested(value, "display.ui_elements", coercers))
 
 

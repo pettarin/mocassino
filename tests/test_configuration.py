@@ -60,6 +60,7 @@ class TestConfiguration:
             tick=0.5,
         )
         assert configuration.display.ui_elements == UiElementsConfiguration(
+            right_timer_value="end_time",
             show_playlist_bar=True,
             show_progress_bar=True,
             show_side_icons=True,
@@ -104,6 +105,7 @@ class TestConfiguration:
                 "tick": 0.5,
                 "timeout": 60,
                 "ui_elements": {
+                    "right_timer_value": "end_time",
                     "show_playlist_bar": True,
                     "show_progress_bar": True,
                     "show_side_icons": True,
@@ -334,10 +336,11 @@ class TestLoadConfiguration:
     def test_ui_elements(self, tmp_path):
         path = write_yaml(
             tmp_path,
-            "display:\n  ui_elements:\n    show_progress_bar: false\n    show_timers: false\n",
+            "display:\n  ui_elements:\n    right_timer_value: remaining_time\n"
+            "    show_progress_bar: false\n    show_timers: false\n",
         )
         assert load_configuration(path).display.ui_elements == UiElementsConfiguration(
-            show_progress_bar=False, show_timers=False
+            right_timer_value="remaining_time", show_progress_bar=False, show_timers=False
         )
 
     def test_ui_elements_partial_or_empty(self, tmp_path):
@@ -349,6 +352,8 @@ class TestLoadConfiguration:
     @pytest.mark.parametrize(
         ("key", "value"),
         [
+            ("right_timer_value", "elapsed_time"),
+            ("right_timer_value", 1),
             ("show_playlist_bar", "no"),
             ("show_progress_bar", "yes"),
             ("show_side_icons", 1),
@@ -375,6 +380,7 @@ class TestLoadConfiguration:
     @pytest.mark.parametrize(
         "key",
         [
+            "right_timer_value",
             "show_playlist_bar",
             "show_progress_bar",
             "show_side_icons",

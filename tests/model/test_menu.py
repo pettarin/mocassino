@@ -6,7 +6,13 @@
 
 import pytest
 
-from mocassino.constants import MocStateOnExit, StartupPlaylist, StartupState, StartupVolume
+from mocassino.constants import (
+    MocStateOnExit,
+    RightTimerValue,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.model.colors import COLOR_NAMES
 from mocassino.model.library import Library
 from mocassino.model.menu import (
@@ -19,6 +25,7 @@ from mocassino.model.menu import (
     build_display_colors_menu,
     build_display_menu,
     build_display_orientation_menu,
+    build_display_right_timer_value_menu,
     build_display_timeout_menu,
     build_display_ui_elements_menu,
     build_library_menu,
@@ -77,9 +84,9 @@ class TestBuildDisplayMenu:
         settings = Settings()
         item = build_display_menu(settings).items[4]
         assert item.submenu().title == "UI elements"
-        assert item.submenu().items[2].checked is True
+        assert item.submenu().items[3].checked is True
         settings.show_side_icons = False
-        assert item.submenu().items[2].checked is False
+        assert item.submenu().items[3].checked is False
 
     def test_colors_submenu(self):
         settings = Settings()
@@ -238,29 +245,36 @@ class TestBuildDisplayUiElementsMenu:
         menu = build_display_ui_elements_menu(Settings())
         assert menu.title == "UI elements"
         assert [item.label for item in menu.items] == [
+            "Right timer value",
             "Show playlist bar",
             "Show progress bar",
             "Show side icons",
             "Show timers",
             "Show volume bar",
         ]
+        assert [item.label for item in menu.items] == sorted(item.label for item in menu.items)
         assert [item.command for item in menu.items] == [
+            None,
             MenuCommand.TOGGLE_PLAYLIST_BAR,
             MenuCommand.TOGGLE_PROGRESS_BAR,
             MenuCommand.TOGGLE_SIDE_ICONS,
             MenuCommand.TOGGLE_TIMERS,
             MenuCommand.TOGGLE_VOLUME_BAR,
         ]
-        assert all(item.submenu is None for item in menu.items)
+        assert all(item.submenu is None for item in menu.items[1:])
+        right_timer_value = menu.items[0]
+        assert right_timer_value.checked is None
+        assert right_timer_value.submenu is not None
+        assert right_timer_value.submenu().title == "Right timer value"
 
     @pytest.mark.parametrize(
         ("index", "attribute"),
         [
-            (0, "show_playlist_bar"),
-            (1, "show_progress_bar"),
-            (2, "show_side_icons"),
-            (3, "show_timers"),
-            (4, "show_volume_bar"),
+            (1, "show_playlist_bar"),
+            (2, "show_progress_bar"),
+            (3, "show_side_icons"),
+            (4, "show_timers"),
+            (5, "show_volume_bar"),
         ],
     )
     @pytest.mark.parametrize("show", [True, False])
@@ -269,6 +283,22 @@ class TestBuildDisplayUiElementsMenu:
         menu = build_display_ui_elements_menu(settings)
         assert menu.items[index].checked is show
         assert [item.checked for item in menu.items].count(True) == (5 if show else 4)
+
+
+class TestBuildDisplayRightTimerValueMenu:
+    """Tests for the build_display_right_timer_value_menu function"""
+
+    @pytest.mark.parametrize(
+        ("value", "index"), [(RightTimerValue.END_TIME, 0), (RightTimerValue.REMAINING_TIME, 1)]
+    )
+    def test_choices(self, value, index):
+        menu = build_display_right_timer_value_menu(Settings(right_timer_value=value))
+        assert menu.title == "Right timer value"
+        assert [item.label for item in menu.items] == ["End time", "Remaining time"]
+        assert [item.value for item in menu.items] == ["end_time", "remaining_time"]
+        assert all(item.command is MenuCommand.SET_RIGHT_TIMER_VALUE for item in menu.items)
+        assert [item.checked for item in menu.items] == [index == 0, index == 1]
+        assert menu.selected_index == index
 
 
 class TestBuildDisplayBrightnessMenu:
@@ -368,9 +398,9 @@ class TestBuildRootMenu:
     def test_settings_menu_shows_the_current_values(self, library, system):
         settings = Settings()
         item = build_root_menu(library, system, settings).items[1]
-        assert item.submenu().items[0].submenu().items[4].submenu().items[2].checked is True
+        assert item.submenu().items[0].submenu().items[4].submenu().items[3].checked is True
         settings.show_side_icons = False
-        assert item.submenu().items[0].submenu().items[4].submenu().items[2].checked is False
+        assert item.submenu().items[0].submenu().items[4].submenu().items[3].checked is False
 
     def test_submenus_are_built_when_opened(self, library, system):
         build_root_menu(library, system, Settings())
@@ -421,11 +451,11 @@ class TestBuildSettingsMenu:
         assert playback.submenu().items[0].submenu().selected.label == "10"
         settings.playback_seek_step = 30
         assert playback.submenu().items[0].submenu().selected.label == "30"
-        assert display.submenu().items[4].submenu().items[2].checked is True
+        assert display.submenu().items[4].submenu().items[3].checked is True
         assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
         settings.startup_volume = StartupVolume.USE_DEFAULT
-        assert display.submenu().items[4].submenu().items[2].checked is False
+        assert display.submenu().items[4].submenu().items[3].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use default"
 
     def test_other_items_are_not_checkable(self, library, system):

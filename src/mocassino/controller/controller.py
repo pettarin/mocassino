@@ -8,7 +8,14 @@ import logging
 from collections.abc import Callable, Mapping
 from functools import partial
 
-from mocassino.constants import Action, MocStateOnExit, StartupPlaylist, StartupState, StartupVolume
+from mocassino.constants import (
+    Action,
+    MocStateOnExit,
+    RightTimerValue,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.controller.actions import parse_button_map
 from mocassino.controller.events import ButtonEvent
 from mocassino.model.colors import COLOR_ROLES
@@ -19,6 +26,7 @@ from mocassino.model.menu import (
     build_display_brightness_menu,
     build_display_color_menu,
     build_display_orientation_menu,
+    build_display_right_timer_value_menu,
     build_display_timeout_menu,
     build_display_ui_elements_menu,
     build_library_menu,
@@ -80,6 +88,11 @@ SETTERS: dict[
         "playback_volume_step",
         int,
         build_playback_volume_step_menu,
+    ),
+    MenuCommand.SET_RIGHT_TIMER_VALUE: (
+        "right_timer_value",
+        RightTimerValue,
+        build_display_right_timer_value_menu,
     ),
     MenuCommand.SET_STARTUP_PLAYLIST: (
         "startup_playlist",

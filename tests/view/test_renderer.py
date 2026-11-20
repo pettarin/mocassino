@@ -7,7 +7,7 @@
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
-from mocassino.constants import Action, Button
+from mocassino.constants import Action, Button, RightTimerValue
 from mocassino.controller.actions import resolve_button_map
 from mocassino.model.menu import Menu, MenuCommand, MenuItem
 from mocassino.model.moc import MocState, MocStatus
@@ -547,6 +547,41 @@ class TestRenderer:
         assert ACCENT_COLOR in {color for _, color in image.crop(box).getcolors()}
         assert not has_content(image, (80, 218, left, HEIGHT))
         assert not has_content(image, (left + ICON_SIZE, 218, 160, HEIGHT))
+
+    @pytest.mark.parametrize(
+        ("value", "current", "text"),
+        [
+            (RightTimerValue.END_TIME, 70, "3:25"),
+            (RightTimerValue.REMAINING_TIME, 70, "-2:15"),
+            (RightTimerValue.REMAINING_TIME, 205, "-0:00"),
+            (RightTimerValue.REMAINING_TIME, 210, "-0:00"),
+        ],
+    )
+    def test_playback_right_timer_value(self, renderer, value, current, text):
+        status = MocStatus(
+            current_seconds=current,
+            file_path="/music/a.flac",
+            state=MocState.PLAY,
+            total_seconds=205,
+        )
+        image = renderer.render(AppState(settings=Settings(right_timer_value=value), status=status))
+        expected = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
+        ImageDraw.Draw(expected).text(
+            (CONTENT_RIGHT, HEIGHT - 2),
+            text,
+            anchor="rs",
+            fill=DEFAULT_COLORS.normal,
+            font=ImageFont.load_default(20),
+        )
+        box = (WIDTH // 2 + ICON_SIZE, 218, CONTENT_RIGHT, HEIGHT)
+        assert has_content(image, box)
+        assert image.crop(box).tobytes() == expected.crop(box).tobytes()
+
+    @pytest.mark.parametrize("value", list(RightTimerValue))
+    def test_playback_right_timer_without_total(self, renderer, value):
+        status = MocStatus(current_seconds=70, file_path="/music/a.flac", state=MocState.PLAY)
+        image = renderer.render(AppState(settings=Settings(right_timer_value=value), status=status))
+        assert not has_content(image, (WIDTH // 2 + ICON_SIZE, 218, CONTENT_RIGHT, HEIGHT))
 
     @pytest.mark.parametrize("state", list(MocState))
     def test_playback_state_icon_hidden_with_the_timers(self, renderer, state):

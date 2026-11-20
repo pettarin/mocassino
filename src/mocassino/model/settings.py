@@ -8,12 +8,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields
 
-from mocassino.constants import MocStateOnExit, StartupPlaylist, StartupState, StartupVolume
+from mocassino.constants import (
+    MocStateOnExit,
+    RightTimerValue,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.defaults import (
     DEFAULT_COLOR_SPECS,
     DEFAULT_DISPLAY_BRIGHTNESS,
     DEFAULT_DISPLAY_ORIENTATION,
     DEFAULT_DISPLAY_TIMEOUT,
+    DEFAULT_DISPLAY_UI_ELEMENTS_RIGHT_TIMER_VALUE,
     DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR,
     DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR,
     DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS,
@@ -48,6 +55,9 @@ class Settings:
     playback_seek_step: int = DEFAULT_PLAYBACK_SEEK_STEP
     playback_volume_default: int = DEFAULT_PLAYBACK_VOLUME_DEFAULT
     playback_volume_step: int = DEFAULT_PLAYBACK_VOLUME_STEP
+    right_timer_value: RightTimerValue = RightTimerValue(
+        DEFAULT_DISPLAY_UI_ELEMENTS_RIGHT_TIMER_VALUE
+    )
     show_playlist_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR
     show_progress_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR
     show_side_icons: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS

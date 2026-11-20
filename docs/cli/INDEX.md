@@ -264,6 +264,7 @@ display:
   tick: 0.5
   timeout: 60
   ui_elements:
+    right_timer_value: end_time
     show_playlist_bar: true
     show_progress_bar: true
     show_side_icons: true
@@ -335,6 +336,7 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `display.timeout` | `60` | After how many seconds without a button press the display is turned off: `0` (never), `5`, `10`, `15`, `20`, `30`, `60`, `120`, or `300`; the time counts from the start of the service, or from the last button press; any button turns the display on again, without doing anything else; it can be changed from the `Settings` menu |
+| `display.ui_elements.right_timer_value` | `end_time` | What the timer on the right shows in playback mode: `end_time` for the time at which the track ends (its length), or `remaining_time` for the time left until then (e.g., `-3:25`); it can be changed from the `Settings` menu |
 | `display.ui_elements.show_playlist_bar` | `true` | Whether the playlist bar is shown in playback mode, if `display.ui_elements.show_side_icons` is `true`; it can be changed from the `Settings` menu |
 | `display.ui_elements.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode (if not, the album takes its place, right above the times); it can be changed from the `Settings` menu |
 | `display.ui_elements.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode, with the playlist and volume bars next to them; it can be changed from the `Settings` menu |
@@ -570,8 +572,10 @@ Set `display.ui_elements.show_progress_bar` to `false` to hide the progress bar:
 the album takes its place, right above the times and the state of the playback.
 Set `display.ui_elements.show_timers` to `false` to hide the times and the icon of the state
 of the playback: the progress bar and the album move down into their row.
-The five can also be shown or hidden while the service runs, from the `UI elements` menu
-of the `Display` settings.
+Set `display.ui_elements.right_timer_value` to `remaining_time` to have the timer on the right
+show the time left until the end of the track (e.g., `-3:25`), instead of the end, its length.
+The five can also be shown or hidden, and the timer on the right changed, while the service runs,
+from the `UI elements` menu of the `Display` settings.
 
 
 ### Orientation
@@ -644,6 +648,9 @@ The top level menu has the following items:
       While the display is off, nothing is drawn, but MOC is still followed and the state saved.
       The change is immediate.
     - `UI elements`: what is shown in playback mode.
+      - `Right timer value` (`display.ui_elements.right_timer_value`): a menu with the choices
+        `End time` (`end_time`) and `Remaining time` (`remaining_time`);
+        the current one has the solid square.
       - `Show playlist bar` (`display.ui_elements.show_playlist_bar`):
         whether the playlist bar is shown, if the side icons are.
       - `Show progress bar` (`display.ui_elements.show_progress_bar`):

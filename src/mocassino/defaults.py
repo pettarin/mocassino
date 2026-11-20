@@ -21,6 +21,7 @@ from mocassino.constants import (
     DisplayTarget,
     MocStateOnExit,
     Mode,
+    RightTimerValue,
     RunMode,
     StartupPlaylist,
     StartupState,
@@ -69,6 +70,7 @@ DEFAULT_DISPLAY_ORIENTATION: int = 0
 DEFAULT_DISPLAY_TARGET: str = DisplayTarget.PIRATEAUDIO.value
 DEFAULT_DISPLAY_TICK: float = 0.5
 DEFAULT_DISPLAY_TIMEOUT: int = 60
+DEFAULT_DISPLAY_UI_ELEMENTS_RIGHT_TIMER_VALUE: str = RightTimerValue.END_TIME.value
 DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR: bool = True
 DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR: bool = True
 DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS: bool = True

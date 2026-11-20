@@ -21,6 +21,7 @@ from mocassino.constants import (
     VOLUME_MAX,
     VOLUME_MIN,
     MocStateOnExit,
+    RightTimerValue,
     StartupPlaylist,
     StartupState,
     StartupVolume,
@@ -80,6 +81,7 @@ class MenuCommand(StrEnum):
     SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
     SET_PLAYBACK_VOLUME_DEFAULT = "set_playback_volume_default"
     SET_PLAYBACK_VOLUME_STEP = "set_playback_volume_step"
+    SET_RIGHT_TIMER_VALUE = "set_right_timer_value"
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SET_STARTUP_STATE = "set_startup_state"
     SET_STARTUP_VOLUME = "set_startup_volume"
@@ -327,6 +329,19 @@ def build_display_orientation_menu(settings: Settings) -> Menu:
     )
 
 
+def build_display_right_timer_value_menu(settings: Settings) -> Menu:
+    """Build the menu choosing what the timer on the right shows in playback mode.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_choice_menu(
+        "Right timer value",
+        tuple(RightTimerValue),
+        settings.right_timer_value,
+        MenuCommand.SET_RIGHT_TIMER_VALUE,
+    )
+
+
 def build_display_timeout_menu(settings: Settings) -> Menu:
     """Build the menu choosing after how many seconds without a button press the display is off.
 
@@ -350,6 +365,10 @@ def build_display_ui_elements_menu(settings: Settings) -> Menu:
     return Menu(
         title="UI elements",
         items=(
+            MenuItem(
+                label="Right timer value",
+                submenu=partial(build_display_right_timer_value_menu, settings),
+            ),
             MenuItem(
                 label="Show playlist bar",
                 checked=settings.show_playlist_bar,

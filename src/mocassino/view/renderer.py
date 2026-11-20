@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from mocassino.constants import Button, ButtonPress, Mode
+from mocassino.constants import Button, ButtonPress, Mode, RightTimerValue
 from mocassino.controller.actions import parse_button_map, resolve_button_map
 from mocassino.controller.events import ButtonEvent
 from mocassino.model.colors import parse_color
@@ -275,7 +275,7 @@ class Renderer:
                     status.current_seconds / total if total else 0.0,
                 )
         if settings.show_timers:
-            self._draw_timers(draw, status, left, right)
+            self._draw_timers(draw, status, settings.right_timer_value, left, right)
 
     def _draw_playlist_bar(self, draw: ImageDraw.ImageDraw, fraction: float) -> None:
         """Draw how far the playback has advanced through the playlist, in the band on the left.
@@ -292,12 +292,19 @@ class Renderer:
             draw.rectangle((left, top, right, top + filled), fill=self._colors.accented)
 
     def _draw_timers(
-        self, draw: ImageDraw.ImageDraw, status: MocStatus, left: int, right: int
+        self,
+        draw: ImageDraw.ImageDraw,
+        status: MocStatus,
+        right_timer_value: RightTimerValue,
+        left: int,
+        right: int,
     ) -> None:
         """Draw the times of the track, unless stopped, with the icon of the state between them.
 
         They take the lower row of the bottom icons: the bottom of the digits of the times
-        leaves the same border as the icons.
+        leaves the same border as the icons. The time on the left is the current one;
+        the one on the right, if the length of the track is known, is either its end
+        (that length) or the time remaining until then, with a minus sign.
         """
         if status.state is not MocState.STOP:
             font = self._font(TIMES_FONT_SIZE)
@@ -309,9 +316,14 @@ class Renderer:
                 font=font,
             )
             if status.total_seconds is not None:
+                if right_timer_value is RightTimerValue.REMAINING_TIME:
+                    remaining = max(0, status.total_seconds - status.current_seconds)
+                    right_time = f"-{_format_seconds(remaining)}"
+                else:
+                    right_time = _format_seconds(status.total_seconds)
                 draw.text(
                     (right, HEIGHT - ICON_BORDER),
-                    _format_seconds(status.total_seconds),
+                    right_time,
                     anchor="rs",
                     fill=self._colors.normal,
                     font=font,

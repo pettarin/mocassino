@@ -15,6 +15,9 @@ All notable changes to this project will be documented in this file.
 
 - The `display.ui_elements.show_timers` setting, and the `Show timers` item
   of the `UI elements` menu, to hide the times and the icon of the state of the playback
+- The `display.ui_elements.right_timer_value` setting, and the `Right timer value` menu
+  in the `UI elements` menu, to have the timer on the right show the time remaining
+  (`remaining_time`) instead of the end time, the length of the track (`end_time`)
 
 ### Changed
 

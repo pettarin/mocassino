@@ -13,6 +13,7 @@ from mocassino.constants import (
     ButtonPress,
     MocStateOnExit,
     Mode,
+    RightTimerValue,
     StartupPlaylist,
     StartupState,
     StartupVolume,
@@ -361,6 +362,7 @@ class TestController:
         assert state.current_menu.title == "UI elements"
         controller.handle(Y)
         controller.handle(Y)
+        controller.handle(Y)
         assert state.current_menu.selected.label == "Show side icons"
         assert state.current_menu.selected.checked is True
         controller.handle(B)
@@ -375,16 +377,18 @@ class TestController:
         controller.handle(B)
         controller.handle(Y)
         controller.handle(Y)
+        controller.handle(Y)
+        assert state.current_menu.selected.label == "Show side icons"
         assert state.current_menu.selected.checked is True
 
     @pytest.mark.parametrize(
         ("moves", "label", "attribute"),
         [
-            (0, "Show playlist bar", "show_playlist_bar"),
-            (1, "Show progress bar", "show_progress_bar"),
-            (2, "Show side icons", "show_side_icons"),
-            (3, "Show timers", "show_timers"),
-            (4, "Show volume bar", "show_volume_bar"),
+            (1, "Show playlist bar", "show_playlist_bar"),
+            (2, "Show progress bar", "show_progress_bar"),
+            (3, "Show side icons", "show_side_icons"),
+            (4, "Show timers", "show_timers"),
+            (5, "Show volume bar", "show_volume_bar"),
         ],
     )
     def test_menu_select_toggles_of_the_display(
@@ -420,6 +424,31 @@ class TestController:
         controller.handle(B)
         assert getattr(state.settings, attribute) is True
         assert state.current_menu.selected.checked is True
+
+    def test_menu_select_right_timer_value(self, mocker, state, moc, library, system):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, B, X, B):
+            controller.handle(event)
+        assert state.current_menu.selected.label == "Right timer value"
+        controller.handle(B)
+        assert state.current_menu.title == "Right timer value"
+        assert state.current_menu.selected.label == "End time"
+        assert state.current_menu.selected.checked is True
+        controller.handle(Y)
+        controller.handle(B)
+        assert state.settings.right_timer_value is RightTimerValue.REMAINING_TIME
+        assert state.current_menu.title == "Right timer value"
+        assert state.current_menu.selected.label == "Remaining time"
+        assert state.current_menu.selected.checked is True
+        save_settings.assert_called_once_with(state.settings)
 
     def test_menu_select_display_color(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
@@ -867,7 +896,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, B, X, B, Y, Y):
+        for event in (A_LONG, Y, B, B, X, B, Y, Y, Y):
             controller.handle(event)
         save_settings.assert_not_called()
         controller.handle(B)

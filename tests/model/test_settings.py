@@ -4,7 +4,13 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
-from mocassino.constants import MocStateOnExit, StartupPlaylist, StartupState, StartupVolume
+from mocassino.constants import (
+    MocStateOnExit,
+    RightTimerValue,
+    StartupPlaylist,
+    StartupState,
+    StartupVolume,
+)
 from mocassino.model.settings import Settings
 
 
@@ -31,6 +37,7 @@ class TestSettings:
             playback_seek_step=30,
             playback_volume_default=20,
             playback_volume_step=2,
+            right_timer_value=RightTimerValue.REMAINING_TIME,
             show_progress_bar=False,
             show_side_icons=False,
             show_timers=False,

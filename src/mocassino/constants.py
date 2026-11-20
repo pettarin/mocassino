@@ -102,6 +102,17 @@ class MocStateOnExit(StrEnum):
     STOP = "stop"
 
 
+class RightTimerValue(StrEnum):
+    """What the timer on the right shows in playback mode.
+
+    END_TIME is the time at which the track ends, that is, its length;
+    REMAINING_TIME is the time left until then.
+    """
+
+    END_TIME = "end_time"
+    REMAINING_TIME = "remaining_time"
+
+
 class RunMode(StrEnum):
     """Whether the service runs in background, detached from the terminal, or in foreground."""
 
