@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 > [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.4] - To be released
+
+
 ## [0.0.3] - 2026-11-20
 
 ### Added

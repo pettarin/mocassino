@@ -1,4 +1,4 @@
-"""mocassino -
+"""mocassino - Lightweight audio player based on MOC for Raspberry Pi Zero 2 devices with Pimoroni Pirate Audio hats
 
 :copyright: Copyright (C) 2026 Alberto Pettarin
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
@@ -13,7 +13,7 @@ import logging
 # the records go nowhere, silently
 logging.getLogger("mocassino").addHandler(logging.NullHandler())
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 __author__ = "Alberto Pettarin"
 __email__ = "alberto@albertopettarin.it"
 
