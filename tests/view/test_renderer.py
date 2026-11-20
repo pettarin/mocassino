@@ -95,10 +95,38 @@ class TestFormatSeconds:
 
     @pytest.mark.parametrize(
         ("seconds", "expected"),
-        [(0, "0:00"), (9, "0:09"), (70, "1:10"), (3725, "62:05")],
+        [
+            (0, "0:00"),
+            (9, "0:09"),
+            (70, "1:10"),
+            (599, "9:59"),
+            (600, "10:00"),
+            (3599, "59:59"),
+            (3600, "1:00:00"),
+            (3725, "1:02:05"),
+            (35999, "9:59:59"),
+            (36000, "10:00:00"),
+            (359999, "99:59:59"),
+            (360000, "100:00:00"),
+        ],
     )
     def test_format(self, seconds, expected):
-        assert _format_seconds(seconds) == expected
+        assert _format_seconds(seconds, seconds) == expected
+
+    @pytest.mark.parametrize(
+        ("seconds", "length", "expected"),
+        [
+            (70, 599, "1:10"),
+            (70, 600, "01:10"),
+            (70, 3599, "01:10"),
+            (303, 3725, "0:05:03"),
+            (303, 36000, "00:05:03"),
+            (3725, 36000, "01:02:05"),
+            (0, 359999, "00:00:00"),
+        ],
+    )
+    def test_format_as_the_length(self, seconds, length, expected):
+        assert _format_seconds(seconds, length) == expected
 
 
 class TestRenderer:
@@ -576,6 +604,52 @@ class TestRenderer:
         box = (WIDTH // 2 + ICON_SIZE, 218, CONTENT_RIGHT, HEIGHT)
         assert has_content(image, box)
         assert image.crop(box).tobytes() == expected.crop(box).tobytes()
+
+    @pytest.mark.parametrize(
+        ("current", "total", "value", "texts"),
+        [
+            (303, 599, RightTimerValue.END_TIME, ("5:03", "9:59")),
+            (303, 754, RightTimerValue.END_TIME, ("05:03", "12:34")),
+            (303, 3725, RightTimerValue.END_TIME, ("0:05:03", "1:02:05")),
+            (303, 3725, RightTimerValue.REMAINING_TIME, ("0:05:03", "-0:57:02")),
+            (45296, 359999, RightTimerValue.END_TIME, ("12:34:56", "99:59:59")),
+            (45296, 359999, RightTimerValue.REMAINING_TIME, ("12:34:56", "-87:25:03")),
+        ],
+    )
+    def test_playback_timers_take_the_form_of_the_length(
+        self, renderer, current, total, value, texts
+    ):
+        status = MocStatus(
+            current_seconds=current,
+            file_path="/music/a.flac",
+            state=MocState.PLAY,
+            total_seconds=total,
+        )
+        image = renderer.render(AppState(settings=Settings(right_timer_value=value), status=status))
+        expected = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
+        font = ImageFont.load_default(20)
+        draw = ImageDraw.Draw(expected)
+        left_text, right_text = texts
+        draw.text(
+            (CONTENT_LEFT, HEIGHT - 2),
+            left_text,
+            anchor="ls",
+            fill=DEFAULT_COLORS.normal,
+            font=font,
+        )
+        draw.text(
+            (CONTENT_RIGHT, HEIGHT - 2),
+            right_text,
+            anchor="rs",
+            fill=DEFAULT_COLORS.normal,
+            font=font,
+        )
+        icon_left = (WIDTH - ICON_SIZE) // 2
+        for box in (
+            (CONTENT_LEFT, 218, icon_left, HEIGHT),
+            (icon_left + ICON_SIZE, 218, CONTENT_RIGHT, HEIGHT),
+        ):
+            assert image.crop(box).tobytes() == expected.crop(box).tobytes()
 
     @pytest.mark.parametrize("value", list(RightTimerValue))
     def test_playback_right_timer_without_total(self, renderer, value):

@@ -27,6 +27,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- The times in playback mode take the shortest form fitting the length of the track,
+  the same for both: `M:SS`, `MM:SS`, `H:MM:SS`, or `HH:MM:SS`
+  (a track of an hour or more was shown in minutes, e.g., `62:05`)
 - `system.moc_state_on_exit` is moved to `run.moc_state_on_exit`, and its menu,
   `MOC state on exit`, to the new `Run` menu of the `Settings` menu:
   a configuration file with `system.moc_state_on_exit` is no longer valid, and has to be updated

@@ -601,6 +601,16 @@ Set `display.ui_elements.show_timers` to `false` to hide the times and the icon 
 of the playback: the progress bar and the album move down into their row.
 Set `display.ui_elements.right_timer_value` to `remaining_time` to have the timer on the right
 show the time left until the end of the track (e.g., `-3:25`), instead of the end, its length.
+Both times are written in the shortest form fitting the length of the track,
+padded with zeros to it, so that the two have the same form:
+
+| Length of the track | Form | Example (at 5:03, end time and remaining time) |
+|---|---|---|
+| Less than 10 minutes | `M:SS` | `5:03`, `9:59`, `-4:56` |
+| Less than an hour | `MM:SS` | `05:03`, `12:34`, `-07:31` |
+| Less than 10 hours | `H:MM:SS` | `0:05:03`, `1:02:05`, `-0:57:02` |
+| 10 hours or more | `HH:MM:SS` | `00:05:03`, `10:00:00`, `-09:54:57` |
+
 The five can also be shown or hidden, and the timer on the right changed, while the service runs,
 from the `UI elements` menu of the `Display` settings.
 

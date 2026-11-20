@@ -305,22 +305,25 @@ class Renderer:
         leaves the same border as the icons. The time on the left is the current one;
         the one on the right, if the length of the track is known, is either its end
         (that length) or the time remaining until then, with a minus sign.
+        Both are written in the shortest form fitting the length of the track
+        (see _format_seconds).
         """
         if status.state is not MocState.STOP:
             font = self._font(TIMES_FONT_SIZE)
+            total = status.total_seconds
             draw.text(
                 (left, HEIGHT - ICON_BORDER),
-                _format_seconds(status.current_seconds),
+                _format_seconds(status.current_seconds, total or 0),
                 anchor="ls",
                 fill=self._colors.normal,
                 font=font,
             )
-            if status.total_seconds is not None:
+            if total is not None:
                 if right_timer_value is RightTimerValue.REMAINING_TIME:
-                    remaining = max(0, status.total_seconds - status.current_seconds)
-                    right_time = f"-{_format_seconds(remaining)}"
+                    remaining = max(0, total - status.current_seconds)
+                    right_time = f"-{_format_seconds(remaining, total)}"
                 else:
-                    right_time = _format_seconds(status.total_seconds)
+                    right_time = _format_seconds(total, total)
                 draw.text(
                     (right, HEIGHT - ICON_BORDER),
                     right_time,
@@ -404,6 +407,18 @@ class Renderer:
         return image if rotation is None else image.transpose(rotation)
 
 
-def _format_seconds(seconds: int) -> str:
-    """Format a number of seconds as minutes and seconds (e.g., 70 as 1:10)."""
-    return f"{seconds // 60}:{seconds % 60:02d}"
+def _format_seconds(seconds: int, length: int) -> str:
+    """Format a number of seconds as M:SS, MM:SS, H:MM:SS, or HH:MM:SS.
+
+    The form is the shortest one fitting the given length (that of the track),
+    so that the times of a track all have the same form: e.g., 303 seconds are 5:03
+    in a track of 9:59, 05:03 in one of 12:34, 0:05:03 in one of 1:02:05,
+    and 00:05:03 in one of 10:00:00.
+    """
+    hours, rest = divmod(seconds, 3600)
+    minutes, secs = divmod(rest, 60)
+    if length < 3600:
+        width = 2 if length >= 600 else 1
+        return f"{seconds // 60:0{width}d}:{secs:02d}"
+    width = 2 if length >= 36000 else 1
+    return f"{hours:0{width}d}:{minutes:02d}:{secs:02d}"
