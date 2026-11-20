@@ -28,7 +28,7 @@ from mocassino.configuration import (
     update_configuration_file,
     write_configuration_file,
 )
-from mocassino.controller.actions import DEFAULT_BUTTON_MAP
+from mocassino.defaults import DEFAULT_BUTTON_MAP
 
 
 @pytest.fixture(autouse=True)

@@ -8,9 +8,10 @@ import logging
 
 import pytest
 
-from mocassino.controller.actions import DEFAULT_BUTTON_MAP, resolve_button_map
+from mocassino.controller.actions import resolve_button_map
 from mocassino.controller.controller import Controller
 from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.defaults import DEFAULT_BUTTON_MAP
 from mocassino.model.library import Library
 from mocassino.model.menu import Menu, MenuCommand, MenuItem
 from mocassino.model.moc import (

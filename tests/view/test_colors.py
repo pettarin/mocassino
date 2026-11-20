@@ -6,7 +6,7 @@
 
 import pytest
 
-from mocassino.model.colors import DEFAULT_COLOR_SPECS
+from mocassino.defaults import DEFAULT_COLOR_SPECS
 from mocassino.view.colors import DEFAULT_COLORS, Colors, parse_colors
 
 

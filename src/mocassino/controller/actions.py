@@ -15,30 +15,10 @@ from collections.abc import Mapping
 from enum import StrEnum
 
 from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.defaults import DEFAULT_BUTTON_MAP
 from mocassino.model.state import Mode
 
 type ButtonMap = dict[tuple[Mode, ButtonEvent], Action]
-
-DEFAULT_BUTTON_MAP: dict[str, dict[str, str]] = {
-    "menu": {
-        "A": "menu_back",
-        "B": "menu_select",
-        "X": "menu_up",
-        "X_long": "menu_select",
-        "Y": "menu_down",
-        "Y_long": "menu_select",
-    },
-    "playback": {
-        "A": "play_pause",
-        "A_long": "open_menu",
-        "B": "next",
-        "B_long": "previous",
-        "X": "volume_up",
-        "X_hold": "seek_forward",
-        "Y": "volume_down",
-        "Y_hold": "seek_backward",
-    },
-}
 
 
 class Action(StrEnum):

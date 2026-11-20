@@ -13,11 +13,12 @@ import pytest
 import mocassino.app
 from mocassino.app import App, build_app
 from mocassino.configuration import ColorsConfiguration, Configuration, load_configuration
-from mocassino.controller.actions import DEFAULT_BUTTON_MAP, Action
+from mocassino.controller.actions import Action
 from mocassino.controller.buttons.gpio import GpioButtonSource
 from mocassino.controller.buttons.null import NullButtonSource
 from mocassino.controller.controller import Controller
 from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.defaults import DEFAULT_BUTTON_MAP
 from mocassino.model.library import Library
 from mocassino.model.moc import (
     MocError,

@@ -20,9 +20,9 @@ from typing import Any
 
 import yaml
 
+from mocassino.defaults import DEFAULT_STATE_FILE_PATH
 from mocassino.model.moc import MocState
 
-DEFAULT_STATE_FILE_PATH: Path = Path("~/.config/mocassino/state.yaml")
 LOGGER: logging.Logger = logging.getLogger(__name__)
 # How the playback states are written in the file
 STATE_NAMES: dict[MocState, str] = {

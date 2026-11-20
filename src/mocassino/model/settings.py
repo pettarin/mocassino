@@ -9,7 +9,24 @@ from __future__ import annotations
 from dataclasses import dataclass, fields
 from enum import StrEnum
 
-from mocassino.model.colors import COLOR_ROLES, DEFAULT_COLOR_SPECS
+from mocassino.defaults import (
+    DEFAULT_COLOR_SPECS,
+    DEFAULT_DISPLAY_BRIGHTNESS,
+    DEFAULT_DISPLAY_ORIENTATION,
+    DEFAULT_DISPLAY_TIMEOUT,
+    DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR,
+    DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR,
+    DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS,
+    DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_VOLUME_BAR,
+    DEFAULT_PLAYBACK_SEEK_STEP,
+    DEFAULT_PLAYBACK_VOLUME_DEFAULT,
+    DEFAULT_PLAYBACK_VOLUME_STEP,
+    DEFAULT_STARTUP_PLAYLIST,
+    DEFAULT_STARTUP_STATE,
+    DEFAULT_STARTUP_VOLUME,
+    DEFAULT_SYSTEM_MOC_STATE_ON_EXIT,
+)
+from mocassino.model.colors import COLOR_ROLES
 
 # By how many degrees, clockwise, the display can be rotated
 ORIENTATIONS: tuple[int, ...] = (0, 90, 180, 270)
@@ -69,25 +86,25 @@ class Settings:
     Their initial values come from the configuration; the changes are not saved to it.
     """
 
-    display_brightness: int = 100
+    display_brightness: int = round(DEFAULT_DISPLAY_BRIGHTNESS * 100)
     display_colors_accented: str = DEFAULT_COLOR_SPECS["accented"]
     display_colors_background: str = DEFAULT_COLOR_SPECS["background"]
     display_colors_muted: str = DEFAULT_COLOR_SPECS["muted"]
     display_colors_normal: str = DEFAULT_COLOR_SPECS["normal"]
     display_colors_track: str = DEFAULT_COLOR_SPECS["track"]
-    display_orientation: int = 0
-    display_timeout: int = 60
-    playback_seek_step: int = 10
-    playback_volume_default: int = 50
-    playback_volume_step: int = 5
-    show_playlist_bar: bool = True
-    show_progress_bar: bool = True
-    show_side_icons: bool = True
-    show_volume_bar: bool = True
-    startup_playlist: StartupPlaylist = StartupPlaylist.USE_SAVED
-    startup_state: StartupState = StartupState.USE_SAVED
-    startup_volume: StartupVolume = StartupVolume.USE_SAVED
-    system_moc_state_on_exit: MocStateOnExit = MocStateOnExit.DO_NOTHING
+    display_orientation: int = DEFAULT_DISPLAY_ORIENTATION
+    display_timeout: int = DEFAULT_DISPLAY_TIMEOUT
+    playback_seek_step: int = DEFAULT_PLAYBACK_SEEK_STEP
+    playback_volume_default: int = DEFAULT_PLAYBACK_VOLUME_DEFAULT
+    playback_volume_step: int = DEFAULT_PLAYBACK_VOLUME_STEP
+    show_playlist_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR
+    show_progress_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR
+    show_side_icons: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS
+    show_volume_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_VOLUME_BAR
+    startup_playlist: StartupPlaylist = StartupPlaylist(DEFAULT_STARTUP_PLAYLIST)
+    startup_state: StartupState = StartupState(DEFAULT_STARTUP_STATE)
+    startup_volume: StartupVolume = StartupVolume(DEFAULT_STARTUP_VOLUME)
+    system_moc_state_on_exit: MocStateOnExit = MocStateOnExit(DEFAULT_SYSTEM_MOC_STATE_ON_EXIT)
 
     def color_specs(self) -> dict[str, str]:
         """Return the colors of the display, as names or HTML codes, by role."""

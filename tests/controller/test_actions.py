@@ -7,12 +7,12 @@
 import pytest
 
 from mocassino.controller.actions import (
-    DEFAULT_BUTTON_MAP,
     Action,
     parse_button_map,
     resolve_button_map,
 )
 from mocassino.controller.events import Button, ButtonEvent, Press
+from mocassino.defaults import DEFAULT_BUTTON_MAP
 from mocassino.model.state import Mode
 
 

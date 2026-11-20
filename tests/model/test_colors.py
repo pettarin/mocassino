@@ -7,10 +7,10 @@
 import pytest
 from colorzero.tables import NAMED_COLORS
 
+from mocassino.defaults import DEFAULT_COLOR_SPECS
 from mocassino.model.colors import (
     COLOR_NAMES,
     COLOR_ROLES,
-    DEFAULT_COLOR_SPECS,
     color_name,
     parse_color,
 )

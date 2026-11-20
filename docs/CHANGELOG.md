@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 
 ## [0.0.3] - To be released
 
+### Changed
+
+- The default values of the configuration are defined in the new `mocassino.defaults` module
+
 
 ## [0.0.2] - 2026-11-20
 

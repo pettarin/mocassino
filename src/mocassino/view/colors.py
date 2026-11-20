@@ -7,7 +7,8 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from mocassino.model.colors import DEFAULT_COLOR_SPECS, Color, parse_color
+from mocassino.defaults import DEFAULT_COLOR_SPECS
+from mocassino.model.colors import Color, parse_color
 
 
 @dataclass(frozen=True)

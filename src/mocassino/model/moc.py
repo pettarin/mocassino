@@ -16,6 +16,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
+from mocassino.defaults import DEFAULT_SYSTEM_MOCP_FILE_PATH
+
 # When the MOC server is busy, it may refuse a command: the command is then tried again,
 # for this many times in all, this far apart (in seconds)
 BUSY_ATTEMPTS: int = 3
@@ -112,7 +114,11 @@ class MocStatus:
 class SubprocessMocClient:
     """MOC client running ``mocp`` commands via subprocess."""
 
-    def __init__(self, mocp_file_path: str = "mocp", timeout: float = DEFAULT_TIMEOUT) -> None:
+    def __init__(
+        self,
+        mocp_file_path: str = DEFAULT_SYSTEM_MOCP_FILE_PATH,
+        timeout: float = DEFAULT_TIMEOUT,
+    ) -> None:
         """Initialize the client.
 
         :param mocp_file_path: the ``mocp`` executable

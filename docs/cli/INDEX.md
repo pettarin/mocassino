@@ -172,7 +172,8 @@ Options:
                                 (display.brightness), between 0.0 and 1.0.
                                 [0.0<=x<=1.0]
   --default                     Print the default values, ignoring the
-                                configuration file and the global options.
+                                configuration file and the global options
+                                (except -s / --simulator).
   --orientation [0|90|180|270]  Set the orientation of the display
                                 (display.orientation), in degrees clockwise.
   -o, --output-file-path FILE   Write the configuration to this file instead
@@ -196,6 +197,9 @@ Configuration written to '/path/to/configuration.yaml'
 
 $ # write the default values to the default configuration file, replacing it
 $ mocassino configuration --default -o -y
+
+$ # the same, with the simulator selected (e.g., on a PC)
+$ mocassino --simulator configuration --default -o -y
 ```
 
 With `--orientation`, the configuration printed or written has that `display.orientation`,

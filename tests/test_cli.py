@@ -22,6 +22,7 @@ from mocassino.configuration import (
     ConfigurationError,
     ConfigurationReadError,
     load_configuration,
+    simulated_defaults,
 )
 from mocassino.model.moc import MocError
 from mocassino.simulator.tk import TkSimulator
@@ -65,10 +66,19 @@ class TestConfigurationCommand:
         assert yaml.safe_load(result.output) == Configuration().to_dict()
 
     def test_default_ignores_the_other_options(self, runner):
-        arguments = ["-s", "-l", "/srv/music", "--display-target", "none", "configuration"]
+        arguments = ["-l", "/srv/music", "--display-target", "none", "configuration"]
         result = runner.invoke(main, [*arguments, "--default"])
         assert result.exit_code == 0
         assert yaml.safe_load(result.output) == Configuration().to_dict()
+
+    def test_default_ignores_the_other_options_but_simulator(self, runner):
+        arguments = ["-s", "-l", "/srv/music", "--display-target", "none", "configuration"]
+        result = runner.invoke(main, [*arguments, "--default"])
+        assert result.exit_code == 0
+        expected = Configuration().to_dict()
+        expected["buttons"]["origin"] = "simulator"
+        expected["display"]["target"] = "simulator"
+        assert yaml.safe_load(result.output) == expected
 
     def test_configuration_file(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
@@ -252,9 +262,12 @@ class TestConfigurationCommand:
             encoding="utf-8",
         )
         path = tmp_path / "defaults.yaml"
-        result = runner.invoke(main, ["-s", "configuration", "--default", "-o", str(path)])
+        result = runner.invoke(main, ["configuration", "--default", "-o", str(path)])
         assert result.exit_code == 0
         assert load_configuration(path) == Configuration()
+        result = runner.invoke(main, ["-s", "configuration", "--default", "-o", str(path), "-y"])
+        assert result.exit_code == 0
+        assert load_configuration(path) == simulated_defaults(buttons=True, display=True)
 
     def test_overrides(self, runner):
         result = runner.invoke(
@@ -288,6 +301,20 @@ class TestConfigurationCommand:
         output = yaml.safe_load(result.output)
         assert output["buttons"]["origin"] == "simulator"
         assert output["display"]["target"] == "none"
+
+    def test_simulator_with_default(self, runner, home):
+        directory = home / ".config" / "mocassino"
+        directory.mkdir(parents=True)
+        (directory / "configuration.yaml").write_text(
+            "display:\n  tick: 0.25\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(main, ["-s", "configuration", "--default"])
+        assert result.exit_code == 0
+        expected = Configuration().to_dict()
+        expected["buttons"]["origin"] = "simulator"
+        expected["display"]["target"] = "simulator"
+        assert yaml.safe_load(result.output) == expected
 
 
 class TestDaemonize:

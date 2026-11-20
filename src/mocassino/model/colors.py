@@ -1,4 +1,4 @@
-"""The colors of the display: their names, their defaults, and how they are read.
+"""The colors of the display: their names, their roles, and how they are read.
 
 A color is either an HTML code (e.g., "#00F" or "#0000FF") or a CSS color name
 (e.g., "orange"), as accepted by colorzero.
@@ -160,14 +160,6 @@ COLOR_NAMES: tuple[str, ...] = (
 )
 # The roles of the colors: see the Colors class of the view
 COLOR_ROLES: tuple[str, ...] = ("accented", "background", "muted", "normal", "track")
-# The default color of each role, as a name or an HTML code
-DEFAULT_COLOR_SPECS: dict[str, str] = {
-    "accented": "limegreen",
-    "background": "black",
-    "muted": "silver",
-    "normal": "white",
-    "track": "dimgray",
-}
 
 
 @cache

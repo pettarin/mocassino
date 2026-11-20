@@ -22,7 +22,6 @@ from mocassino import __version__
 from mocassino.app import App, build_app
 from mocassino.configuration import (
     BUTTONS_ORIGINS,
-    DEFAULT_CONFIGURATION_FILE_PATH,
     DISPLAY_TARGETS,
     Configuration,
     ConfigurationError,
@@ -31,6 +30,7 @@ from mocassino.configuration import (
     replace_invalid_configuration_file,
     simulated_defaults,
 )
+from mocassino.defaults import DEFAULT_CONFIGURATION_FILE_PATH
 from mocassino.model.settings import ORIENTATIONS
 from mocassino.simulator.tk import TkSimulator
 
@@ -185,7 +185,8 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 @click.option(
     "--default",
     is_flag=True,
-    help="Print the default values, ignoring the configuration file and the global options.",
+    help="Print the default values, ignoring the configuration file and the global options "
+    "(except -s / --simulator).",
 )
 @click.option(
     "--orientation",
@@ -202,11 +203,6 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
     "without a value, to the default configuration file.",
 )
 @click.option(
-    "--simulator",
-    is_flag=True,
-    help="Set 'buttons.origin=simulator' and 'display.target=simulator'.",
-)
-@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -219,7 +215,6 @@ def configuration(
     default: bool,
     orientation: str | None,
     output_file_path: Path | None,
-    simulator: bool,
     yes: bool,
 ) -> None:
     """Print the effective configuration, in YAML format, or write it to a file."""
@@ -234,7 +229,7 @@ def configuration(
             effective,
             display=replace(effective.display, orientation=int(orientation)),
         )
-    if simulator:
+    if default and options.simulator:
         effective = replace(
             effective,
             buttons=replace(effective.buttons, origin="simulator"),

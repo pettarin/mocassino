@@ -17,7 +17,36 @@ from typing import Any
 import yaml
 
 from mocassino.controller.actions import resolve_button_map
-from mocassino.model.colors import DEFAULT_COLOR_SPECS, parse_color
+from mocassino.defaults import (
+    DEFAULT_BUTTONS_LONG_PRESS_TIME,
+    DEFAULT_BUTTONS_ORIGIN,
+    DEFAULT_BUTTONS_REPEAT_HOLD_TIME,
+    DEFAULT_COLOR_SPECS,
+    DEFAULT_CONFIGURATION_FILE_PATH,
+    DEFAULT_DISPLAY_BRIGHTNESS,
+    DEFAULT_DISPLAY_FONT_FILE_PATH,
+    DEFAULT_DISPLAY_ORIENTATION,
+    DEFAULT_DISPLAY_TARGET,
+    DEFAULT_DISPLAY_TICK,
+    DEFAULT_DISPLAY_TIMEOUT,
+    DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR,
+    DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR,
+    DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS,
+    DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_VOLUME_BAR,
+    DEFAULT_LIBRARY_DIRECTORY_PATH,
+    DEFAULT_PLAYBACK_SEEK_STEP,
+    DEFAULT_PLAYBACK_VOLUME_DEFAULT,
+    DEFAULT_PLAYBACK_VOLUME_STEP,
+    DEFAULT_RUN_MODE,
+    DEFAULT_STARTUP_PLAYLIST,
+    DEFAULT_STARTUP_STATE,
+    DEFAULT_STARTUP_VOLUME,
+    DEFAULT_SYSTEM_MOC_STATE_ON_EXIT,
+    DEFAULT_SYSTEM_MOCP_FILE_PATH,
+    DEFAULT_SYSTEM_REBOOT_COMMAND,
+    DEFAULT_SYSTEM_SHUTDOWN_COMMAND,
+)
+from mocassino.model.colors import parse_color
 from mocassino.model.settings import (
     DISPLAY_TIMEOUT_CHOICES,
     ORIENTATIONS,
@@ -29,7 +58,6 @@ from mocassino.model.settings import (
 
 # "pirateaudio" is a synonym of "gpio" for the buttons, and of "st7789" for the display
 BUTTONS_ORIGINS: tuple[str, ...] = ("gpio", "none", "pirateaudio", "simulator")
-DEFAULT_CONFIGURATION_FILE_PATH: Path = Path("~/.config/mocassino/configuration.yaml")
 DISPLAY_TARGETS: tuple[str, ...] = ("none", "pirateaudio", "simulator", "st7789")
 RUN_MODES: tuple[str, ...] = ("background", "foreground")
 
@@ -42,9 +70,9 @@ class ButtonsConfiguration:
     """
 
     button_map: dict[str, dict[str, str]] = field(default_factory=lambda: resolve_button_map({}))
-    long_press_time: float = 0.6
-    origin: str = "pirateaudio"
-    repeat_hold_time: float = 0.3
+    long_press_time: float = DEFAULT_BUTTONS_LONG_PRESS_TIME
+    origin: str = DEFAULT_BUTTONS_ORIGIN
+    repeat_hold_time: float = DEFAULT_BUTTONS_REPEAT_HOLD_TIME
 
 
 class ConfigurationError(Exception):
@@ -77,23 +105,23 @@ class UiElementsConfiguration:
     The playlist bar and the volume bar are shown only if the side icons are too.
     """
 
-    show_playlist_bar: bool = True
-    show_progress_bar: bool = True
-    show_side_icons: bool = True
-    show_volume_bar: bool = True
+    show_playlist_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR
+    show_progress_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR
+    show_side_icons: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS
+    show_volume_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_VOLUME_BAR
 
 
 @dataclass(frozen=True)
 class DisplayConfiguration:
     """The settings of the display."""
 
-    brightness: float = 1.0
+    brightness: float = DEFAULT_DISPLAY_BRIGHTNESS
     colors: ColorsConfiguration = field(default_factory=ColorsConfiguration)
-    font_file_path: Path | None = None
-    orientation: int = 0
-    target: str = "pirateaudio"
-    tick: float = 0.5
-    timeout: int = 60
+    font_file_path: Path | None = DEFAULT_DISPLAY_FONT_FILE_PATH
+    orientation: int = DEFAULT_DISPLAY_ORIENTATION
+    target: str = DEFAULT_DISPLAY_TARGET
+    tick: float = DEFAULT_DISPLAY_TICK
+    timeout: int = DEFAULT_DISPLAY_TIMEOUT
     ui_elements: UiElementsConfiguration = field(default_factory=UiElementsConfiguration)
 
 
@@ -101,16 +129,16 @@ class DisplayConfiguration:
 class LibraryConfiguration:
     """The settings of the music library."""
 
-    directory_path: Path = Path("/music")
+    directory_path: Path = DEFAULT_LIBRARY_DIRECTORY_PATH
 
 
 @dataclass(frozen=True)
 class PlaybackConfiguration:
     """The settings of the playback."""
 
-    seek_step: int = 10
-    volume_default: int = 50
-    volume_step: int = 5
+    seek_step: int = DEFAULT_PLAYBACK_SEEK_STEP
+    volume_default: int = DEFAULT_PLAYBACK_VOLUME_DEFAULT
+    volume_step: int = DEFAULT_PLAYBACK_VOLUME_STEP
 
 
 @dataclass(frozen=True)
@@ -121,26 +149,26 @@ class RunConfiguration:
     unless the command line says otherwise.
     """
 
-    mode: str = "background"
+    mode: str = DEFAULT_RUN_MODE
 
 
 @dataclass(frozen=True)
 class StartupConfiguration:
     """The settings of what the service does when it starts."""
 
-    playlist: str = StartupPlaylist.USE_SAVED.value
-    state: str = StartupState.USE_SAVED.value
-    volume: str = StartupVolume.USE_SAVED.value
+    playlist: str = DEFAULT_STARTUP_PLAYLIST
+    state: str = DEFAULT_STARTUP_STATE
+    volume: str = DEFAULT_STARTUP_VOLUME
 
 
 @dataclass(frozen=True)
 class SystemConfiguration:
     """The settings of the host system."""
 
-    moc_state_on_exit: str = "do_nothing"
-    mocp_file_path: str = "mocp"
-    reboot_command: tuple[str, ...] = ("sudo", "reboot")
-    shutdown_command: tuple[str, ...] = ("sudo", "shutdown", "-h", "now")
+    moc_state_on_exit: str = DEFAULT_SYSTEM_MOC_STATE_ON_EXIT
+    mocp_file_path: str = DEFAULT_SYSTEM_MOCP_FILE_PATH
+    reboot_command: tuple[str, ...] = DEFAULT_SYSTEM_REBOOT_COMMAND
+    shutdown_command: tuple[str, ...] = DEFAULT_SYSTEM_SHUTDOWN_COMMAND
 
 
 @dataclass(frozen=True)
