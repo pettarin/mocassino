@@ -416,8 +416,10 @@ playback:
 When nothing is playing, the directory and the file are `null`, the position is `0`,
 and the state is `stopped`.
 
-The state is saved when the track changes, when the volume changes,
-when a setting is changed from the menus, and when the service is stopped.
+The state is saved when the track changes, when the playback is paused, resumed, or stopped,
+when the volume changes, when a setting is changed from the menus, and when the service is stopped.
+The position in the track is saved together with the rest, but its change alone does not
+make the state be saved, so that the file is not written continuously (e.g., on an SD card).
 Rebooting or shutting down the host from the `System` menu saves it too,
 before the reboot or the shutdown is asked.
 The file is only written when its content would change.

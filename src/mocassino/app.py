@@ -217,10 +217,17 @@ class App:
     def _signature(self) -> tuple[object, ...]:
         """Return what, when it changes, makes the state be saved.
 
-        That is: the track, the volume, and the settings changed through the menus.
+        That is: the track, the playback state (playing, paused, or stopped), the volume,
+        and the settings changed through the menus. The position in the track is not,
+        so that the state file is not written at every step: it is saved with the rest.
         """
         state = self._state
-        return (state.status.file_path, state.volume, astuple(state.settings))
+        return (
+            state.status.file_path,
+            state.status.state,
+            state.volume,
+            astuple(state.settings),
+        )
 
     def _update_playlist(self) -> None:
         """Rebuild the playlist of the state, if the current track is played from elsewhere.

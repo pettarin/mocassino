@@ -281,6 +281,33 @@ class TestApp:
             replace(playing, file_path="/music/b.flac", seek=60, state=MocState.PAUSE, volume=45)
         )
 
+    def test_state_is_saved_when_paused_resumed_or_stopped(self, saving_app, state_file, moc):
+        app = saving_app
+        playing = SavedState(
+            directory_path="/music", file_path="/music/a.flac", state=MocState.PLAY, volume=40
+        )
+        steps = [
+            (MocStatus(current_seconds=10, file_path="/music/a.flac", state=MocState.PLAY), 1),
+            (MocStatus(current_seconds=20, file_path="/music/a.flac", state=MocState.PLAY), 1),
+            (MocStatus(current_seconds=30, file_path="/music/a.flac", state=MocState.PAUSE), 2),
+            (MocStatus(current_seconds=30, file_path="/music/a.flac", state=MocState.PAUSE), 2),
+            (MocStatus(current_seconds=31, file_path="/music/a.flac", state=MocState.PLAY), 3),
+            (MocStatus(current_seconds=45, file_path="/music/a.flac", state=MocState.PLAY), 3),
+            (MocStatus(state=MocState.STOP), 4),
+            (MocStatus(state=MocState.STOP), 4),
+        ]
+        for status, saves in steps:
+            moc.status.return_value = status
+            app.step()
+            assert state_file.save.call_count == saves
+        calls = [call.args[0] for call in state_file.save.call_args_list]
+        assert calls == [
+            replace(playing, seek=10),
+            replace(playing, seek=30, state=MocState.PAUSE),
+            replace(playing, seek=31),
+            SavedState(volume=40),
+        ]
+
     def test_state_saved_has_the_played_path(self, saving_app, state_file, state):
         state.played_path = "/music"
         saving_app.step()
