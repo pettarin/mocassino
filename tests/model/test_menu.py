@@ -36,6 +36,7 @@ from mocassino.model.menu import (
     build_root_menu,
     build_run_menu,
     build_run_moc_state_on_exit_menu,
+    build_run_refresh_delay_menu,
     build_run_save_state_menu,
     build_settings_menu,
     build_startup_menu,
@@ -415,10 +416,11 @@ class TestBuildRunMenu:
     def test_items(self):
         menu = build_run_menu(Settings())
         assert menu.title == "Run"
-        assert [item.label for item in menu.items] == ["MOC state on exit", "Save state"]
-        assert [item.checked for item in menu.items] == [None, None]
-        assert [item.command for item in menu.items] == [None, None]
-        assert [item.submenu().title for item in menu.items] == ["MOC state on exit", "Save state"]
+        labels = ["MOC state on exit", "Refresh delay (s)", "Save state"]
+        assert [item.label for item in menu.items] == labels
+        assert [item.checked for item in menu.items] == [None] * 3
+        assert [item.command for item in menu.items] == [None] * 3
+        assert [item.submenu().title for item in menu.items] == labels
 
     def test_moc_state_on_exit_submenu(self):
         settings = Settings()
@@ -426,6 +428,25 @@ class TestBuildRunMenu:
         assert item.submenu().selected.label == "Do nothing"
         settings.run_moc_state_on_exit = MocStateOnExit.STOP
         assert item.submenu().selected.label == "Stop"
+
+
+class TestBuildRunRefreshDelayMenu:
+    """Tests for the build_run_refresh_delay_menu function"""
+
+    def test_choices(self):
+        menu = build_run_refresh_delay_menu(Settings(run_refresh_delay=1.5))
+        assert menu.title == "Refresh delay (s)"
+        labels = ["0.25", "0.5", "0.75", "1.0", "1.5", "2.0", "5.0"]
+        assert [item.label for item in menu.items] == labels
+        assert [item.value for item in menu.items] == labels
+        assert all(item.command is MenuCommand.SET_RUN_REFRESH_DELAY for item in menu.items)
+        assert [item.label for item in menu.items if item.checked] == ["1.5"]
+        assert menu.selected.label == "1.5"
+
+    def test_default(self):
+        menu = build_run_refresh_delay_menu(Settings())
+        assert [item.label for item in menu.items if item.checked] == ["0.5"]
+        assert menu.selected.label == "0.5"
 
 
 class TestBuildRunSaveStateMenu:
@@ -510,15 +531,18 @@ class TestBuildSettingsMenu:
         assert playback.submenu().items[0].submenu().selected.label == "30"
         assert display.submenu().items[4].submenu().items[3].checked is True
         assert run.submenu().items[0].submenu().selected.label == "Do nothing"
-        assert run.submenu().items[1].submenu().items[0].checked is True
+        assert run.submenu().items[1].submenu().selected.label == "0.5"
+        assert run.submenu().items[2].submenu().items[0].checked is True
         assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
         settings.run_moc_state_on_exit = MocStateOnExit.STOP
+        settings.run_refresh_delay = 2.0
         settings.run_save_state_on_exit = False
         settings.startup_volume = StartupVolume.USE_DEFAULT
         assert display.submenu().items[4].submenu().items[3].checked is False
         assert run.submenu().items[0].submenu().selected.label == "Stop"
-        assert run.submenu().items[1].submenu().items[0].checked is False
+        assert run.submenu().items[1].submenu().selected.label == "2.0"
+        assert run.submenu().items[2].submenu().items[0].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use default"
 
     def test_other_items_are_not_checkable(self, library, system):

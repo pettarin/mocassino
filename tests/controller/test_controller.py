@@ -189,6 +189,29 @@ class TestController:
         moc.play.assert_not_called()
         assert state.current_menu.title == "Above"
 
+    def test_menu_select_refresh_delay(self, mocker, state, moc, library, system):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, Y, Y, B, Y, B):
+            controller.handle(event)
+        titles = ["Menu", "Settings", "Run", "Refresh delay (s)"]
+        assert [menu.title for menu in state.menus] == titles
+        assert state.current_menu.selected.label == "0.5"
+        assert state.current_menu.selected.checked is True
+        for event in (Y, Y, B):
+            controller.handle(event)
+        assert state.settings.run_refresh_delay == 1.0
+        save_settings.assert_called_once_with(state.settings)
+        assert [menu.title for menu in state.menus] == titles
+        assert [item.label for item in state.current_menu.items if item.checked] == ["1.0"]
+
     def test_menu_select_moc_state_on_exit(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(
@@ -448,7 +471,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, Y, B, Y, B, *[Y] * moves):
+        for event in (A_LONG, Y, B, Y, Y, B, Y, Y, B, *[Y] * moves):
             controller.handle(event)
         assert state.current_menu.title == "Save state"
         assert state.current_menu.selected.label == label

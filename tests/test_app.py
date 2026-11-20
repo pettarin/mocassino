@@ -7,6 +7,7 @@
 import logging
 import subprocess
 from dataclasses import replace
+from queue import Empty
 
 import pytest
 
@@ -125,16 +126,15 @@ def moc(mocker):
 
 @pytest.fixture
 def state():
-    return AppState(volume=40)
+    """The state of the application, with a short refresh delay, so that the steps are quick."""
+    return AppState(settings=Settings(run_refresh_delay=REFRESH_DELAY), volume=40)
 
 
 @pytest.fixture
 def app(mocker, tmp_path, state, moc, display, button_source):
     system = mocker.create_autospec(System, instance=True)
     controller = Controller(state, moc, Library(tmp_path), system, DEFAULT_BUTTON_MAP)
-    return App(
-        state, controller, moc, Renderer(), display, button_source, refresh_delay=REFRESH_DELAY
-    )
+    return App(state, controller, moc, Renderer(), display, button_source)
 
 
 @pytest.fixture
@@ -156,7 +156,6 @@ def saving_app(mocker, tmp_path, state, moc, display, button_source, state_file)
         Renderer(),
         display,
         button_source,
-        REFRESH_DELAY,
         state_file=state_file,
     )
 
@@ -180,7 +179,6 @@ class TestDisplayTimeout:
             Renderer(),
             display,
             button_source,
-            refresh_delay=REFRESH_DELAY,
             clock=lambda: now[0],
         )
 
@@ -262,6 +260,14 @@ class TestDisplayTimeout:
 
 class TestApp:
     """Tests for the App class"""
+
+    def test_step_waits_for_the_refresh_delay_of_the_settings(self, app, state, mocker):
+        get = mocker.patch.object(app.events, "get", side_effect=Empty)
+        app.step()
+        get.assert_called_once_with(timeout=REFRESH_DELAY)
+        state.settings.run_refresh_delay = 2.0
+        app.step()
+        get.assert_called_with(timeout=2.0)
 
     def test_state_is_saved(self, saving_app, state_file, moc):
         app = saving_app
@@ -823,7 +829,7 @@ class TestBuildApp:
         assert isinstance(app._display, NullDisplay)
         assert app.simulator is None
         assert app._state.volume == 30
-        assert app._refresh_delay == 0.5
+        assert app._state.settings.run_refresh_delay == 0.5
         app.events.put(ButtonEvent(Button.A, ButtonPress.LONG))
         app._controller.handle(app.events.get())
         assert app._state.mode == Mode.MENU
@@ -915,6 +921,7 @@ class TestBuildApp:
             "    show_volume_bar: true\n"
             "run:\n"
             "  moc_state_on_exit: do_nothing\n"
+            "  refresh_delay: 0.5\n"
             "  save_state:\n"
             "    on_exit: true\n"
             "    on_refresh: false\n"
@@ -958,6 +965,7 @@ class TestBuildApp:
             "  volume_step: 5\n"
             "run:\n"
             "  moc_state_on_exit: do_nothing\n"
+            "  refresh_delay: 0.5\n"
             "  save_state:\n"
             "    on_exit: true\n"
             "    on_refresh: false\n"
@@ -1134,6 +1142,37 @@ class TestBuildApp:
         assert saved == UiElementsConfiguration(
             show_progress_bar=False, show_timers=False, show_volume_bar=False
         )
+
+    def test_refresh_delay_from_the_configuration_and_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"target": "none"},
+                "run": {"refresh_delay": 0.25},
+            }
+        )
+        app = build_app(configuration, path)
+        assert app._state.settings.run_refresh_delay == 0.25
+        # open Settings > Run > Refresh delay (s), whose 0.25 is selected, and choose 1.0
+        events = (
+            ButtonEvent(Button.A, ButtonPress.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.settings.run_refresh_delay == 1.0
+        assert load_configuration(path).run.refresh_delay == 1.0
 
     def test_moc_state_on_exit_from_the_configuration_and_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"

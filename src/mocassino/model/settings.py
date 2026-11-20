@@ -30,6 +30,7 @@ from mocassino.defaults import (
     DEFAULT_PLAYBACK_VOLUME_DEFAULT,
     DEFAULT_PLAYBACK_VOLUME_STEP,
     DEFAULT_RUN_MOC_STATE_ON_EXIT,
+    DEFAULT_RUN_REFRESH_DELAY,
     DEFAULT_RUN_SAVE_STATE_ON_EXIT,
     DEFAULT_RUN_SAVE_STATE_ON_REFRESH,
     DEFAULT_RUN_SAVE_STATE_ON_STARTUP,
@@ -64,6 +65,8 @@ class Settings:
     right_timer_value: RightTimerValue = RightTimerValue(
         DEFAULT_DISPLAY_UI_ELEMENTS_RIGHT_TIMER_VALUE
     )
+    run_moc_state_on_exit: MocStateOnExit = MocStateOnExit(DEFAULT_RUN_MOC_STATE_ON_EXIT)
+    run_refresh_delay: float = DEFAULT_RUN_REFRESH_DELAY
     run_save_state_on_exit: bool = DEFAULT_RUN_SAVE_STATE_ON_EXIT
     run_save_state_on_refresh: bool = DEFAULT_RUN_SAVE_STATE_ON_REFRESH
     run_save_state_on_startup: bool = DEFAULT_RUN_SAVE_STATE_ON_STARTUP
@@ -78,7 +81,6 @@ class Settings:
     startup_playlist: StartupPlaylist = StartupPlaylist(DEFAULT_STARTUP_PLAYLIST)
     startup_state: StartupState = StartupState(DEFAULT_STARTUP_STATE)
     startup_volume: StartupVolume = StartupVolume(DEFAULT_STARTUP_VOLUME)
-    run_moc_state_on_exit: MocStateOnExit = MocStateOnExit(DEFAULT_RUN_MOC_STATE_ON_EXIT)
 
     def color_specs(self) -> dict[str, str]:
         """Return the colors of the display, as names or HTML codes, by role."""

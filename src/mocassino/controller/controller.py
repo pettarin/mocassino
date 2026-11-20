@@ -35,6 +35,7 @@ from mocassino.model.menu import (
     build_playback_volume_step_menu,
     build_root_menu,
     build_run_moc_state_on_exit_menu,
+    build_run_refresh_delay_menu,
     build_run_save_state_menu,
     build_startup_playlist_menu,
     build_startup_state_menu,
@@ -95,6 +96,16 @@ SETTERS: dict[
         RightTimerValue,
         build_display_right_timer_value_menu,
     ),
+    MenuCommand.SET_RUN_MOC_STATE_ON_EXIT: (
+        "run_moc_state_on_exit",
+        MocStateOnExit,
+        build_run_moc_state_on_exit_menu,
+    ),
+    MenuCommand.SET_RUN_REFRESH_DELAY: (
+        "run_refresh_delay",
+        float,
+        build_run_refresh_delay_menu,
+    ),
     MenuCommand.SET_STARTUP_PLAYLIST: (
         "startup_playlist",
         StartupPlaylist,
@@ -109,11 +120,6 @@ SETTERS: dict[
         "startup_volume",
         StartupVolume,
         build_startup_volume_menu,
-    ),
-    MenuCommand.SET_RUN_MOC_STATE_ON_EXIT: (
-        "run_moc_state_on_exit",
-        MocStateOnExit,
-        build_run_moc_state_on_exit_menu,
     ),
 }
 

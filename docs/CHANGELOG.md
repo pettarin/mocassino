@@ -21,14 +21,18 @@ All notable changes to this project will be documented in this file.
 - The `run.save_state` settings (`on_exit`, `on_refresh`, `on_startup`, `on_state_change`,
   `on_track_change`, `on_volume_change`), and the `Save state` menu in the new `Run` menu
   of the `Settings` menu, to choose when the state file is written
+- The `Refresh delay (s)` menu in the `Run` menu of the `Settings` menu,
+  to change `run.refresh_delay` while the service runs
 
 ### Changed
 
 - `system.moc_state_on_exit` is moved to `run.moc_state_on_exit`, and its menu,
   `MOC state on exit`, to the new `Run` menu of the `Settings` menu:
   a configuration file with `system.moc_state_on_exit` is no longer valid, and has to be updated
-- `display.tick` is renamed `run.refresh_delay`, as it paces the whole main loop:
-  a configuration file with `display.tick` is no longer valid, and has to be updated
+- `display.tick` is renamed `run.refresh_delay`, as it paces the whole main loop,
+  and its value is now one of `0.25`, `0.5`, `0.75`, `1.0`, `1.5`, `2.0`, and `5.0`:
+  a configuration file with `display.tick`, or with another value, is no longer valid,
+  and has to be updated
   (`mocassino run` would otherwise replace it with the default values, keeping a backup)
 - The state file is no longer written when a setting is changed from the menus
 - `mocassino configuration --default` honors the global options

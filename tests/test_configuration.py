@@ -298,6 +298,9 @@ class TestLoadConfiguration:
             ("run", "moc_state_on_exit", True),
             ("run", "refresh_delay", 0),
             ("run", "refresh_delay", -0.5),
+            ("run", "refresh_delay", 0.1),
+            ("run", "refresh_delay", 3),
+            ("run", "refresh_delay", "0.5"),
             ("startup", "playlist", "shuffle"),
             ("startup", "playlist", "saved"),
             ("startup", "playlist", "Use saved"),
@@ -329,6 +332,11 @@ class TestLoadConfiguration:
     def test_buttons_origins(self, origin):
         configuration = load_configuration(overrides={"buttons": {"origin": origin}})
         assert configuration.buttons.origin == origin
+
+    @pytest.mark.parametrize("refresh_delay", [0.25, 0.5, 0.75, 1, 1.0, 1.5, 2, 5.0])
+    def test_refresh_delays(self, tmp_path, refresh_delay):
+        path = write_yaml(tmp_path, f"run:\n  refresh_delay: {refresh_delay}\n")
+        assert load_configuration(path).run.refresh_delay == refresh_delay
 
     @pytest.mark.parametrize("target", ["none", "pirateaudio", "simulator", "st7789"])
     def test_display_targets(self, target):

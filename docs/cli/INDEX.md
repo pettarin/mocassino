@@ -354,7 +354,7 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100; it can be changed from the `Settings` menu |
 | `run.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `Settings` menu |
 | `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
-| `run.refresh_delay` | `0.5` | How long, in seconds, the main loop waits for a button press, at most, before each refresh, when it reads the MOC status, saves the state if needed, and updates the screen; a button press ends the wait at once, so it is not delayed. A smaller value keeps the screen closer to MOC, at the cost of running `mocp` more often; it must be greater than `0` |
+| `run.refresh_delay` | `0.5` | How long, in seconds, the main loop waits for a button press, at most, before each refresh, when it reads the MOC status, saves the state if needed, and updates the screen; a button press ends the wait at once, so it is not delayed. A smaller value keeps the screen closer to MOC, at the cost of running `mocp` more often. One of `0.25`, `0.5`, `0.75`, `1.0`, `1.5`, `2.0`, and `5.0`; it can be changed from the `Settings` menu |
 | `run.save_state.on_exit` | `true` | Whether the state is saved to the state file when the service exits, or before the host is rebooted or shut down from the `System` menu; it can be changed from the `Settings` menu |
 | `run.save_state.on_refresh` | `false` | Whether the state is saved to the state file at every refresh (see `run.refresh_delay`), that is, as the position in the track changes; it can be changed from the `Settings` menu |
 | `run.save_state.on_startup` | `true` | Whether the state is saved to the state file when the service starts, once the playlist has been set up; it can be changed from the `Settings` menu |
@@ -698,10 +698,14 @@ The top level menu has the following items:
       in steps of 5; the current one has the solid square.
     - `Volume step (%)` (`playback.volume_step`): a menu with the choices
       `1`, `2`, `4`, `5`, and `10`.
-  - `Run`: what is done to MOC on exit, and when the state is saved.
+  - `Run`: what is done to MOC on exit, how long the main loop waits before each refresh,
+    and when the state is saved.
     - `MOC state on exit` (`run.moc_state_on_exit`): a menu with the four choices
       `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
       The choice applies when the service exits, after its state has been saved.
+    - `Refresh delay (s)` (`run.refresh_delay`): a menu with the choices
+      `0.25`, `0.5`, `0.75`, `1.0`, `1.5`, `2.0`, and `5.0` seconds;
+      the current one has the solid square. The change is immediate.
     - `Save state`: when the state is saved to the state file; the changes are immediate.
       - `On exit` (`run.save_state.on_exit`): whether it is saved when the service exits,
         and before the host is rebooted or shut down.

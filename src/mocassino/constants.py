@@ -15,6 +15,8 @@ from enum import StrEnum
 DISPLAY_TIMEOUT_CHOICES: tuple[int, ...] = (0, 5, 10, 15, 20, 30, 60, 120, 300)
 # By how many degrees, clockwise, the display can be rotated
 ORIENTATIONS: tuple[int, ...] = (0, 90, 180, 270)
+# How long, in seconds, the main loop can wait for a button event, at most, before each refresh
+REFRESH_DELAY_CHOICES: tuple[float, ...] = (0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0)
 # The volume levels of MOC
 VOLUME_MAX: int = 100
 VOLUME_MIN: int = 0

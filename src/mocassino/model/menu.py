@@ -18,6 +18,7 @@ from pathlib import Path
 from mocassino.constants import (
     DISPLAY_TIMEOUT_CHOICES,
     ORIENTATIONS,
+    REFRESH_DELAY_CHOICES,
     VOLUME_MAX,
     VOLUME_MIN,
     MocStateOnExit,
@@ -82,10 +83,11 @@ class MenuCommand(StrEnum):
     SET_PLAYBACK_VOLUME_DEFAULT = "set_playback_volume_default"
     SET_PLAYBACK_VOLUME_STEP = "set_playback_volume_step"
     SET_RIGHT_TIMER_VALUE = "set_right_timer_value"
+    SET_RUN_MOC_STATE_ON_EXIT = "set_run_moc_state_on_exit"
+    SET_RUN_REFRESH_DELAY = "set_run_refresh_delay"
     SET_STARTUP_PLAYLIST = "set_startup_playlist"
     SET_STARTUP_STATE = "set_startup_state"
     SET_STARTUP_VOLUME = "set_startup_volume"
-    SET_RUN_MOC_STATE_ON_EXIT = "set_run_moc_state_on_exit"
     SHUTDOWN = "shutdown"
     TOGGLE_PLAYLIST_BAR = "toggle_playlist_bar"
     TOGGLE_PROGRESS_BAR = "toggle_progress_bar"
@@ -151,10 +153,10 @@ def _build_choice_menu(
 
 def _build_number_menu(
     title: str,
-    choices: tuple[int, ...],
-    current: int,
+    choices: tuple[float, ...],
+    current: float,
     command: MenuCommand,
-    labels: Mapping[int, str] | None = None,
+    labels: Mapping[float, str] | None = None,
 ) -> Menu:
     """Build a menu choosing one of some numbers as the value of a setting.
 
@@ -506,7 +508,8 @@ def build_root_menu(library: Library, system: System, settings: Settings) -> Men
 def build_run_menu(settings: Settings) -> Menu:
     """Build the menu leading to the settings of how the service is run.
 
-    That is: what is done to MOC on exit, and when the state is saved.
+    That is: what is done to MOC on exit, how long the main loop waits before each refresh,
+    and when the state is saved.
     """
     return Menu(
         title="Run",
@@ -514,6 +517,10 @@ def build_run_menu(settings: Settings) -> Menu:
             MenuItem(
                 label="MOC state on exit",
                 submenu=partial(build_run_moc_state_on_exit_menu, settings),
+            ),
+            MenuItem(
+                label="Refresh delay (s)",
+                submenu=partial(build_run_refresh_delay_menu, settings),
             ),
             MenuItem(label="Save state", submenu=partial(build_run_save_state_menu, settings)),
         ),
@@ -530,6 +537,19 @@ def build_run_moc_state_on_exit_menu(settings: Settings) -> Menu:
         tuple(MocStateOnExit),
         settings.run_moc_state_on_exit,
         MenuCommand.SET_RUN_MOC_STATE_ON_EXIT,
+    )
+
+
+def build_run_refresh_delay_menu(settings: Settings) -> Menu:
+    """Build the menu choosing how long the main loop waits for a button event before a refresh.
+
+    It has to be built again when the choice changes.
+    """
+    return _build_number_menu(
+        "Refresh delay (s)",
+        REFRESH_DELAY_CHOICES,
+        settings.run_refresh_delay,
+        MenuCommand.SET_RUN_REFRESH_DELAY,
     )
 
 

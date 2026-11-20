@@ -89,15 +89,12 @@ class App:
         renderer: Renderer,
         display: Display,
         button_source: ButtonSource,
-        refresh_delay: float,
         simulator: TkSimulator | None = None,
         state_file: StateFile | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         """Initialize the application.
 
-        :param refresh_delay: how long a step of the main loop waits for a button event,
-                              at most, before it refreshes, in seconds
         :param simulator: the simulator used as display or button source, if any
         :param state_file: the file where the state is saved, if any
         :param clock: the clock timing the display timeout, in seconds
@@ -118,8 +115,6 @@ class App:
         self._moc = moc
         # What the playlist of the state has been built from (see _update_playlist)
         self._playlist_source: str | None = None
-        # How long a step waits for a button event, at most
-        self._refresh_delay = refresh_delay
         self._renderer = renderer
         self._simulator = simulator
         self._state = state
@@ -351,7 +346,7 @@ class App:
         """
         woken = False
         try:
-            event = self._events.get(timeout=self._refresh_delay)
+            event = self._events.get(timeout=self._state.settings.run_refresh_delay)
             while True:
                 self._last_press = self._clock()
                 if not self._display_on:
@@ -422,6 +417,8 @@ def _build_settings(configuration: Configuration) -> Settings:
         playback_volume_default=configuration.playback.volume_default,
         playback_volume_step=configuration.playback.volume_step,
         right_timer_value=RightTimerValue(configuration.display.ui_elements.right_timer_value),
+        run_moc_state_on_exit=MocStateOnExit(configuration.run.moc_state_on_exit),
+        run_refresh_delay=configuration.run.refresh_delay,
         run_save_state_on_exit=configuration.run.save_state.on_exit,
         run_save_state_on_refresh=configuration.run.save_state.on_refresh,
         run_save_state_on_startup=configuration.run.save_state.on_startup,
@@ -436,7 +433,6 @@ def _build_settings(configuration: Configuration) -> Settings:
         startup_playlist=StartupPlaylist(configuration.startup.playlist),
         startup_state=StartupState(configuration.startup.state),
         startup_volume=StartupVolume(configuration.startup.volume),
-        run_moc_state_on_exit=MocStateOnExit(configuration.run.moc_state_on_exit),
     )
 
 
@@ -492,6 +488,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
         },
         "run": {
             "moc_state_on_exit": settings.run_moc_state_on_exit.value,
+            "refresh_delay": settings.run_refresh_delay,
             "save_state": {
                 "on_exit": settings.run_save_state_on_exit,
                 "on_refresh": settings.run_save_state_on_refresh,
@@ -588,7 +585,6 @@ def build_app(
         ),
         display=display,
         button_source=_build_button_source(configuration, simulator),
-        refresh_delay=configuration.run.refresh_delay,
         simulator=simulator,
         state_file=state_file,
     )

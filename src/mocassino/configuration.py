@@ -19,6 +19,7 @@ import yaml
 from mocassino.constants import (
     DISPLAY_TIMEOUT_CHOICES,
     ORIENTATIONS,
+    REFRESH_DELAY_CHOICES,
     VOLUME_MAX,
     VOLUME_MIN,
     ButtonsOrigin,
@@ -186,6 +187,7 @@ class RunConfiguration:
     The refresh delay is how long, in seconds, the main loop waits for a button event,
     at most, before it refreshes: it reads the MOC status, saves the state if needed,
     and draws the display. A button event ends the wait at once.
+    It is one of REFRESH_DELAY_CHOICES.
     The save state settings tell when the state is saved to the state file.
     """
 
@@ -374,7 +376,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         ),
         "run.refresh_delay": (
             configuration.run.refresh_delay,
-            configuration.run.refresh_delay > 0,
+            configuration.run.refresh_delay in REFRESH_DELAY_CHOICES,
         ),
         "startup.playlist": (
             configuration.startup.playlist,
