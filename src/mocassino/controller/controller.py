@@ -18,6 +18,7 @@ from mocassino.model.menu import (
     build_display_brightness_menu,
     build_display_color_menu,
     build_display_orientation_menu,
+    build_display_timeout_menu,
     build_display_ui_elements_menu,
     build_library_menu,
     build_playback_seek_step_menu,
@@ -64,6 +65,11 @@ SETTERS: dict[
         "display_orientation",
         int,
         build_display_orientation_menu,
+    ),
+    MenuCommand.SET_DISPLAY_TIMEOUT: (
+        "display_timeout",
+        int,
+        build_display_timeout_menu,
     ),
     MenuCommand.SET_PLAYBACK_SEEK_STEP: (
         "playback_seek_step",

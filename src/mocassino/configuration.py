@@ -19,6 +19,7 @@ import yaml
 from mocassino.controller.actions import resolve_button_map
 from mocassino.model.colors import DEFAULT_COLOR_SPECS, parse_color
 from mocassino.model.settings import (
+    DISPLAY_TIMEOUT_CHOICES,
     ORIENTATIONS,
     MocStateOnExit,
     StartupPlaylist,
@@ -92,6 +93,7 @@ class DisplayConfiguration:
     orientation: int = 0
     target: str = "pirateaudio"
     tick: float = 0.5
+    timeout: int = 60
     ui_elements: UiElementsConfiguration = field(default_factory=UiElementsConfiguration)
 
 
@@ -189,6 +191,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "orientation": _to_int,
             "target": _to_str,
             "tick": _to_float,
+            "timeout": _to_int,
             "ui_elements": _to_ui_elements,
         },
         "library": {"directory_path": _to_path},
@@ -263,6 +266,10 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "display.orientation": (
             configuration.display.orientation,
             configuration.display.orientation in ORIENTATIONS,
+        ),
+        "display.timeout": (
+            configuration.display.timeout,
+            configuration.display.timeout in DISPLAY_TIMEOUT_CHOICES,
         ),
         "display.target": (
             configuration.display.target,

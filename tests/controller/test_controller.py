@@ -531,6 +531,32 @@ class TestController:
         assert state.settings.display_brightness == 100
         assert state.current_menu.title == "Above"
 
+    def test_menu_select_display_timeout(self, mocker, state, moc, library, system):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, B, X, X, B):
+            controller.handle(event)
+        titles = ["Menu", "Settings", "Display", "Timeout (s)"]
+        assert [menu.title for menu in state.menus] == titles
+        assert state.current_menu.selected.label == "60"
+        save_settings.assert_not_called()
+        for event in (X, B):
+            controller.handle(event)
+        assert state.settings.display_timeout == 30
+        save_settings.assert_called_once_with(state.settings)
+        assert [item.label for item in state.current_menu.items if item.checked] == ["30"]
+        for event in (X, X, X, X, X, B):
+            controller.handle(event)
+        assert state.settings.display_timeout == 0
+        assert state.current_menu.selected.label == "No timeout"
+
     def test_menu_select_display_orientation(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()
         controller = Controller(

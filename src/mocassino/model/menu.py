@@ -9,7 +9,7 @@ the commands are executed by the controller, not here.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import partial
@@ -18,6 +18,7 @@ from pathlib import Path
 from mocassino.model.colors import COLOR_NAMES, COLOR_ROLES, color_name
 from mocassino.model.library import Library
 from mocassino.model.settings import (
+    DISPLAY_TIMEOUT_CHOICES,
     ORIENTATIONS,
     MocStateOnExit,
     Settings,
@@ -73,6 +74,7 @@ class MenuCommand(StrEnum):
     SET_DISPLAY_COLORS_NORMAL = "set_display_colors_normal"
     SET_DISPLAY_COLORS_TRACK = "set_display_colors_track"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
+    SET_DISPLAY_TIMEOUT = "set_display_timeout"
     SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
     SET_PLAYBACK_VOLUME_DEFAULT = "set_playback_volume_default"
     SET_PLAYBACK_VOLUME_STEP = "set_playback_volume_step"
@@ -141,17 +143,20 @@ def _build_number_menu(
     choices: tuple[int, ...],
     current: int,
     command: MenuCommand,
+    labels: Mapping[int, str] | None = None,
 ) -> Menu:
     """Build a menu choosing one of some numbers as the value of a setting.
 
+    Each choice is labelled with its number, unless the labels give another label for it.
     The current value is the checked one, if it is one of the choices;
     the selected item is the choice closest to it.
     """
+    labels = labels or {}
     return Menu(
         title=title,
         items=tuple(
             MenuItem(
-                label=str(choice),
+                label=labels.get(choice, str(choice)),
                 checked=choice == current,
                 command=command,
                 value=str(choice),
@@ -295,6 +300,10 @@ def build_display_menu(settings: Settings) -> Menu:
                 submenu=partial(build_display_orientation_menu, settings),
             ),
             MenuItem(
+                label="Timeout (s)",
+                submenu=partial(build_display_timeout_menu, settings),
+            ),
+            MenuItem(
                 label="UI elements",
                 submenu=partial(build_display_ui_elements_menu, settings),
             ),
@@ -312,6 +321,21 @@ def build_display_orientation_menu(settings: Settings) -> Menu:
         ORIENTATIONS,
         settings.display_orientation,
         MenuCommand.SET_DISPLAY_ORIENTATION,
+    )
+
+
+def build_display_timeout_menu(settings: Settings) -> Menu:
+    """Build the menu choosing after how many seconds without a button press the display is off.
+
+    The choice 0, which keeps the display on, is labelled "No timeout".
+    It has to be built again when the choice changes.
+    """
+    return _build_number_menu(
+        "Timeout (s)",
+        DISPLAY_TIMEOUT_CHOICES,
+        settings.display_timeout,
+        MenuCommand.SET_DISPLAY_TIMEOUT,
+        labels={0: "No timeout"},
     )
 
 

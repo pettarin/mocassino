@@ -13,6 +13,8 @@ from mocassino.model.colors import COLOR_ROLES, DEFAULT_COLOR_SPECS
 
 # By how many degrees, clockwise, the display can be rotated
 ORIENTATIONS: tuple[int, ...] = (0, 90, 180, 270)
+# After how many seconds without a button press the display can be turned off; 0 for never
+DISPLAY_TIMEOUT_CHOICES: tuple[int, ...] = (0, 5, 10, 15, 20, 30, 60, 120, 300)
 
 
 class MocStateOnExit(StrEnum):
@@ -74,6 +76,7 @@ class Settings:
     display_colors_normal: str = DEFAULT_COLOR_SPECS["normal"]
     display_colors_track: str = DEFAULT_COLOR_SPECS["track"]
     display_orientation: int = 0
+    display_timeout: int = 60
     playback_seek_step: int = 10
     playback_volume_default: int = 50
     playback_volume_step: int = 5

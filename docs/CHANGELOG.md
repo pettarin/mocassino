@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 
 - First actual implementation of the service
 - A Tk-based simulator that can be used on a PC (with MOC installed)
+- The `display.timeout` configuration key, and the `Timeout (s)` menu of the display settings,
+  to turn the display off after some time without a button press (60 seconds by default)
 - Support for the Pirate Audio boards made before 23 January 2020, whose `Y` button is on pin 20:
   `Y` is read on both pins 24 and 20, whichever can be claimed
 - The `display.ui_elements` configuration keys, and the `UI elements` menu of the display settings,

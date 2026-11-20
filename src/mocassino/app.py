@@ -6,6 +6,8 @@
 
 import logging
 import threading
+import time
+from collections.abc import Callable
 from dataclasses import astuple, replace
 from functools import partial
 from pathlib import Path
@@ -86,21 +88,28 @@ class App:
         tick: float,
         simulator: TkSimulator | None = None,
         state_file: StateFile | None = None,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         """Initialize the application.
 
         :param tick: the maximum duration of a step of the main loop, in seconds
         :param simulator: the simulator used as display or button source, if any
         :param state_file: the file where the state is saved, if any
+        :param clock: the clock timing the display timeout, in seconds
         """
         # The brightness, in percent, the display has
         self._brightness = state.settings.display_brightness
         self._button_source = button_source
+        self._clock = clock
         self._controller = controller
         self._display = display
+        # Whether the display is on, as far as the display timeout is concerned
+        self._display_on = True
         self._events: Queue[ButtonEvent] = Queue()
         self._last_error: str | None = None
         self._last_frame: bytes | None = None
+        # When a button was last pressed (or the application started), on the clock
+        self._last_press = clock()
         self._moc = moc
         # What the playlist of the state has been built from (see _update_playlist)
         self._playlist_source: str | None = None
@@ -120,6 +129,22 @@ class App:
         if brightness != self._brightness:
             self._display.set_brightness(brightness / 100)
             self._brightness = brightness
+
+    def _apply_timeout(self) -> None:
+        """Turn the display off, if no button has been pressed for the timeout.
+
+        Nothing is done if the timeout is 0, or while the host is shutting down,
+        as the display is then turned off already.
+        """
+        timeout = self._state.settings.display_timeout
+        if (
+            self._display_on
+            and timeout > 0
+            and not self._state.shutting_down
+            and self._clock() - self._last_press >= timeout
+        ):
+            self._display.turn_off()
+            self._display_on = False
 
     def _draw(self) -> None:
         """Draw the state on the display, unless the frame is the one already shown."""
@@ -197,6 +222,19 @@ class App:
         state = self._state
         return (state.status.file_path, state.volume, astuple(state.settings))
 
+    def _update_playlist(self) -> None:
+        """Rebuild the playlist of the state, if the current track is played from elsewhere.
+
+        The playlist is built from what MOC was given to play, or from the directory
+        of the current track (see playing_from); it is empty if nothing is playing,
+        or if a network stream is.
+        """
+        file_path = self._state.status.file_path
+        source = playing_from(self._state.played_path, file_path) if file_path else None
+        if source != self._playlist_source:
+            self._playlist_source = source
+            self._state.playlist = () if source is None else list_tracks(Path(source))
+
     def close(self) -> None:
         """Save the state, leave MOC as the settings say, and release the buttons and the display.
 
@@ -270,17 +308,29 @@ class App:
         self._refresh()
         self._save_state()
         self._button_source.start(self._events)
+        self._last_press = self._clock()
 
     def step(self) -> None:
         """Perform one step of the main loop.
 
         Wait for a button event, for one tick at most; handle all the events in the queue;
-        then update the state from MOC, save it if needed, and draw it.
+        then update the state from MOC, save it if needed, and draw it,
+        unless the display has been turned off by the timeout.
+        A button press turns the display back on, if off: then, it does nothing else,
+        and neither do the other events in the queue (e.g., those of a held button).
         """
+        woken = False
         try:
-            self._controller.handle(self._events.get(timeout=self._tick))
+            event = self._events.get(timeout=self._tick)
             while True:
-                self._controller.handle(self._events.get_nowait())
+                self._last_press = self._clock()
+                if not self._display_on:
+                    self._display.turn_on()
+                    self._display_on = True
+                    woken = True
+                elif not woken:
+                    self._controller.handle(event)
+                event = self._events.get_nowait()
         except Empty:
             pass
         if self._state.shutting_down and not self._state_frozen:
@@ -291,20 +341,9 @@ class App:
         if self._signature() != self._saved_signature:
             self._save_state()
         self._apply_brightness()
-        self._draw()
-
-    def _update_playlist(self) -> None:
-        """Rebuild the playlist of the state, if the current track is played from elsewhere.
-
-        The playlist is built from what MOC was given to play, or from the directory
-        of the current track (see playing_from); it is empty if nothing is playing,
-        or if a network stream is.
-        """
-        file_path = self._state.status.file_path
-        source = playing_from(self._state.played_path, file_path) if file_path else None
-        if source != self._playlist_source:
-            self._playlist_source = source
-            self._state.playlist = () if source is None else list_tracks(Path(source))
+        self._apply_timeout()
+        if self._display_on:
+            self._draw()
 
     def stop(self) -> None:
         """Ask the main loop to end; it does so within one tick."""
@@ -347,6 +386,7 @@ def _build_settings(configuration: Configuration) -> Settings:
         display_colors_normal=configuration.display.colors.normal,
         display_colors_track=configuration.display.colors.track,
         display_orientation=configuration.display.orientation,
+        display_timeout=configuration.display.timeout,
         playback_seek_step=configuration.playback.seek_step,
         playback_volume_default=configuration.playback.volume_default,
         playback_volume_step=configuration.playback.volume_step,
@@ -396,6 +436,7 @@ def _save_settings(configuration_file_path: Path | None, settings: Settings) -> 
             "brightness": settings.display_brightness / 100,
             "colors": settings.color_specs(),
             "orientation": settings.display_orientation,
+            "timeout": settings.display_timeout,
             "ui_elements": {
                 "show_playlist_bar": settings.show_playlist_bar,
                 "show_progress_bar": settings.show_progress_bar,

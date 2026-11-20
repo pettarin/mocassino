@@ -141,6 +141,105 @@ def saving_app(mocker, tmp_path, state, moc, display, button_source, state_file)
     )
 
 
+class TestDisplayTimeout:
+    """Tests for the display timeout of the App class"""
+
+    @pytest.fixture
+    def now(self):
+        """The time of the clock of the application, which the tests move forward."""
+        return [1000.0]
+
+    @pytest.fixture
+    def app(self, mocker, tmp_path, state, moc, display, button_source, now):
+        system = mocker.create_autospec(System, instance=True)
+        controller = Controller(state, moc, Library(tmp_path), system, DEFAULT_BUTTON_MAP)
+        return App(
+            state,
+            controller,
+            moc,
+            Renderer(),
+            display,
+            button_source,
+            tick=TICK,
+            clock=lambda: now[0],
+        )
+
+    def test_display_is_turned_off_after_the_timeout(self, app, display, now):
+        app.step()
+        assert display.show.call_count == 1
+        now[0] += 59
+        app.step()
+        display.turn_off.assert_not_called()
+        now[0] += 1
+        app.step()
+        display.turn_off.assert_called_once_with()
+        assert display.show.call_count == 1
+        now[0] += 100
+        app.step()
+        display.turn_off.assert_called_once_with()
+
+    def test_timeout_counts_from_the_start(self, app, display, now):
+        now[0] += 100
+        app.start()
+        now[0] += 59
+        app.step()
+        display.turn_off.assert_not_called()
+
+    def test_button_press_restarts_the_timeout(self, app, display, state, now):
+        now[0] += 50
+        app.events.put(ButtonEvent(Button.X))
+        app.step()
+        assert state.volume == 45
+        now[0] += 50
+        app.step()
+        display.turn_off.assert_not_called()
+        now[0] += 10
+        app.step()
+        display.turn_off.assert_called_once_with()
+
+    def test_button_press_wakes_the_display_and_does_nothing_else(self, app, display, state, now):
+        now[0] += 60
+        app.step()
+        display.turn_off.assert_called_once_with()
+        shown = display.show.call_count
+        for event in (
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.X, Press.LONG),
+            ButtonEvent(Button.X, Press.HOLD),
+        ):
+            app.events.put(event)
+        app.step()
+        display.turn_on.assert_called_once_with()
+        assert state.volume == 40
+        assert state.mode == Mode.PLAYBACK
+        assert display.show.call_count == shown + 1
+        app.events.put(ButtonEvent(Button.X))
+        app.step()
+        assert state.volume == 45
+        now[0] += 59
+        app.step()
+        display.turn_off.assert_called_once_with()
+
+    def test_no_timeout(self, app, display, state, now):
+        state.settings.display_timeout = 0
+        now[0] += 10_000
+        app.step()
+        display.turn_off.assert_not_called()
+
+    def test_changed_timeout_applies_at_once(self, app, display, state, now):
+        now[0] += 10
+        app.step()
+        state.settings.display_timeout = 5
+        app.step()
+        display.turn_off.assert_called_once_with()
+
+    def test_no_timeout_while_shutting_down(self, app, display, state, now):
+        state.shutting_down = True
+        now[0] += 60
+        app.step()
+        display.turn_off.assert_not_called()
+
+
 class TestApp:
     """Tests for the App class"""
 
@@ -643,6 +742,7 @@ class TestBuildApp:
             "    normal: white\n"
             "    track: dimgray\n"
             "  orientation: 0\n"
+            "  timeout: 60\n"
             "  ui_elements:\n"
             "    show_playlist_bar: true\n"
             "    show_progress_bar: true\n"
@@ -672,6 +772,7 @@ class TestBuildApp:
             "    normal: white\n"
             "    track: dimgray\n"
             "  orientation: 0\n"
+            "  timeout: 60\n"
             "  ui_elements:\n"
             "    show_playlist_bar: true\n"
             "    show_progress_bar: true\n"
@@ -965,6 +1066,32 @@ class TestBuildApp:
         assert app._state.settings.display_brightness == 85
         assert app._display.brightness == 0.85
         assert load_configuration(path).display.brightness == 0.85
+
+    def test_display_timeout_from_the_configuration_and_saved(self, tmp_path):
+        path = tmp_path / "custom.yaml"
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"target": "none", "timeout": 0},
+            }
+        )
+        app = build_app(configuration, path)
+        assert app._state.settings.display_timeout == 0
+        events = (
+            ButtonEvent(Button.A, Press.LONG),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.X),
+            ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
+            ButtonEvent(Button.B),
+        )
+        for event in events:
+            app._controller.handle(event)
+        assert app._state.settings.display_timeout == 5
+        assert load_configuration(path).display.timeout == 5
 
     def test_display_orientation_from_the_configuration(self):
         configuration = load_configuration(

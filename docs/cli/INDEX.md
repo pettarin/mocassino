@@ -256,6 +256,7 @@ display:
   orientation: 0
   target: pirateaudio
   tick: 0.5
+  timeout: 60
   ui_elements:
     show_playlist_bar: true
     show_progress_bar: true
@@ -326,6 +327,7 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `display.orientation` | `0` | By how many degrees, clockwise, what is shown on the display is rotated: `0`, `90`, `180`, or `270`; it can be changed from the `Settings` menu |
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
+| `display.timeout` | `60` | After how many seconds without a button press the display is turned off: `0` (never), `5`, `10`, `15`, `20`, `30`, `60`, `120`, or `300`; the time counts from the start of the service, or from the last button press; any button turns the display on again, without doing anything else; it can be changed from the `Settings` menu |
 | `display.ui_elements.show_playlist_bar` | `true` | Whether the playlist bar is shown in playback mode, if `display.ui_elements.show_side_icons` is `true`; it can be changed from the `Settings` menu |
 | `display.ui_elements.show_progress_bar` | `true` | Whether the progress bar of the track is shown in playback mode; it can be changed from the `Settings` menu |
 | `display.ui_elements.show_side_icons` | `true` | Whether the icons of the buttons are shown in playback mode, with the playlist and volume bars next to them; it can be changed from the `Settings` menu |
@@ -622,6 +624,13 @@ The top level menu has the following items:
     - `Orientation` (`display.orientation`): a menu with the four choices
       `0`, `90`, `180`, and `270`; the current one has the solid square.
       The change is immediate (see below).
+    - `Timeout (s)` (`display.timeout`): a menu with the choices `No timeout` (`0`),
+      `5`, `10`, `15`, `20`, `30`, `60`, `120`, and `300` seconds; the current one has the solid square.
+      The display is turned off when no button has been pressed for that long
+      (counting from the start of the service, at first), and not while the host shuts down.
+      A button press then only turns the display on again: the next one does what it does.
+      While the display is off, nothing is drawn, but MOC is still followed and the state saved.
+      The change is immediate.
     - `UI elements`: what is shown in playback mode.
       - `Show playlist bar` (`display.ui_elements.show_playlist_bar`):
         whether the playlist bar is shown, if the side icons are.

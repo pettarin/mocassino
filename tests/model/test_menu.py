@@ -18,6 +18,7 @@ from mocassino.model.menu import (
     build_display_colors_menu,
     build_display_menu,
     build_display_orientation_menu,
+    build_display_timeout_menu,
     build_display_ui_elements_menu,
     build_library_menu,
     build_playback_menu,
@@ -72,13 +73,14 @@ class TestBuildDisplayMenu:
             "Brightness (%)",
             "Colors",
             "Orientation",
+            "Timeout (s)",
             "UI elements",
         ]
         assert all(item.checked is None and item.command is None for item in menu.items)
 
     def test_ui_elements_submenu(self):
         settings = Settings()
-        item = build_display_menu(settings).items[3]
+        item = build_display_menu(settings).items[4]
         assert item.submenu().title == "UI elements"
         assert item.submenu().items[2].checked is True
         settings.show_side_icons = False
@@ -100,6 +102,14 @@ class TestBuildDisplayMenu:
         assert item.submenu().selected.label == "100"
         settings.display_brightness = 45
         assert item.submenu().selected.label == "45"
+
+    def test_timeout_submenu(self):
+        settings = Settings()
+        item = build_display_menu(settings).items[3]
+        assert item.submenu().title == "Timeout (s)"
+        assert item.submenu().selected.label == "60"
+        settings.display_timeout = 0
+        assert item.submenu().selected.label == "No timeout"
 
     def test_orientation_submenu(self):
         settings = Settings()
@@ -185,6 +195,45 @@ class TestBuildDisplayColorsMenu:
                 MenuItem(label="Reset now", command=MenuCommand.RESET_ALL_COLORS),
             ),
         )
+
+
+class TestBuildDisplayTimeoutMenu:
+    """Tests for the build_display_timeout_menu function"""
+
+    def test_choices(self):
+        menu = build_display_timeout_menu(Settings())
+        assert menu.title == "Timeout (s)"
+        assert [item.label for item in menu.items] == [
+            "No timeout",
+            "5",
+            "10",
+            "15",
+            "20",
+            "30",
+            "60",
+            "120",
+            "300",
+        ]
+        assert [item.value for item in menu.items] == [
+            "0",
+            "5",
+            "10",
+            "15",
+            "20",
+            "30",
+            "60",
+            "120",
+            "300",
+        ]
+        assert {item.command for item in menu.items} == {MenuCommand.SET_DISPLAY_TIMEOUT}
+        assert [item.label for item in menu.items if item.checked] == ["60"]
+        assert menu.selected.label == "60"
+
+    @pytest.mark.parametrize(("timeout", "label"), [(0, "No timeout"), (5, "5"), (300, "300")])
+    def test_current(self, timeout, label):
+        menu = build_display_timeout_menu(Settings(display_timeout=timeout))
+        assert menu.selected.label == label
+        assert [item.label for item in menu.items if item.checked] == [label]
 
 
 class TestBuildDisplayUiElementsMenu:
@@ -321,9 +370,9 @@ class TestBuildRootMenu:
     def test_settings_menu_shows_the_current_values(self, library, system):
         settings = Settings()
         item = build_root_menu(library, system, settings).items[1]
-        assert item.submenu().items[0].submenu().items[3].submenu().items[2].checked is True
+        assert item.submenu().items[0].submenu().items[4].submenu().items[2].checked is True
         settings.show_side_icons = False
-        assert item.submenu().items[0].submenu().items[3].submenu().items[2].checked is False
+        assert item.submenu().items[0].submenu().items[4].submenu().items[2].checked is False
 
     def test_submenus_are_built_when_opened(self, library, system):
         build_root_menu(library, system, Settings())
@@ -374,11 +423,11 @@ class TestBuildSettingsMenu:
         assert playback.submenu().items[0].submenu().selected.label == "10"
         settings.playback_seek_step = 30
         assert playback.submenu().items[0].submenu().selected.label == "30"
-        assert display.submenu().items[3].submenu().items[2].checked is True
+        assert display.submenu().items[4].submenu().items[2].checked is True
         assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
         settings.startup_volume = StartupVolume.USE_DEFAULT
-        assert display.submenu().items[3].submenu().items[2].checked is False
+        assert display.submenu().items[4].submenu().items[2].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use default"
 
     def test_other_items_are_not_checkable(self, library, system):

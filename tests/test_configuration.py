@@ -101,6 +101,7 @@ class TestConfiguration:
                 "orientation": 0,
                 "target": "pirateaudio",
                 "tick": 0.5,
+                "timeout": 60,
                 "ui_elements": {
                     "show_playlist_bar": True,
                     "show_progress_bar": True,
@@ -246,6 +247,11 @@ class TestLoadConfiguration:
             ("display", "orientation", True),
             ("display", "target", "hdmi"),
             ("display", "tick", -0.5),
+            ("display", "timeout", 7),
+            ("display", "timeout", -5),
+            ("display", "timeout", "60"),
+            ("display", "timeout", 60.0),
+            ("display", "timeout", True),
             ("library", "directory_path", 5),
             ("playback", "volume_default", -1),
             ("playback", "volume_default", 101),
@@ -282,6 +288,11 @@ class TestLoadConfiguration:
     def test_invalid_value(self, section, key, value):
         with pytest.raises(ConfigurationError, match=f"Invalid value for '{section}.{key}'"):
             load_configuration(overrides={section: {key: value}})
+
+    @pytest.mark.parametrize("timeout", [0, 5, 10, 15, 20, 30, 60, 120, 300])
+    def test_display_timeouts(self, timeout):
+        configuration = load_configuration(overrides={"display": {"timeout": timeout}})
+        assert configuration.display.timeout == timeout
 
     @pytest.mark.parametrize("origin", ["gpio", "none", "pirateaudio", "simulator"])
     def test_buttons_origins(self, origin):
