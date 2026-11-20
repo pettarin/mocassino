@@ -9,47 +9,12 @@ All notable changes to this project will be documented in this file.
 > [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.0.3] - To be released
+## [0.0.3] - 2026-11-20
 
 ### Added
 
-- The `display.ui_elements.show_timers` setting, and the `Show timers` item
-  of the `UI elements` menu, to hide the times and the icon of the state of the playback
-- The `display.ui_elements.right_timer_value` setting, and the `Right timer value` menu
-  in the `UI elements` menu, to have the timer on the right show the time remaining
-  (`remaining_time`) instead of the end time, the length of the track (`end_time`)
-- The `run.save_state` settings (`on_exit`, `on_refresh`, `on_startup`, `on_state_change`,
-  `on_track_change`, `on_volume_change`), and the `Save state` menu in the new `Run` menu
-  of the `Settings` menu, to choose when the state file is written;
-  turning on `On refresh` from the menu asks for a confirmation
-- The `Refresh delay (s)` menu in the `Run` menu of the `Settings` menu,
-  to change `run.refresh_delay` while the service runs
-
-### Changed
-
-- The times in playback mode take the shortest form fitting the length of the track,
-  the same for both: `M:SS`, `MM:SS`, `H:MM:SS`, or `HH:MM:SS`
-  (a track of an hour or more was shown in minutes, e.g., `62:05`)
-- `system.moc_state_on_exit` is moved to `run.moc_state_on_exit`, and its menu,
-  `MOC state on exit`, to the new `Run` menu of the `Settings` menu:
-  a configuration file with `system.moc_state_on_exit` is no longer valid, and has to be updated
-- `display.tick` is renamed `run.refresh_delay`, as it paces the whole main loop,
-  and its value is now one of `0.25`, `0.5`, `0.75`, `1.0`, `1.5`, `2.0`, and `5.0`:
-  a configuration file with `display.tick`, or with another value, is no longer valid,
-  and has to be updated
-  (`mocassino run` would otherwise replace it with the default values, keeping a backup)
-- The state file is no longer written when a setting is changed from the menus
-- `mocassino configuration --default` honors the global options
-  `-l / --library-directory-path` and `-s / --simulator`
-- In playback mode, without the progress bar, the album moves down to its place,
-  right above the times
-- The default music root directory (`library.directory_path`) is the home directory
-  of the user running the service, instead of `/music`
-- The default values of the configuration are defined in the new `mocassino.defaults` module
-- The choices of the settings (e.g., `buttons.origin`), the volume limits,
-  the modes of the application, the actions, the buttons,
-  and the kinds of button press (`Press`, renamed `ButtonPress`)
-  are defined in the new `mocassino.constants` module
+- Some additional improvements to the usuability of the service,
+  not worth mentioning explicitly one by one
 
 
 ## [0.0.2] - 2026-11-20
@@ -57,6 +22,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - First actual implementation of the service
+
 
 ## [0.0.1] - 2026-11-18
 
