@@ -34,14 +34,15 @@ from mocassino.model.menu import (
     build_playback_volume_default_menu,
     build_playback_volume_step_menu,
     build_root_menu,
-    build_save_state_menu,
+    build_run_menu,
+    build_run_moc_state_on_exit_menu,
+    build_run_save_state_menu,
     build_settings_menu,
     build_startup_menu,
     build_startup_playlist_menu,
     build_startup_state_menu,
     build_startup_volume_menu,
     build_system_menu,
-    build_system_moc_state_on_exit_menu,
 )
 from mocassino.model.settings import Settings
 from mocassino.model.system import System
@@ -408,15 +409,34 @@ class TestBuildRootMenu:
         system.hostname.assert_not_called()
 
 
-class TestBuildSaveStateMenu:
-    """Tests for the build_save_state_menu function"""
+class TestBuildRunMenu:
+    """Tests for the build_run_menu function"""
 
     def test_items(self):
-        menu = build_save_state_menu(Settings())
+        menu = build_run_menu(Settings())
+        assert menu.title == "Run"
+        assert [item.label for item in menu.items] == ["MOC state on exit", "Save state"]
+        assert [item.checked for item in menu.items] == [None, None]
+        assert [item.command for item in menu.items] == [None, None]
+        assert [item.submenu().title for item in menu.items] == ["MOC state on exit", "Save state"]
+
+    def test_moc_state_on_exit_submenu(self):
+        settings = Settings()
+        item = build_run_menu(settings).items[0]
+        assert item.submenu().selected.label == "Do nothing"
+        settings.run_moc_state_on_exit = MocStateOnExit.STOP
+        assert item.submenu().selected.label == "Stop"
+
+
+class TestBuildRunSaveStateMenu:
+    """Tests for the build_run_save_state_menu function"""
+
+    def test_items(self):
+        menu = build_run_save_state_menu(Settings())
         assert menu.title == "Save state"
         assert [item.label for item in menu.items] == [
             "On exit",
-            "On playback tick",
+            "On refresh",
             "On startup",
             "On state change",
             "On track change",
@@ -424,12 +444,12 @@ class TestBuildSaveStateMenu:
         ]
         assert [item.label for item in menu.items] == sorted(item.label for item in menu.items)
         assert [item.command for item in menu.items] == [
-            MenuCommand.TOGGLE_SAVE_STATE_ON_EXIT,
-            MenuCommand.TOGGLE_SAVE_STATE_ON_PLAYBACK_TICK,
-            MenuCommand.TOGGLE_SAVE_STATE_ON_STARTUP,
-            MenuCommand.TOGGLE_SAVE_STATE_ON_STATE_CHANGE,
-            MenuCommand.TOGGLE_SAVE_STATE_ON_TRACK_CHANGE,
-            MenuCommand.TOGGLE_SAVE_STATE_ON_VOLUME_CHANGE,
+            MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_EXIT,
+            MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_REFRESH,
+            MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_STARTUP,
+            MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_STATE_CHANGE,
+            MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_TRACK_CHANGE,
+            MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_VOLUME_CHANGE,
         ]
         assert [item.checked for item in menu.items] == [True, False, True, True, True, True]
         assert all(item.submenu is None for item in menu.items)
@@ -437,17 +457,17 @@ class TestBuildSaveStateMenu:
     @pytest.mark.parametrize(
         ("index", "attribute"),
         [
-            (0, "save_state_on_exit"),
-            (1, "save_state_on_playback_tick"),
-            (2, "save_state_on_startup"),
-            (3, "save_state_on_state_change"),
-            (4, "save_state_on_track_change"),
-            (5, "save_state_on_volume_change"),
+            (0, "run_save_state_on_exit"),
+            (1, "run_save_state_on_refresh"),
+            (2, "run_save_state_on_startup"),
+            (3, "run_save_state_on_state_change"),
+            (4, "run_save_state_on_track_change"),
+            (5, "run_save_state_on_volume_change"),
         ],
     )
     @pytest.mark.parametrize("on", [True, False])
     def test_checked(self, index, attribute, on):
-        menu = build_save_state_menu(Settings(**{attribute: on}))
+        menu = build_run_save_state_menu(Settings(**{attribute: on}))
         assert menu.items[index].checked is on
 
 
@@ -460,28 +480,19 @@ class TestBuildSettingsMenu:
         assert [item.label for item in menu.items] == [
             "Display",
             "Playback",
-            "MOC state on exit",
-            "Save state",
+            "Run",
             "Startup",
             "Reset all settings",
         ]
-        assert [item.checked for item in menu.items] == [None] * 6
-        assert [item.command for item in menu.items] == [None] * 6
+        assert [item.checked for item in menu.items] == [None] * 5
+        assert [item.command for item in menu.items] == [None] * 5
         assert menu.items[0].submenu().title == "Display"
         assert menu.items[1].submenu().title == "Playback"
-        assert menu.items[2].submenu().title == "MOC state on exit"
-        assert menu.items[3].submenu().title == "Save state"
-        assert menu.items[4].submenu().title == "Startup"
-
-    def test_moc_state_on_exit_submenu(self):
-        settings = Settings()
-        item = build_settings_menu(settings).items[2]
-        assert item.submenu().selected.label == "Do nothing"
-        settings.system_moc_state_on_exit = MocStateOnExit.STOP
-        assert item.submenu().selected.label == "Stop"
+        assert menu.items[2].submenu().title == "Run"
+        assert menu.items[3].submenu().title == "Startup"
 
     def test_reset_all_settings_is_confirmed(self):
-        item = build_settings_menu(Settings()).items[5]
+        item = build_settings_menu(Settings()).items[4]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Reset all settings?",
@@ -493,18 +504,21 @@ class TestBuildSettingsMenu:
 
     def test_submenus_show_the_current_values(self):
         settings = Settings()
-        display, playback, _, save_state, startup, _ = build_settings_menu(settings).items
+        display, playback, run, startup, _ = build_settings_menu(settings).items
         assert playback.submenu().items[0].submenu().selected.label == "10"
         settings.playback_seek_step = 30
         assert playback.submenu().items[0].submenu().selected.label == "30"
         assert display.submenu().items[4].submenu().items[3].checked is True
-        assert save_state.submenu().items[0].checked is True
+        assert run.submenu().items[0].submenu().selected.label == "Do nothing"
+        assert run.submenu().items[1].submenu().items[0].checked is True
         assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
-        settings.save_state_on_exit = False
+        settings.run_moc_state_on_exit = MocStateOnExit.STOP
+        settings.run_save_state_on_exit = False
         settings.startup_volume = StartupVolume.USE_DEFAULT
         assert display.submenu().items[4].submenu().items[3].checked is False
-        assert save_state.submenu().items[0].checked is False
+        assert run.submenu().items[0].submenu().selected.label == "Stop"
+        assert run.submenu().items[1].submenu().items[0].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use default"
 
     def test_other_items_are_not_checkable(self, library, system):
@@ -746,16 +760,16 @@ class TestBuildSystemMenu:
         system.shutdown.assert_not_called()
 
 
-class TestBuildSystemMocStateOnExitMenu:
-    """Tests for the build_system_moc_state_on_exit_menu function"""
+class TestBuildRunMocStateOnExitMenu:
+    """Tests for the build_run_moc_state_on_exit_menu function"""
 
     @pytest.mark.parametrize("choice", list(MocStateOnExit))
     def test_choices(self, choice):
-        menu = build_system_moc_state_on_exit_menu(Settings(system_moc_state_on_exit=choice))
+        menu = build_run_moc_state_on_exit_menu(Settings(run_moc_state_on_exit=choice))
         assert menu.title == "MOC state on exit"
         assert [item.label for item in menu.items] == ["Do nothing", "Pause", "Quit", "Stop"]
         assert [item.value for item in menu.items] == ["do_nothing", "pause", "quit", "stop"]
-        assert {item.command for item in menu.items} == {MenuCommand.SET_SYSTEM_MOC_STATE_ON_EXIT}
+        assert {item.command for item in menu.items} == {MenuCommand.SET_RUN_MOC_STATE_ON_EXIT}
         assert [item.value for item in menu.items if item.checked] == [choice.value]
         assert menu.selected.value == choice.value
 

@@ -88,7 +88,7 @@ RESET_ALL_SETTINGS = (
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
 )
-TICK = 0.01
+REFRESH_DELAY = 0.01
 # From playback mode: open the menu, go to Settings, open it, open Display (its first item),
 # go up to UI elements (its last item), open it, go to Show side icons (its fourth item),
 # and select it
@@ -132,7 +132,9 @@ def state():
 def app(mocker, tmp_path, state, moc, display, button_source):
     system = mocker.create_autospec(System, instance=True)
     controller = Controller(state, moc, Library(tmp_path), system, DEFAULT_BUTTON_MAP)
-    return App(state, controller, moc, Renderer(), display, button_source, tick=TICK)
+    return App(
+        state, controller, moc, Renderer(), display, button_source, refresh_delay=REFRESH_DELAY
+    )
 
 
 @pytest.fixture
@@ -148,7 +150,14 @@ def saving_app(mocker, tmp_path, state, moc, display, button_source, state_file)
     system = mocker.create_autospec(System, instance=True)
     controller = Controller(state, moc, Library(tmp_path), system, DEFAULT_BUTTON_MAP)
     return App(
-        state, controller, moc, Renderer(), display, button_source, TICK, state_file=state_file
+        state,
+        controller,
+        moc,
+        Renderer(),
+        display,
+        button_source,
+        REFRESH_DELAY,
+        state_file=state_file,
     )
 
 
@@ -171,7 +180,7 @@ class TestDisplayTimeout:
             Renderer(),
             display,
             button_source,
-            tick=TICK,
+            refresh_delay=REFRESH_DELAY,
             clock=lambda: now[0],
         )
 
@@ -390,14 +399,14 @@ class TestApp:
         assert state_file.save.call_count == 2
 
     def test_state_is_not_saved_on_exit(self, saving_app, state_file, state):
-        state.settings.save_state_on_exit = False
+        state.settings.run_save_state_on_exit = False
         saving_app.step()
         assert state_file.save.call_count == 1
         saving_app.close()
         assert state_file.save.call_count == 1
 
     def test_state_is_not_saved_on_shutdown(self, saving_app, state_file, state, moc):
-        state.settings.save_state_on_exit = False
+        state.settings.run_save_state_on_exit = False
         saving_app.step()
         assert state_file.save.call_count == 1
         state.shutting_down = True
@@ -408,15 +417,19 @@ class TestApp:
 
     @pytest.mark.parametrize(
         "attribute",
-        ["save_state_on_state_change", "save_state_on_track_change", "save_state_on_volume_change"],
+        [
+            "run_save_state_on_state_change",
+            "run_save_state_on_track_change",
+            "run_save_state_on_volume_change",
+        ],
     )
     def test_state_is_not_saved_on_a_change(self, saving_app, state_file, state, moc, attribute):
         setattr(state.settings, attribute, False)
         saving_app.step()
         assert state_file.save.call_count == 1
-        if attribute == "save_state_on_state_change":
+        if attribute == "run_save_state_on_state_change":
             moc.status.return_value = MocStatus(file_path="/music/a.flac", state=MocState.PAUSE)
-        elif attribute == "save_state_on_track_change":
+        elif attribute == "run_save_state_on_track_change":
             moc.status.return_value = MocStatus(file_path="/music/b.flac", state=MocState.PLAY)
         else:
             saving_app.events.put(ButtonEvent(Button.X))
@@ -425,7 +438,7 @@ class TestApp:
         assert state_file.save.call_count == 1
 
     def test_change_not_saved_is_saved_with_the_next_one(self, saving_app, state_file, state, moc):
-        state.settings.save_state_on_volume_change = False
+        state.settings.run_save_state_on_volume_change = False
         saving_app.step()
         saving_app.events.put(ButtonEvent(Button.X))
         saving_app.step()
@@ -439,12 +452,12 @@ class TestApp:
             )
         )
 
-    def test_state_is_saved_at_every_tick(self, saving_app, state_file, state, moc):
+    def test_state_is_saved_at_every_refresh(self, saving_app, state_file, state, moc):
         settings = state.settings
-        settings.save_state_on_state_change = False
-        settings.save_state_on_track_change = False
-        settings.save_state_on_volume_change = False
-        settings.save_state_on_playback_tick = True
+        settings.run_save_state_on_state_change = False
+        settings.run_save_state_on_track_change = False
+        settings.run_save_state_on_volume_change = False
+        settings.run_save_state_on_refresh = True
         for count in range(1, 4):
             moc.status.return_value = MocStatus(
                 current_seconds=count, file_path="/music/a.flac", state=MocState.PLAY
@@ -463,10 +476,10 @@ class TestApp:
 
     def test_state_is_never_saved(self, saving_app, state_file, state, moc):
         settings = state.settings
-        settings.save_state_on_exit = False
-        settings.save_state_on_state_change = False
-        settings.save_state_on_track_change = False
-        settings.save_state_on_volume_change = False
+        settings.run_save_state_on_exit = False
+        settings.run_save_state_on_state_change = False
+        settings.run_save_state_on_track_change = False
+        settings.run_save_state_on_volume_change = False
         saving_app.step()
         saving_app.events.put(ButtonEvent(Button.X))
         saving_app.step()
@@ -552,7 +565,7 @@ class TestApp:
         state_file.save.assert_called_once()
 
     def test_start_without_saving_the_state(self, saving_app, state_file, state, moc, mocker):
-        state.settings.save_state_on_startup = False
+        state.settings.run_save_state_on_startup = False
         state_file.load.return_value = SavedState(
             directory_path="/music", file_path="/music/a.flac", volume=40
         )
@@ -613,7 +626,7 @@ class TestApp:
         ],
     )
     def test_close_leaves_moc(self, mocker, saving_app, state, moc, state_file, choice, command):
-        state.settings.system_moc_state_on_exit = choice
+        state.settings.run_moc_state_on_exit = choice
         calls = mocker.Mock()
         state_file.save.side_effect = calls.save
         getattr(moc, command).side_effect = calls.leave
@@ -623,7 +636,7 @@ class TestApp:
         assert all(not getattr(moc, other).called for other in others)
 
     def test_close_leaves_moc_despite_errors(self, app, state, moc, display, button_source, caplog):
-        state.settings.system_moc_state_on_exit = MocStateOnExit.QUIT
+        state.settings.run_moc_state_on_exit = MocStateOnExit.QUIT
         moc.exit_server.side_effect = MocError("not running")
         with caplog.at_level(logging.ERROR):
             app.close()
@@ -810,7 +823,7 @@ class TestBuildApp:
         assert isinstance(app._display, NullDisplay)
         assert app.simulator is None
         assert app._state.volume == 30
-        assert app._tick == 0.5
+        assert app._refresh_delay == 0.5
         app.events.put(ButtonEvent(Button.A, ButtonPress.LONG))
         app._controller.handle(app.events.get())
         assert app._state.mode == Mode.MENU
@@ -900,19 +913,19 @@ class TestBuildApp:
             "    show_side_icons: false\n"
             "    show_timers: true\n"
             "    show_volume_bar: true\n"
-            "save_state:\n"
-            "  on_exit: true\n"
-            "  on_playback_tick: false\n"
-            "  on_startup: true\n"
-            "  on_state_change: true\n"
-            "  on_track_change: true\n"
-            "  on_volume_change: true\n"
+            "run:\n"
+            "  moc_state_on_exit: do_nothing\n"
+            "  save_state:\n"
+            "    on_exit: true\n"
+            "    on_refresh: false\n"
+            "    on_startup: true\n"
+            "    on_state_change: true\n"
+            "    on_track_change: true\n"
+            "    on_volume_change: true\n"
             "startup:\n"
             "  playlist: use_saved\n"
             "  state: use_saved\n"
             "  volume: use_saved\n"
-            "system:\n"
-            "  moc_state_on_exit: do_nothing\n"
         )
         assert load_configuration(path).display.ui_elements.show_side_icons is False
 
@@ -943,19 +956,19 @@ class TestBuildApp:
             "  seek_step: 10\n"
             "  volume_default: 50\n"
             "  volume_step: 5\n"
-            "save_state:\n"
-            "  on_exit: true\n"
-            "  on_playback_tick: false\n"
-            "  on_startup: true\n"
-            "  on_state_change: true\n"
-            "  on_track_change: true\n"
-            "  on_volume_change: true\n"
+            "run:\n"
+            "  moc_state_on_exit: do_nothing\n"
+            "  save_state:\n"
+            "    on_exit: true\n"
+            "    on_refresh: false\n"
+            "    on_startup: true\n"
+            "    on_state_change: true\n"
+            "    on_track_change: true\n"
+            "    on_volume_change: true\n"
             "startup:\n"
             "  playlist: use_saved\n"
             "  state: use_saved\n"
             "  volume: use_saved\n"
-            "system:\n"
-            "  moc_state_on_exit: do_nothing\n"
         )
 
     def test_settings_cannot_be_saved(self, tmp_path, caplog):
@@ -1128,11 +1141,11 @@ class TestBuildApp:
             overrides={
                 "buttons": {"origin": "none"},
                 "display": {"target": "none"},
-                "system": {"moc_state_on_exit": "pause"},
+                "run": {"moc_state_on_exit": "pause"},
             }
         )
         app = build_app(configuration, path)
-        assert app._state.settings.system_moc_state_on_exit is MocStateOnExit.PAUSE
+        assert app._state.settings.run_moc_state_on_exit is MocStateOnExit.PAUSE
         events = (
             ButtonEvent(Button.A, ButtonPress.LONG),
             ButtonEvent(Button.Y),
@@ -1140,14 +1153,15 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
         )
         for event in events:
             app._controller.handle(event)
-        assert app._state.settings.system_moc_state_on_exit is MocStateOnExit.STOP
-        assert load_configuration(path).system.moc_state_on_exit == "stop"
+        assert app._state.settings.run_moc_state_on_exit is MocStateOnExit.STOP
+        assert load_configuration(path).run.moc_state_on_exit == "stop"
 
     def test_right_timer_value_from_the_configuration_and_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"

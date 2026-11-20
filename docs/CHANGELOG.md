@@ -18,12 +18,18 @@ All notable changes to this project will be documented in this file.
 - The `display.ui_elements.right_timer_value` setting, and the `Right timer value` menu
   in the `UI elements` menu, to have the timer on the right show the time remaining
   (`remaining_time`) instead of the end time, the length of the track (`end_time`)
-- The `save_state` section (`on_exit`, `on_playback_tick`, `on_startup`, `on_state_change`,
-  `on_track_change`, `on_volume_change`), and the `Save state` menu in the `Settings` menu,
-  to choose when the state file is written
+- The `run.save_state` settings (`on_exit`, `on_refresh`, `on_startup`, `on_state_change`,
+  `on_track_change`, `on_volume_change`), and the `Save state` menu in the new `Run` menu
+  of the `Settings` menu, to choose when the state file is written
 
 ### Changed
 
+- `system.moc_state_on_exit` is moved to `run.moc_state_on_exit`, and its menu,
+  `MOC state on exit`, to the new `Run` menu of the `Settings` menu:
+  a configuration file with `system.moc_state_on_exit` is no longer valid, and has to be updated
+- `display.tick` is renamed `run.refresh_delay`, as it paces the whole main loop:
+  a configuration file with `display.tick` is no longer valid, and has to be updated
+  (`mocassino run` would otherwise replace it with the default values, keeping a backup)
 - The state file is no longer written when a setting is changed from the menus
 - `mocassino configuration --default` honors the global options
   `-l / --library-directory-path` and `-s / --simulator`

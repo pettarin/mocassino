@@ -58,7 +58,6 @@ class TestConfiguration:
             font_file_path=None,
             orientation=0,
             target="pirateaudio",
-            tick=0.5,
         )
         assert configuration.display.ui_elements == UiElementsConfiguration(
             right_timer_value="end_time",
@@ -72,20 +71,23 @@ class TestConfiguration:
         assert configuration.playback == PlaybackConfiguration(
             seek_step=10, volume_default=50, volume_step=5
         )
-        assert configuration.run == RunConfiguration(mode="background")
-        assert configuration.save_state == SaveStateConfiguration(
-            on_exit=True,
-            on_playback_tick=False,
-            on_startup=True,
-            on_state_change=True,
-            on_track_change=True,
-            on_volume_change=True,
+        assert configuration.run == RunConfiguration(
+            moc_state_on_exit="do_nothing",
+            mode="background",
+            refresh_delay=0.5,
+            save_state=SaveStateConfiguration(
+                on_exit=True,
+                on_refresh=False,
+                on_startup=True,
+                on_state_change=True,
+                on_track_change=True,
+                on_volume_change=True,
+            ),
         )
         assert configuration.startup == StartupConfiguration(
             playlist="use_saved", state="use_saved", volume="use_saved"
         )
         assert configuration.system == SystemConfiguration(
-            moc_state_on_exit="do_nothing",
             mocp_file_path="mocp",
             reboot_command=("sudo", "reboot"),
             shutdown_command=("sudo", "shutdown", "-h", "now"),
@@ -111,7 +113,6 @@ class TestConfiguration:
                 "font_file_path": None,
                 "orientation": 0,
                 "target": "pirateaudio",
-                "tick": 0.5,
                 "timeout": 60,
                 "ui_elements": {
                     "right_timer_value": "end_time",
@@ -124,14 +125,18 @@ class TestConfiguration:
             },
             "library": {"directory_path": str(home)},
             "playback": {"seek_step": 10, "volume_default": 50, "volume_step": 5},
-            "run": {"mode": "background"},
-            "save_state": {
-                "on_exit": True,
-                "on_playback_tick": False,
-                "on_startup": True,
-                "on_state_change": True,
-                "on_track_change": True,
-                "on_volume_change": True,
+            "run": {
+                "moc_state_on_exit": "do_nothing",
+                "mode": "background",
+                "refresh_delay": 0.5,
+                "save_state": {
+                    "on_exit": True,
+                    "on_refresh": False,
+                    "on_startup": True,
+                    "on_state_change": True,
+                    "on_track_change": True,
+                    "on_volume_change": True,
+                },
             },
             "startup": {
                 "playlist": "use_saved",
@@ -139,7 +144,6 @@ class TestConfiguration:
                 "volume": "use_saved",
             },
             "system": {
-                "moc_state_on_exit": "do_nothing",
                 "mocp_file_path": "mocp",
                 "reboot_command": ["sudo", "reboot"],
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
@@ -201,7 +205,6 @@ class TestLoadConfiguration:
             "  brightness: 0.5\n"
             "  font_file_path: ~/font.ttf\n"
             "  target: simulator\n"
-            "  tick: 0.25\n"
             "  ui_elements:\n"
             "    show_side_icons: false\n"
             "library:\n"
@@ -211,11 +214,14 @@ class TestLoadConfiguration:
             "  volume_default: 70\n"
             "  volume_step: 10\n"
             "run:\n"
+            "  moc_state_on_exit: quit\n"
             "  mode: foreground\n"
+            "  refresh_delay: 0.25\n"
+            "  save_state:\n"
+            "    on_refresh: true\n"
             "startup:\n"
             "  volume: use_default\n"
             "system:\n"
-            "  moc_state_on_exit: quit\n"
             "  mocp_file_path: /usr/bin/mocp\n"
             "  shutdown_command: [systemctl, poweroff]\n",
         )
@@ -225,15 +231,18 @@ class TestLoadConfiguration:
                 brightness=0.5,
                 font_file_path=tmp_path / "font.ttf",
                 target="simulator",
-                tick=0.25,
                 ui_elements=UiElementsConfiguration(show_side_icons=False),
             ),
             library=LibraryConfiguration(directory_path=Path("/srv/music")),
             playback=PlaybackConfiguration(seek_step=30, volume_default=70, volume_step=10),
-            run=RunConfiguration(mode="foreground"),
+            run=RunConfiguration(
+                moc_state_on_exit="quit",
+                mode="foreground",
+                refresh_delay=0.25,
+                save_state=SaveStateConfiguration(on_refresh=True),
+            ),
             startup=StartupConfiguration(volume="use_default"),
             system=SystemConfiguration(
-                moc_state_on_exit="quit",
                 mocp_file_path="/usr/bin/mocp",
                 shutdown_command=("systemctl", "poweroff"),
             ),
@@ -267,7 +276,6 @@ class TestLoadConfiguration:
             ("display", "orientation", "90"),
             ("display", "orientation", True),
             ("display", "target", "hdmi"),
-            ("display", "tick", -0.5),
             ("display", "timeout", 7),
             ("display", "timeout", -5),
             ("display", "timeout", "60"),
@@ -285,6 +293,11 @@ class TestLoadConfiguration:
             ("run", "mode", "window"),
             ("run", "mode", "Foreground"),
             ("run", "mode", True),
+            ("run", "moc_state_on_exit", "exit"),
+            ("run", "moc_state_on_exit", "Do nothing"),
+            ("run", "moc_state_on_exit", True),
+            ("run", "refresh_delay", 0),
+            ("run", "refresh_delay", -0.5),
             ("startup", "playlist", "shuffle"),
             ("startup", "playlist", "saved"),
             ("startup", "playlist", "Use saved"),
@@ -295,9 +308,6 @@ class TestLoadConfiguration:
             ("startup", "volume", "use_fallback"),
             ("startup", "volume", "Use saved"),
             ("startup", "volume", True),
-            ("system", "moc_state_on_exit", "exit"),
-            ("system", "moc_state_on_exit", "Do nothing"),
-            ("system", "moc_state_on_exit", True),
             ("system", "mocp_file_path", ["mocp"]),
             ("system", "reboot_command", 5),
             ("system", "shutdown_command", "'unbalanced"),
@@ -326,16 +336,28 @@ class TestLoadConfiguration:
         assert configuration.display.target == target
 
     def test_save_state(self, tmp_path):
-        path = write_yaml(tmp_path, "save_state:\n  on_exit: false\n  on_playback_tick: true\n")
-        assert load_configuration(path).save_state == SaveStateConfiguration(
-            on_exit=False, on_playback_tick=True
+        path = write_yaml(
+            tmp_path, "run:\n  save_state:\n    on_exit: false\n    on_refresh: true\n"
         )
+        assert load_configuration(path).run.save_state == SaveStateConfiguration(
+            on_exit=False, on_refresh=True
+        )
+
+    def test_save_state_partial_or_empty(self, tmp_path):
+        path = write_yaml(tmp_path, "run:\n  save_state:\n    on_exit:\n")
+        assert load_configuration(path).run.save_state == SaveStateConfiguration()
+        path = write_yaml(tmp_path, "run:\n  save_state:\n")
+        assert load_configuration(path).run.save_state == SaveStateConfiguration()
+
+    def test_save_state_not_a_mapping(self):
+        with pytest.raises(ConfigurationError, match="Invalid value for 'run.save_state'"):
+            load_configuration(overrides={"run": {"save_state": True}})
 
     @pytest.mark.parametrize(
         "key",
         [
             "on_exit",
-            "on_playback_tick",
+            "on_refresh",
             "on_startup",
             "on_state_change",
             "on_track_change",
@@ -343,14 +365,28 @@ class TestLoadConfiguration:
         ],
     )
     def test_save_state_not_valid(self, key):
-        with pytest.raises(ConfigurationError, match=f"Invalid value for 'save_state.{key}': 'no'"):
-            load_configuration(overrides={"save_state": {key: "no"}})
+        with pytest.raises(
+            ConfigurationError, match=f"Invalid value for 'run.save_state.{key}': 'no'"
+        ):
+            load_configuration(overrides={"run": {"save_state": {key: "no"}}})
 
     def test_save_state_unknown(self):
         with pytest.raises(
-            ConfigurationError, match="Unknown configuration keys: save_state.on_pause"
+            ConfigurationError, match="Unknown configuration keys: run.save_state.on_pause"
         ):
-            load_configuration(overrides={"save_state": {"on_pause": True}})
+            load_configuration(overrides={"run": {"save_state": {"on_pause": True}}})
+
+    @pytest.mark.parametrize(
+        ("content", "key"),
+        [
+            ("save_state:\n  on_exit: false\n", "save_state"),
+            ("system:\n  moc_state_on_exit: quit\n", "system.moc_state_on_exit"),
+        ],
+    )
+    def test_save_state_and_moc_state_on_exit_old_keys_are_unknown(self, tmp_path, content, key):
+        path = write_yaml(tmp_path, content)
+        with pytest.raises(ConfigurationError, match=f"Unknown configuration keys: {key}$"):
+            load_configuration(path)
 
     @pytest.mark.parametrize("playlist", ["open_library", "use_moc_state", "use_saved"])
     def test_startup_playlists(self, tmp_path, playlist):
@@ -421,6 +457,11 @@ class TestLoadConfiguration:
         with pytest.raises(ConfigurationError, match="Invalid value for 'display.ui_elements'"):
             load_configuration(overrides={"display": {"ui_elements": True}})
 
+    def test_display_tick_is_unknown(self, tmp_path):
+        path = write_yaml(tmp_path, "display:\n  tick: 0.5\n")
+        with pytest.raises(ConfigurationError, match="Unknown configuration keys: display.tick"):
+            load_configuration(path)
+
     @pytest.mark.parametrize(
         "key",
         [
@@ -449,7 +490,7 @@ class TestLoadConfiguration:
             tmp_path,
             "display:\n  font_file_path: null\nplayback:\n  volume_default: 30\n",
         )
-        overrides = {"display": {"tick": None}, "playback": {"volume_default": None}}
+        overrides = {"run": {"refresh_delay": None}, "playback": {"volume_default": None}}
         assert load_configuration(path, overrides) == Configuration(
             playback=PlaybackConfiguration(volume_default=30),
         )
@@ -647,7 +688,7 @@ class TestUpdateConfigurationFile:
             "playback:\n"
             "  volume_step: 3\n"
             "display:\n"
-            "  tick: 0.25\n"
+            "  timeout: 30\n"
             "  orientation: 0\n"
             "library:\n"
             "  directory_path: /srv/musica/Andrè\n",
@@ -657,7 +698,7 @@ class TestUpdateConfigurationFile:
             "playback:\n"
             "  volume_step: 3\n"
             "display:\n"
-            "  tick: 0.25\n"
+            "  timeout: 30\n"
             "  orientation: 90\n"
             "library:\n"
             "  directory_path: /srv/musica/Andrè\n"
@@ -678,10 +719,10 @@ class TestUpdateConfigurationFile:
 
     def test_section_empty_or_missing(self, tmp_path):
         path = write_yaml(tmp_path, "display:\n")
-        update_configuration_file(path, {"buttons": {"origin": "none"}, "display": {"tick": 1.0}})
+        update_configuration_file(path, {"buttons": {"origin": "none"}, "display": {"timeout": 30}})
         assert load_configuration(path) == Configuration(
             buttons=ButtonsConfiguration(origin="none"),
-            display=DisplayConfiguration(tick=1.0),
+            display=DisplayConfiguration(timeout=30),
         )
 
     def test_section_not_a_mapping(self, tmp_path):

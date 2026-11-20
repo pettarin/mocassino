@@ -1,7 +1,7 @@
 """Configuration of the service: defaults, YAML file, and overrides.
 
 The settings are grouped in sections, one per concern:
-buttons, display, library, playback, run, save_state, startup, and system.
+buttons, display, library, playback, run, startup, and system.
 
 :copyright: Copyright (C) 2026 Alberto Pettarin
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
@@ -41,7 +41,6 @@ from mocassino.defaults import (
     DEFAULT_DISPLAY_FONT_FILE_PATH,
     DEFAULT_DISPLAY_ORIENTATION,
     DEFAULT_DISPLAY_TARGET,
-    DEFAULT_DISPLAY_TICK,
     DEFAULT_DISPLAY_TIMEOUT,
     DEFAULT_DISPLAY_UI_ELEMENTS_RIGHT_TIMER_VALUE,
     DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR,
@@ -53,17 +52,18 @@ from mocassino.defaults import (
     DEFAULT_PLAYBACK_SEEK_STEP,
     DEFAULT_PLAYBACK_VOLUME_DEFAULT,
     DEFAULT_PLAYBACK_VOLUME_STEP,
+    DEFAULT_RUN_MOC_STATE_ON_EXIT,
     DEFAULT_RUN_MODE,
-    DEFAULT_SAVE_STATE_ON_EXIT,
-    DEFAULT_SAVE_STATE_ON_PLAYBACK_TICK,
-    DEFAULT_SAVE_STATE_ON_STARTUP,
-    DEFAULT_SAVE_STATE_ON_STATE_CHANGE,
-    DEFAULT_SAVE_STATE_ON_TRACK_CHANGE,
-    DEFAULT_SAVE_STATE_ON_VOLUME_CHANGE,
+    DEFAULT_RUN_REFRESH_DELAY,
+    DEFAULT_RUN_SAVE_STATE_ON_EXIT,
+    DEFAULT_RUN_SAVE_STATE_ON_REFRESH,
+    DEFAULT_RUN_SAVE_STATE_ON_STARTUP,
+    DEFAULT_RUN_SAVE_STATE_ON_STATE_CHANGE,
+    DEFAULT_RUN_SAVE_STATE_ON_TRACK_CHANGE,
+    DEFAULT_RUN_SAVE_STATE_ON_VOLUME_CHANGE,
     DEFAULT_STARTUP_PLAYLIST,
     DEFAULT_STARTUP_STATE,
     DEFAULT_STARTUP_VOLUME,
-    DEFAULT_SYSTEM_MOC_STATE_ON_EXIT,
     DEFAULT_SYSTEM_MOCP_FILE_PATH,
     DEFAULT_SYSTEM_REBOOT_COMMAND,
     DEFAULT_SYSTEM_SHUTDOWN_COMMAND,
@@ -132,7 +132,6 @@ class DisplayConfiguration:
     font_file_path: Path | None = DEFAULT_DISPLAY_FONT_FILE_PATH
     orientation: int = DEFAULT_DISPLAY_ORIENTATION
     target: str = DEFAULT_DISPLAY_TARGET
-    tick: float = DEFAULT_DISPLAY_TICK
     timeout: int = DEFAULT_DISPLAY_TIMEOUT
     ui_elements: UiElementsConfiguration = field(default_factory=UiElementsConfiguration)
 
@@ -158,31 +157,42 @@ class PlaybackConfiguration:
 
 
 @dataclass(frozen=True)
-class RunConfiguration:
-    """The settings of how the service is run.
-
-    The mode tells whether the service runs in background or in foreground,
-    unless the command line says otherwise.
-    """
-
-    mode: str = DEFAULT_RUN_MODE
-
-
-@dataclass(frozen=True)
 class SaveStateConfiguration:
     """The settings of when the state is saved to the state file.
 
+    Defined before the settings of the run, as they refer to it.
+
     On startup, on exit, when the playback state (playing, paused, or stopped) changes,
-    when the track changes, when the volume changes, and at every tick of the main loop,
-    during the playback (the file is written only when its content changes, e.g., the position).
+    when the track changes, when the volume changes, and at every refresh of the main loop
+    (the file is written only when its content changes, e.g., the position in the track).
     """
 
-    on_exit: bool = DEFAULT_SAVE_STATE_ON_EXIT
-    on_playback_tick: bool = DEFAULT_SAVE_STATE_ON_PLAYBACK_TICK
-    on_startup: bool = DEFAULT_SAVE_STATE_ON_STARTUP
-    on_state_change: bool = DEFAULT_SAVE_STATE_ON_STATE_CHANGE
-    on_track_change: bool = DEFAULT_SAVE_STATE_ON_TRACK_CHANGE
-    on_volume_change: bool = DEFAULT_SAVE_STATE_ON_VOLUME_CHANGE
+    on_exit: bool = DEFAULT_RUN_SAVE_STATE_ON_EXIT
+    on_refresh: bool = DEFAULT_RUN_SAVE_STATE_ON_REFRESH
+    on_startup: bool = DEFAULT_RUN_SAVE_STATE_ON_STARTUP
+    on_state_change: bool = DEFAULT_RUN_SAVE_STATE_ON_STATE_CHANGE
+    on_track_change: bool = DEFAULT_RUN_SAVE_STATE_ON_TRACK_CHANGE
+    on_volume_change: bool = DEFAULT_RUN_SAVE_STATE_ON_VOLUME_CHANGE
+
+
+@dataclass(frozen=True)
+class RunConfiguration:
+    """The settings of how the service is run.
+
+    The MOC state on exit is what the service does to MOC when it exits
+    (a value of MocStateOnExit), after its state has been saved, if it is.
+    The mode tells whether the service runs in background or in foreground,
+    unless the command line says otherwise.
+    The refresh delay is how long, in seconds, the main loop waits for a button event,
+    at most, before it refreshes: it reads the MOC status, saves the state if needed,
+    and draws the display. A button event ends the wait at once.
+    The save state settings tell when the state is saved to the state file.
+    """
+
+    moc_state_on_exit: str = DEFAULT_RUN_MOC_STATE_ON_EXIT
+    mode: str = DEFAULT_RUN_MODE
+    refresh_delay: float = DEFAULT_RUN_REFRESH_DELAY
+    save_state: SaveStateConfiguration = field(default_factory=SaveStateConfiguration)
 
 
 @dataclass(frozen=True)
@@ -198,7 +208,6 @@ class StartupConfiguration:
 class SystemConfiguration:
     """The settings of the host system."""
 
-    moc_state_on_exit: str = DEFAULT_SYSTEM_MOC_STATE_ON_EXIT
     mocp_file_path: str = DEFAULT_SYSTEM_MOCP_FILE_PATH
     reboot_command: tuple[str, ...] = DEFAULT_SYSTEM_REBOOT_COMMAND
     shutdown_command: tuple[str, ...] = DEFAULT_SYSTEM_SHUTDOWN_COMMAND
@@ -216,7 +225,6 @@ class Configuration:
     library: LibraryConfiguration = field(default_factory=LibraryConfiguration)
     playback: PlaybackConfiguration = field(default_factory=PlaybackConfiguration)
     run: RunConfiguration = field(default_factory=RunConfiguration)
-    save_state: SaveStateConfiguration = field(default_factory=SaveStateConfiguration)
     startup: StartupConfiguration = field(default_factory=StartupConfiguration)
     system: SystemConfiguration = field(default_factory=SystemConfiguration)
 
@@ -252,7 +260,6 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "font_file_path": _to_path,
             "orientation": _to_int,
             "target": _to_str,
-            "tick": _to_float,
             "timeout": _to_int,
             "ui_elements": _to_ui_elements,
         },
@@ -262,14 +269,11 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "volume_default": _to_int,
             "volume_step": _to_int,
         },
-        "run": {"mode": _to_str},
-        "save_state": {
-            "on_exit": _to_bool,
-            "on_playback_tick": _to_bool,
-            "on_startup": _to_bool,
-            "on_state_change": _to_bool,
-            "on_track_change": _to_bool,
-            "on_volume_change": _to_bool,
+        "run": {
+            "moc_state_on_exit": _to_str,
+            "mode": _to_str,
+            "refresh_delay": _to_float,
+            "save_state": _to_save_state,
         },
         "startup": {
             "playlist": _to_str,
@@ -277,7 +281,6 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             "volume": _to_str,
         },
         "system": {
-            "moc_state_on_exit": _to_str,
             "mocp_file_path": _to_str,
             "reboot_command": _to_command,
             "shutdown_command": _to_command,
@@ -313,7 +316,6 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         library=LibraryConfiguration(**merged["library"]),
         playback=PlaybackConfiguration(**merged["playback"]),
         run=RunConfiguration(**merged["run"]),
-        save_state=SaveStateConfiguration(**merged["save_state"]),
         startup=StartupConfiguration(**merged["startup"]),
         system=SystemConfiguration(**merged["system"]),
     )
@@ -346,7 +348,6 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             configuration.display.target,
             configuration.display.target in list(DisplayTarget),
         ),
-        "display.tick": (configuration.display.tick, configuration.display.tick > 0),
         "display.ui_elements.right_timer_value": (
             configuration.display.ui_elements.right_timer_value,
             configuration.display.ui_elements.right_timer_value in list(RightTimerValue),
@@ -363,9 +364,17 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
             configuration.playback.volume_step,
             1 <= configuration.playback.volume_step <= VOLUME_MAX,
         ),
+        "run.moc_state_on_exit": (
+            configuration.run.moc_state_on_exit,
+            configuration.run.moc_state_on_exit in list(MocStateOnExit),
+        ),
         "run.mode": (
             configuration.run.mode,
             configuration.run.mode in list(RunMode),
+        ),
+        "run.refresh_delay": (
+            configuration.run.refresh_delay,
+            configuration.run.refresh_delay > 0,
         ),
         "startup.playlist": (
             configuration.startup.playlist,
@@ -378,10 +387,6 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "startup.volume": (
             configuration.startup.volume,
             configuration.startup.volume in list(StartupVolume),
-        ),
-        "system.moc_state_on_exit": (
-            configuration.system.moc_state_on_exit,
-            configuration.system.moc_state_on_exit in list(MocStateOnExit),
         ),
     }
     for name, (value, valid) in checks.items():
@@ -497,6 +502,18 @@ def _to_path(value: object) -> Path:
     if not isinstance(value, str | Path):
         raise TypeError("expected a path")
     return Path(value).expanduser()
+
+
+def _to_save_state(value: object) -> SaveStateConfiguration:
+    """Coerce a mapping of booleans to the settings of when the state is saved.
+
+    The settings missing, or set to None, take their defaults.
+
+    :raises ConfigurationError: if a setting is unknown, or its value is not a boolean
+    :raises TypeError: if the value is not a mapping
+    """
+    coercers = dict.fromkeys(asdict(SaveStateConfiguration()), _to_bool)
+    return SaveStateConfiguration(**_to_nested(value, "run.save_state", coercers))
 
 
 def _to_str(value: object) -> str:

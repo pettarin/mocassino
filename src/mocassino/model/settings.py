@@ -29,16 +29,16 @@ from mocassino.defaults import (
     DEFAULT_PLAYBACK_SEEK_STEP,
     DEFAULT_PLAYBACK_VOLUME_DEFAULT,
     DEFAULT_PLAYBACK_VOLUME_STEP,
-    DEFAULT_SAVE_STATE_ON_EXIT,
-    DEFAULT_SAVE_STATE_ON_PLAYBACK_TICK,
-    DEFAULT_SAVE_STATE_ON_STARTUP,
-    DEFAULT_SAVE_STATE_ON_STATE_CHANGE,
-    DEFAULT_SAVE_STATE_ON_TRACK_CHANGE,
-    DEFAULT_SAVE_STATE_ON_VOLUME_CHANGE,
+    DEFAULT_RUN_MOC_STATE_ON_EXIT,
+    DEFAULT_RUN_SAVE_STATE_ON_EXIT,
+    DEFAULT_RUN_SAVE_STATE_ON_REFRESH,
+    DEFAULT_RUN_SAVE_STATE_ON_STARTUP,
+    DEFAULT_RUN_SAVE_STATE_ON_STATE_CHANGE,
+    DEFAULT_RUN_SAVE_STATE_ON_TRACK_CHANGE,
+    DEFAULT_RUN_SAVE_STATE_ON_VOLUME_CHANGE,
     DEFAULT_STARTUP_PLAYLIST,
     DEFAULT_STARTUP_STATE,
     DEFAULT_STARTUP_VOLUME,
-    DEFAULT_SYSTEM_MOC_STATE_ON_EXIT,
 )
 from mocassino.model.colors import COLOR_ROLES
 
@@ -64,12 +64,12 @@ class Settings:
     right_timer_value: RightTimerValue = RightTimerValue(
         DEFAULT_DISPLAY_UI_ELEMENTS_RIGHT_TIMER_VALUE
     )
-    save_state_on_exit: bool = DEFAULT_SAVE_STATE_ON_EXIT
-    save_state_on_playback_tick: bool = DEFAULT_SAVE_STATE_ON_PLAYBACK_TICK
-    save_state_on_startup: bool = DEFAULT_SAVE_STATE_ON_STARTUP
-    save_state_on_state_change: bool = DEFAULT_SAVE_STATE_ON_STATE_CHANGE
-    save_state_on_track_change: bool = DEFAULT_SAVE_STATE_ON_TRACK_CHANGE
-    save_state_on_volume_change: bool = DEFAULT_SAVE_STATE_ON_VOLUME_CHANGE
+    run_save_state_on_exit: bool = DEFAULT_RUN_SAVE_STATE_ON_EXIT
+    run_save_state_on_refresh: bool = DEFAULT_RUN_SAVE_STATE_ON_REFRESH
+    run_save_state_on_startup: bool = DEFAULT_RUN_SAVE_STATE_ON_STARTUP
+    run_save_state_on_state_change: bool = DEFAULT_RUN_SAVE_STATE_ON_STATE_CHANGE
+    run_save_state_on_track_change: bool = DEFAULT_RUN_SAVE_STATE_ON_TRACK_CHANGE
+    run_save_state_on_volume_change: bool = DEFAULT_RUN_SAVE_STATE_ON_VOLUME_CHANGE
     show_playlist_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PLAYLIST_BAR
     show_progress_bar: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_PROGRESS_BAR
     show_side_icons: bool = DEFAULT_DISPLAY_UI_ELEMENTS_SHOW_SIDE_ICONS
@@ -78,7 +78,7 @@ class Settings:
     startup_playlist: StartupPlaylist = StartupPlaylist(DEFAULT_STARTUP_PLAYLIST)
     startup_state: StartupState = StartupState(DEFAULT_STARTUP_STATE)
     startup_volume: StartupVolume = StartupVolume(DEFAULT_STARTUP_VOLUME)
-    system_moc_state_on_exit: MocStateOnExit = MocStateOnExit(DEFAULT_SYSTEM_MOC_STATE_ON_EXIT)
+    run_moc_state_on_exit: MocStateOnExit = MocStateOnExit(DEFAULT_RUN_MOC_STATE_ON_EXIT)
 
     def color_specs(self) -> dict[str, str]:
         """Return the colors of the display, as names or HTML codes, by role."""

@@ -199,15 +199,15 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, Y, B):
+        for event in (A_LONG, Y, B, Y, Y, B, B):
             controller.handle(event)
-        titles = ["Menu", "Settings", "MOC state on exit"]
+        titles = ["Menu", "Settings", "Run", "MOC state on exit"]
         assert [menu.title for menu in state.menus] == titles
         assert state.current_menu.selected.label == "Do nothing"
         assert state.current_menu.selected.checked is True
         for event in (Y, Y, B):
             controller.handle(event)
-        assert state.settings.system_moc_state_on_exit is MocStateOnExit.QUIT
+        assert state.settings.run_moc_state_on_exit is MocStateOnExit.QUIT
         save_settings.assert_called_once_with(state.settings)
         assert [menu.title for menu in state.menus] == titles
         assert [item.label for item in state.current_menu.items if item.checked] == ["Quit"]
@@ -428,12 +428,12 @@ class TestController:
     @pytest.mark.parametrize(
         ("moves", "label", "attribute"),
         [
-            (0, "On exit", "save_state_on_exit"),
-            (1, "On playback tick", "save_state_on_playback_tick"),
-            (2, "On startup", "save_state_on_startup"),
-            (3, "On state change", "save_state_on_state_change"),
-            (4, "On track change", "save_state_on_track_change"),
-            (5, "On volume change", "save_state_on_volume_change"),
+            (0, "On exit", "run_save_state_on_exit"),
+            (1, "On refresh", "run_save_state_on_refresh"),
+            (2, "On startup", "run_save_state_on_startup"),
+            (3, "On state change", "run_save_state_on_state_change"),
+            (4, "On track change", "run_save_state_on_track_change"),
+            (5, "On volume change", "run_save_state_on_volume_change"),
         ],
     )
     def test_menu_select_toggles_of_the_save_state(
@@ -448,7 +448,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, Y, Y, B, *[Y] * moves):
+        for event in (A_LONG, Y, B, Y, Y, B, Y, B, *[Y] * moves):
             controller.handle(event)
         assert state.current_menu.title == "Save state"
         assert state.current_menu.selected.label == label

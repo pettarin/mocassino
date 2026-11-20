@@ -34,11 +34,11 @@ from mocassino.model.menu import (
     build_playback_volume_default_menu,
     build_playback_volume_step_menu,
     build_root_menu,
-    build_save_state_menu,
+    build_run_moc_state_on_exit_menu,
+    build_run_save_state_menu,
     build_startup_playlist_menu,
     build_startup_state_menu,
     build_startup_volume_menu,
-    build_system_moc_state_on_exit_menu,
 )
 from mocassino.model.moc import MocClient, MocError, MocServerNotRunningError, MocState
 from mocassino.model.settings import Settings
@@ -110,10 +110,10 @@ SETTERS: dict[
         StartupVolume,
         build_startup_volume_menu,
     ),
-    MenuCommand.SET_SYSTEM_MOC_STATE_ON_EXIT: (
-        "system_moc_state_on_exit",
+    MenuCommand.SET_RUN_MOC_STATE_ON_EXIT: (
+        "run_moc_state_on_exit",
         MocStateOnExit,
-        build_system_moc_state_on_exit_menu,
+        build_run_moc_state_on_exit_menu,
     ),
 }
 
@@ -121,23 +121,29 @@ SETTERS: dict[
 TOGGLES: dict[MenuCommand, tuple[str, Callable[[Settings], Menu]]] = {
     MenuCommand.TOGGLE_PLAYLIST_BAR: ("show_playlist_bar", build_display_ui_elements_menu),
     MenuCommand.TOGGLE_PROGRESS_BAR: ("show_progress_bar", build_display_ui_elements_menu),
-    MenuCommand.TOGGLE_SAVE_STATE_ON_EXIT: ("save_state_on_exit", build_save_state_menu),
-    MenuCommand.TOGGLE_SAVE_STATE_ON_PLAYBACK_TICK: (
-        "save_state_on_playback_tick",
-        build_save_state_menu,
+    MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_EXIT: (
+        "run_save_state_on_exit",
+        build_run_save_state_menu,
     ),
-    MenuCommand.TOGGLE_SAVE_STATE_ON_STARTUP: ("save_state_on_startup", build_save_state_menu),
-    MenuCommand.TOGGLE_SAVE_STATE_ON_STATE_CHANGE: (
-        "save_state_on_state_change",
-        build_save_state_menu,
+    MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_REFRESH: (
+        "run_save_state_on_refresh",
+        build_run_save_state_menu,
     ),
-    MenuCommand.TOGGLE_SAVE_STATE_ON_TRACK_CHANGE: (
-        "save_state_on_track_change",
-        build_save_state_menu,
+    MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_STARTUP: (
+        "run_save_state_on_startup",
+        build_run_save_state_menu,
     ),
-    MenuCommand.TOGGLE_SAVE_STATE_ON_VOLUME_CHANGE: (
-        "save_state_on_volume_change",
-        build_save_state_menu,
+    MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_STATE_CHANGE: (
+        "run_save_state_on_state_change",
+        build_run_save_state_menu,
+    ),
+    MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_TRACK_CHANGE: (
+        "run_save_state_on_track_change",
+        build_run_save_state_menu,
+    ),
+    MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_VOLUME_CHANGE: (
+        "run_save_state_on_volume_change",
+        build_run_save_state_menu,
     ),
     MenuCommand.TOGGLE_SIDE_ICONS: ("show_side_icons", build_display_ui_elements_menu),
     MenuCommand.TOGGLE_TIMERS: ("show_timers", build_display_ui_elements_menu),

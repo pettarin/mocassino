@@ -261,7 +261,6 @@ display:
   font_file_path: null
   orientation: 0
   target: pirateaudio
-  tick: 0.5
   timeout: 60
   ui_elements:
     right_timer_value: end_time
@@ -277,20 +276,21 @@ playback:
   volume_default: 50
   volume_step: 5
 run:
+  moc_state_on_exit: do_nothing
   mode: background
-save_state:
-  on_exit: true
-  on_playback_tick: false
-  on_startup: true
-  on_state_change: true
-  on_track_change: true
-  on_volume_change: true
+  refresh_delay: 0.5
+  save_state:
+    on_exit: true
+    on_refresh: false
+    on_startup: true
+    on_state_change: true
+    on_track_change: true
+    on_volume_change: true
 startup:
   playlist: use_saved
   state: use_saved
   volume: use_saved
 system:
-  moc_state_on_exit: do_nothing
   mocp_file_path: mocp
   reboot_command:
   - sudo
@@ -341,7 +341,6 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
 | `display.orientation` | `0` | By how many degrees, clockwise, what is shown on the display is rotated: `0`, `90`, `180`, or `270`; it can be changed from the `Settings` menu |
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
-| `display.tick` | `0.5` | How often the MOC status is read and the screen updated, in seconds |
 | `display.timeout` | `60` | After how many seconds without a button press the display is turned off: `0` (never), `5`, `10`, `15`, `20`, `30`, `60`, `120`, or `300`; the time counts from the start of the service, or from the last button press; any button turns the display on again, without doing anything else; it can be changed from the `Settings` menu |
 | `display.ui_elements.right_timer_value` | `end_time` | What the timer on the right shows in playback mode: `end_time` for the time at which the track ends (its length), or `remaining_time` for the time left until then (e.g., `-3:25`); it can be changed from the `Settings` menu |
 | `display.ui_elements.show_playlist_bar` | `true` | Whether the playlist bar is shown in playback mode, if `display.ui_elements.show_side_icons` is `true`; it can be changed from the `Settings` menu |
@@ -353,17 +352,18 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `playback.seek_step` | `10` | The amount of each seek, in seconds; it can be changed from the `Settings` menu |
 | `playback.volume_default` | `50` | The default volume, between 0 and 100: the one set when the service starts if `startup.volume` is `use_default`, or if there is no saved volume; it can be changed from the `Settings` menu |
 | `playback.volume_step` | `5` | The amount of each volume change, between 1 and 100; it can be changed from the `Settings` menu |
+| `run.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `Settings` menu |
 | `run.mode` | `background` | Whether the service runs in `background` or in `foreground` when neither `-b` nor `-f` is given |
-| `save_state.on_exit` | `true` | Whether the state is saved to the state file when the service exits, or before the host is rebooted or shut down from the `System` menu; it can be changed from the `Settings` menu |
-| `save_state.on_playback_tick` | `false` | Whether the state is saved to the state file at every tick (see `display.tick`), that is, as the position in the track changes; it can be changed from the `Settings` menu |
-| `save_state.on_startup` | `true` | Whether the state is saved to the state file when the service starts, once the playlist has been set up; it can be changed from the `Settings` menu |
-| `save_state.on_state_change` | `true` | Whether the state is saved to the state file when the playback is paused, resumed, or stopped; it can be changed from the `Settings` menu |
-| `save_state.on_track_change` | `true` | Whether the state is saved to the state file when the track changes; it can be changed from the `Settings` menu |
-| `save_state.on_volume_change` | `true` | Whether the state is saved to the state file when the volume changes; it can be changed from the `Settings` menu |
+| `run.refresh_delay` | `0.5` | How long, in seconds, the main loop waits for a button press, at most, before each refresh, when it reads the MOC status, saves the state if needed, and updates the screen; a button press ends the wait at once, so it is not delayed. A smaller value keeps the screen closer to MOC, at the cost of running `mocp` more often; it must be greater than `0` |
+| `run.save_state.on_exit` | `true` | Whether the state is saved to the state file when the service exits, or before the host is rebooted or shut down from the `System` menu; it can be changed from the `Settings` menu |
+| `run.save_state.on_refresh` | `false` | Whether the state is saved to the state file at every refresh (see `run.refresh_delay`), that is, as the position in the track changes; it can be changed from the `Settings` menu |
+| `run.save_state.on_startup` | `true` | Whether the state is saved to the state file when the service starts, once the playlist has been set up; it can be changed from the `Settings` menu |
+| `run.save_state.on_state_change` | `true` | Whether the state is saved to the state file when the playback is paused, resumed, or stopped; it can be changed from the `Settings` menu |
+| `run.save_state.on_track_change` | `true` | Whether the state is saved to the state file when the track changes; it can be changed from the `Settings` menu |
+| `run.save_state.on_volume_change` | `true` | Whether the state is saved to the state file when the volume changes; it can be changed from the `Settings` menu |
 | `startup.playlist` | `use_saved` | What the service does about the playlist when it starts: `open_library`, `use_moc_state`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
-| `system.moc_state_on_exit` | `do_nothing` | What the service does to MOC when it exits (e.g., when it is stopped, or when the host shuts down): `do_nothing`, `pause`, `stop`, or `quit` (which shuts the MOC server down); the state is saved before, so that the playback can be resumed on the next start; it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.reboot_command` | `sudo reboot` | The command rebooting the host, as a string or as a list; it is never run when the simulator is used |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
@@ -439,24 +439,24 @@ playback:
 When nothing is playing, the directory and the file are `null`, the position is `0`,
 and the state is `stopped`.
 
-When the state is saved is set in the `save_state` section of the configuration file,
-or from the `Save state` menu of the `Settings`:
+When the state is saved is set in `run.save_state` in the configuration file,
+or from the `Run` > `Save state` menu of the `Settings`:
 
 | Key | Default | The state is saved |
 |---|---|---|
-| `save_state.on_exit` | `true` | When the service is stopped, and before the host is rebooted or shut down from the `System` menu |
-| `save_state.on_playback_tick` | `false` | At every tick of the main loop (see `display.tick`) |
-| `save_state.on_startup` | `true` | When the service starts, once the playlist has been set up (see below) |
-| `save_state.on_state_change` | `true` | When the playback is paused, resumed, or stopped |
-| `save_state.on_track_change` | `true` | When the track changes |
-| `save_state.on_volume_change` | `true` | When the volume changes |
+| `run.save_state.on_exit` | `true` | When the service is stopped, and before the host is rebooted or shut down from the `System` menu |
+| `run.save_state.on_refresh` | `false` | At every refresh of the main loop (see `run.refresh_delay`) |
+| `run.save_state.on_startup` | `true` | When the service starts, once the playlist has been set up (see below) |
+| `run.save_state.on_state_change` | `true` | When the playback is paused, resumed, or stopped |
+| `run.save_state.on_track_change` | `true` | When the track changes |
+| `run.save_state.on_volume_change` | `true` | When the volume changes |
 
 The changes of the track, of the playback state, and of the volume count from what is set up
 when the service starts.
 The position in the track is saved together with the rest, but by default its change alone does not
 make the state be saved, so that the file is not written continuously (e.g., on an SD card):
-set `save_state.on_playback_tick` to `true` to save it as it changes.
-A change that is not saved (e.g., of the volume, with `save_state.on_volume_change` set to `false`)
+set `run.save_state.on_refresh` to `true` to save it as it changes.
+A change that is not saved (e.g., of the volume, with `run.save_state.on_volume_change` set to `false`)
 is saved with the next one that is.
 The file is only written when its content would change; with all six set to `false`, it is never written.
 
@@ -489,7 +489,7 @@ pauses if the playback has to be paused, and only then sets the volume.
 If the state file has the track but not the directory, the directory of the track is played.
 If the saved playback cannot be resumed (e.g., the file no longer exists),
 it plays nothing, and the directory, the file, and the position are blanked in the state file
-when the state is saved (right away, with `save_state.on_startup` set to `true`).
+when the state is saved (right away, with `run.save_state.on_startup` set to `true`).
 
 > [!NOTE]
 > Once the state file has a volume, `playback.volume_default` is no longer used,
@@ -698,18 +698,21 @@ The top level menu has the following items:
       in steps of 5; the current one has the solid square.
     - `Volume step (%)` (`playback.volume_step`): a menu with the choices
       `1`, `2`, `4`, `5`, and `10`.
-  - `MOC state on exit` (`system.moc_state_on_exit`): a menu with the four choices
-    `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
-    The choice applies when the service exits, after its state has been saved.
-  - `Save state`: when the state is saved to the state file; the changes are immediate.
-    - `On exit` (`save_state.on_exit`): whether it is saved when the service exits,
-      and before the host is rebooted or shut down.
-    - `On playback tick` (`save_state.on_playback_tick`): whether it is saved at every tick.
-    - `On startup` (`save_state.on_startup`): whether it is saved when the service starts.
-    - `On state change` (`save_state.on_state_change`):
-      whether it is saved when the playback is paused, resumed, or stopped.
-    - `On track change` (`save_state.on_track_change`): whether it is saved when the track changes.
-    - `On volume change` (`save_state.on_volume_change`): whether it is saved when the volume changes.
+  - `Run`: what is done to MOC on exit, and when the state is saved.
+    - `MOC state on exit` (`run.moc_state_on_exit`): a menu with the four choices
+      `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
+      The choice applies when the service exits, after its state has been saved.
+    - `Save state`: when the state is saved to the state file; the changes are immediate.
+      - `On exit` (`run.save_state.on_exit`): whether it is saved when the service exits,
+        and before the host is rebooted or shut down.
+      - `On refresh` (`run.save_state.on_refresh`): whether it is saved at every refresh.
+      - `On startup` (`run.save_state.on_startup`): whether it is saved when the service starts.
+      - `On state change` (`run.save_state.on_state_change`):
+        whether it is saved when the playback is paused, resumed, or stopped.
+      - `On track change` (`run.save_state.on_track_change`):
+        whether it is saved when the track changes.
+      - `On volume change` (`run.save_state.on_volume_change`):
+        whether it is saved when the volume changes.
   - `Startup`: the settings of what the service does when it starts.
     They take effect the next time the service starts.
     - `Playlist` (`startup.playlist`): a menu with the three choices

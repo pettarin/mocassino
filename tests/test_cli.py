@@ -85,7 +85,7 @@ class TestConfigurationCommand:
         directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
-            "display:\n  tick: 0.25\n",
+            "run:\n  refresh_delay: 0.25\n",
             encoding="utf-8",
         )
         result = runner.invoke(main, ["-l", "~/music", "configuration", "--default"])
@@ -131,27 +131,29 @@ class TestConfigurationCommand:
 
     def test_brightness_overrides_the_configuration_file(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
-        path.write_text("display:\n  brightness: 0.8\n  tick: 0.25\n", encoding="utf-8")
+        path.write_text(
+            "display:\n  brightness: 0.8\nrun:\n  refresh_delay: 0.25\n", encoding="utf-8"
+        )
         result = runner.invoke(main, ["-c", str(path), "configuration"])
         assert yaml.safe_load(result.output)["display"]["brightness"] == 0.8
         result = runner.invoke(main, ["-c", str(path), "configuration", "--brightness", "0.2"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["brightness"] == 0.2
-        assert output["display"]["tick"] == 0.25
+        assert output["run"]["refresh_delay"] == 0.25
 
     def test_brightness_with_default(self, runner, home):
         directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
-            "display:\n  tick: 0.25\n",
+            "run:\n  refresh_delay: 0.25\n",
             encoding="utf-8",
         )
         result = runner.invoke(main, ["configuration", "--default", "--brightness", "0.6"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["brightness"] == 0.6
-        assert output["display"]["tick"] == 0.5
+        assert output["run"]["refresh_delay"] == 0.5
 
     def test_brightness_is_written_to_the_output_file(self, runner, tmp_path):
         path = tmp_path / "written.yaml"
@@ -187,27 +189,29 @@ class TestConfigurationCommand:
 
     def test_orientation_overrides_the_configuration_file(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
-        path.write_text("display:\n  orientation: 90\n  tick: 0.25\n", encoding="utf-8")
+        path.write_text(
+            "display:\n  orientation: 90\nrun:\n  refresh_delay: 0.25\n", encoding="utf-8"
+        )
         result = runner.invoke(main, ["-c", str(path), "configuration"])
         assert yaml.safe_load(result.output)["display"]["orientation"] == 90
         result = runner.invoke(main, ["-c", str(path), "configuration", "--orientation", "270"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["orientation"] == 270
-        assert output["display"]["tick"] == 0.25
+        assert output["run"]["refresh_delay"] == 0.25
 
     def test_orientation_with_default(self, runner, home):
         directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
-            "display:\n  tick: 0.25\n",
+            "run:\n  refresh_delay: 0.25\n",
             encoding="utf-8",
         )
         result = runner.invoke(main, ["configuration", "--default", "--orientation", "180"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["orientation"] == 180
-        assert output["display"]["tick"] == 0.5
+        assert output["run"]["refresh_delay"] == 0.5
 
     def test_orientation_is_written_to_the_output_file(self, runner, tmp_path):
         path = tmp_path / "written.yaml"
@@ -320,7 +324,7 @@ class TestConfigurationCommand:
         directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
-            "display:\n  tick: 0.25\n",
+            "run:\n  refresh_delay: 0.25\n",
             encoding="utf-8",
         )
         result = runner.invoke(main, ["-s", "configuration", "--default"])
@@ -416,7 +420,7 @@ class TestRecoverConfigurationFile:
 
     def test_valid_file(self, tmp_path):
         path = tmp_path / "custom.yaml"
-        path.write_text("display:\n  tick: 0.25\n", encoding="utf-8")
+        path.write_text("run:\n  refresh_delay: 0.25\n", encoding="utf-8")
         assert _recover_configuration_file(path, False, False) is False
         assert list(tmp_path.iterdir()) == [path]
 

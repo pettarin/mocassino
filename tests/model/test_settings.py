@@ -38,8 +38,8 @@ class TestSettings:
             playback_volume_default=20,
             playback_volume_step=2,
             right_timer_value=RightTimerValue.REMAINING_TIME,
-            save_state_on_exit=False,
-            save_state_on_playback_tick=True,
+            run_save_state_on_exit=False,
+            run_save_state_on_refresh=True,
             show_progress_bar=False,
             show_side_icons=False,
             show_timers=False,
@@ -47,7 +47,7 @@ class TestSettings:
             startup_playlist=StartupPlaylist.OPEN_LIBRARY,
             startup_state=StartupState.PLAY,
             startup_volume=StartupVolume.USE_DEFAULT,
-            system_moc_state_on_exit=MocStateOnExit.QUIT,
+            run_moc_state_on_exit=MocStateOnExit.QUIT,
         )
         same = settings
         settings.update(other)
