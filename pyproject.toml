@@ -73,8 +73,8 @@ package-dir = {"" = "src"}
 where = ["src"]
 namespaces = true
 
-#[tool.setuptools.package-data]
-#"mocassino.cli" = ["res/*.template"]
+[tool.setuptools.package-data]
+"mocassino.res.font" = ["*.ttf", "*.txt"]
 
 [tool.ruff]
 line-length = 100
