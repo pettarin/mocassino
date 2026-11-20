@@ -230,6 +230,11 @@ See the
 [LICENSE](https://github.com/pettarin/mocassino/blob/main/LICENSE)
 file for details.
 
+The bundled Roboto Regular font is licensed under
+the SIL Open Font License 1.1, see the
+[OFL.txt](https://github.com/pettarin/mocassino/blob/main/src/mocassino/res/font/OFL.txt)
+file for details.
+
 
 ## Authors
 

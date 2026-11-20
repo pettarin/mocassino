@@ -338,7 +338,7 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `display.colors.muted` | `silver` | The color of the secondary text (e.g., the album and the times), of the icons of the buttons, and of the scrollbar of the menus |
 | `display.colors.normal` | `white` | The color of the main text (e.g., the title of the track, and the menu items) |
 | `display.colors.track` | `dimgray` | The color of the background of the bars, of the title of the menus, and of the scrollbar |
-| `display.font_file_path` | none | The TrueType font; if not set, the font built in Pillow |
+| `display.font_file_path` | none | The TrueType font; if not set, the bundled Roboto Regular |
 | `display.orientation` | `0` | By how many degrees, clockwise, what is shown on the display is rotated: `0`, `90`, `180`, or `270`; it can be changed from the `Settings` menu |
 | `display.target` | `pirateaudio` | Where the screen is drawn: `pirateaudio` (or its synonym `st7789`), `none`, or `simulator` |
 | `display.timeout` | `60` | After how many seconds without a button press the display is turned off: `0` (never), `5`, `10`, `15`, `20`, `30`, `60`, `120`, or `300`; the time counts from the start of the service, or from the last button press; any button turns the display on again, without doing anything else; it can be changed from the `Settings` menu |
@@ -369,10 +369,10 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
 
 > [!NOTE]
-> The font built in Pillow only has the basic Latin letters:
-> accented letters are drawn as empty boxes.
-> Set `display.font_file_path` to a font with the characters of your music library,
-> e.g., `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf`.
+> The bundled Roboto Regular covers the Latin (including Vietnamese), Greek, and Cyrillic
+> alphabets, but not, e.g., Arabic, Chinese, Hebrew, Japanese, or Korean:
+> the characters it lacks are drawn as empty boxes.
+> If your music library needs them, set `display.font_file_path` to a font that has them.
 
 Each of the `display.colors` is either an HTML code, `#RGB` or `#RRGGBB` (e.g., `#00F` or `#0000FF`),
 or a [CSS color name](https://developer.mozilla.org/en-US/docs/Web/CSS/named-color)

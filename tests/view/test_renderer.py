@@ -13,6 +13,7 @@ from mocassino.model.menu import Menu, MenuCommand, MenuItem
 from mocassino.model.moc import MocState, MocStatus
 from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
+from mocassino.res.font import ROBOTO_REGULAR_FILE_PATH
 from mocassino.view.colors import DEFAULT_COLORS, Colors
 from mocassino.view.display.base import HEIGHT, WIDTH
 from mocassino.view.icons import ICON_SIZE, draw_icon, draw_state_icon
@@ -43,6 +44,11 @@ PLAYING = MocStatus(
     title="Title",
     total_seconds=205,
 )
+
+
+def bundled_font(size: int) -> ImageFont.FreeTypeFont:
+    """Return the font bundled with mocassino, which the renderer uses by default."""
+    return ImageFont.truetype(str(ROBOTO_REGULAR_FILE_PATH), size)
 
 
 def icon(action: Action | None) -> bytes:
@@ -133,23 +139,26 @@ class TestRenderer:
     """Tests for the Renderer class"""
 
     def test_fit_long_text(self, renderer):
-        font = ImageFont.load_default(20)
+        font = bundled_font(20)
         text = renderer._fit("A very long label that cannot possibly fit", font, 100)
         assert text.endswith(ELLIPSIS)
         assert text.startswith("A very")
         assert font.getlength(text) <= 100
 
     def test_fit_short_text(self, renderer):
-        assert renderer._fit("Short", ImageFont.load_default(20), 100) == "Short"
+        assert renderer._fit("Short", bundled_font(20), 100) == "Short"
 
     def test_button_map_invalid(self):
         with pytest.raises(ValueError, match="is not a valid"):
             Renderer(button_map={"playback": {"A": "rewind"}})
 
+    def test_font_default(self, renderer):
+        assert renderer._font(20).getname() == ("Roboto", "Regular")
+
     def test_font_file(self, mocker, tmp_path):
         truetype = mocker.patch(
             "mocassino.view.renderer.ImageFont.truetype",
-            return_value=ImageFont.load_default(16),
+            return_value=bundled_font(16),
         )
         path = tmp_path / "font.ttf"
         renderer = Renderer(font_file_path=path)
@@ -599,7 +608,7 @@ class TestRenderer:
             text,
             anchor="rs",
             fill=DEFAULT_COLORS.normal,
-            font=ImageFont.load_default(20),
+            font=bundled_font(20),
         )
         box = (WIDTH // 2 + ICON_SIZE, 218, CONTENT_RIGHT, HEIGHT)
         assert has_content(image, box)
@@ -627,7 +636,7 @@ class TestRenderer:
         )
         image = renderer.render(AppState(settings=Settings(right_timer_value=value), status=status))
         expected = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
-        font = ImageFont.load_default(20)
+        font = bundled_font(20)
         draw = ImageDraw.Draw(expected)
         left_text, right_text = texts
         draw.text(
@@ -792,7 +801,7 @@ class TestRenderer:
         assert blocks == 2
         expected = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
         draw = ImageDraw.Draw(expected)
-        font = ImageFont.load_default(20)
+        font = bundled_font(20)
         draw.text((120, 107), "Press Menu to select", anchor="mm", fill=DIM_COLOR, font=font)
         draw.text((120, 133), "the folder to play", anchor="mm", fill=DIM_COLOR, font=font)
         box = (left, 40, right, 200)
@@ -926,14 +935,14 @@ class TestRenderer:
         assert album_bottom + 186 == bar_bottom + 204 == 216
 
     def test_wrap(self, renderer):
-        font = ImageFont.load_default(26)
+        font = bundled_font(26)
         assert renderer._wrap("", font, 220, 2) == []
         assert renderer._wrap("Short title", font, 220, 2) == ["Short title"]
         lines = renderer._wrap("Il Vento Caldo Dell'estate", font, 220, 2)
         assert lines == ["Il Vento Caldo", "Dell'estate"]
 
     def test_wrap_too_many_lines(self, renderer):
-        font = ImageFont.load_default(26)
+        font = bundled_font(26)
         text = "One very long title that needs many more than two lines to be shown"
         lines = renderer._wrap(text, font, 220, 2)
         assert len(lines) == 2

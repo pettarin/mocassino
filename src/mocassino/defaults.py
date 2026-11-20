@@ -64,7 +64,7 @@ DEFAULT_COLOR_SPECS: dict[str, str] = {
 }
 DEFAULT_CONFIGURATION_FILE_PATH: Path = Path("~/.config/mocassino/configuration.yaml")
 DEFAULT_DISPLAY_BRIGHTNESS: float = 1.0
-# None for the font built in Pillow
+# None for the font bundled with mocassino (Roboto Regular)
 DEFAULT_DISPLAY_FONT_FILE_PATH: Path | None = None
 DEFAULT_DISPLAY_ORIENTATION: int = 0
 DEFAULT_DISPLAY_TARGET: str = DisplayTarget.PIRATEAUDIO.value

@@ -19,12 +19,13 @@ from mocassino.model.menu import Menu
 from mocassino.model.moc import MocState, MocStatus
 from mocassino.model.playlist import playlist_fraction
 from mocassino.model.state import AppState
+from mocassino.res.font import ROBOTO_REGULAR_FILE_PATH
 from mocassino.view.colors import DEFAULT_COLORS, parse_colors
 from mocassino.view.display.base import HEIGHT, WIDTH
 from mocassino.view.icons import ICON_SIZE, draw_icon, draw_state_icon
 
 type Box = tuple[int, int, int, int]
-type Font = ImageFont.FreeTypeFont | ImageFont.ImageFont
+type Font = ImageFont.FreeTypeFont
 
 # In playback mode, a band on each side of the frame is reserved to the icons of the buttons,
 # when they are shown: the content is then drawn between CONTENT_LEFT and CONTENT_RIGHT
@@ -72,7 +73,7 @@ class Renderer:
     ) -> None:
         """Initialize the renderer.
 
-        :param font_file_path: the TrueType font; if None, the font built in Pillow
+        :param font_file_path: the TrueType font; if None, the bundled Roboto Regular
         :param button_map: the button map, in plain form, whose playback actions are shown
                            as icons next to the buttons; if None, the default button map
         :raises OSError: if the font cannot be loaded
@@ -83,7 +84,9 @@ class Renderer:
         self._button_map = parse_button_map(button_map)
         # The colors to draw with, taken from the settings at each frame
         self._colors = DEFAULT_COLORS
-        self._font_file_path = font_file_path
+        self._font_file_path = (
+            ROBOTO_REGULAR_FILE_PATH if font_file_path is None else font_file_path
+        )
         self._fonts: dict[int, Font] = {}
         self._font(TIMES_FONT_SIZE)
 
@@ -364,10 +367,7 @@ class Renderer:
     def _font(self, size: int) -> Font:
         """Return the font of the given size, loading it the first time."""
         if size not in self._fonts:
-            if self._font_file_path is None:
-                self._fonts[size] = ImageFont.load_default(size)
-            else:
-                self._fonts[size] = ImageFont.truetype(str(self._font_file_path), size)
+            self._fonts[size] = ImageFont.truetype(str(self._font_file_path), size)
         return self._fonts[size]
 
     def _wrap(self, text: str, font: Font, max_width: int, max_lines: int) -> list[str]:
