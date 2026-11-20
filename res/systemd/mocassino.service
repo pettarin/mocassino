@@ -1,0 +1,22 @@
+# This file is part of the mocassino project
+
+[Unit]
+Description=Lightweight audio player based on MOC for Raspberry Pi Zero 2 devices with Pimoroni Pirate Audio hats
+Documentation=https://github.com/pettarin/mocassino
+After=sound.target
+
+[Service]
+Type=simple
+# this assumes that mocassino was installed in a venv located at $HOME/.config/mocassino/venv/
+ExecStart=$HOME/.config/mocassino/venv/bin/python $HOME/.config/mocassino/venv/bin/mocassino -v run -f
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
