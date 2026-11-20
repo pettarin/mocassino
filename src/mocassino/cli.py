@@ -187,7 +187,7 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
     "--default",
     is_flag=True,
     help="Print the default values, ignoring the configuration file and the global options "
-    "(except -s / --simulator).",
+    "(except -l / --library-directory-path and -s / --simulator).",
 )
 @click.option(
     "--orientation",
@@ -229,6 +229,12 @@ def configuration(
         effective = replace(
             effective,
             display=replace(effective.display, orientation=int(orientation)),
+        )
+    if default and options.library_directory_path is not None:
+        directory_path = options.library_directory_path.expanduser()
+        effective = replace(
+            effective,
+            library=replace(effective.library, directory_path=directory_path),
         )
     if default and options.simulator:
         effective = replace(

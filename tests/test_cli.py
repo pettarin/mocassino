@@ -66,18 +66,32 @@ class TestConfigurationCommand:
         assert yaml.safe_load(result.output) == Configuration().to_dict()
 
     def test_default_ignores_the_other_options(self, runner):
-        arguments = ["-l", "/srv/music", "--display-target", "none", "configuration"]
+        arguments = ["--buttons-origin", "none", "--display-target", "none", "configuration"]
         result = runner.invoke(main, [*arguments, "--default"])
         assert result.exit_code == 0
         assert yaml.safe_load(result.output) == Configuration().to_dict()
 
-    def test_default_ignores_the_other_options_but_simulator(self, runner):
+    def test_default_ignores_the_other_options_but_library_and_simulator(self, runner):
         arguments = ["-s", "-l", "/srv/music", "--display-target", "none", "configuration"]
         result = runner.invoke(main, [*arguments, "--default"])
         assert result.exit_code == 0
         expected = Configuration().to_dict()
         expected["buttons"]["origin"] = "simulator"
         expected["display"]["target"] = "simulator"
+        expected["library"]["directory_path"] = "/srv/music"
+        assert yaml.safe_load(result.output) == expected
+
+    def test_library_directory_path_with_default(self, runner, home):
+        directory = home / ".config" / "mocassino"
+        directory.mkdir(parents=True)
+        (directory / "configuration.yaml").write_text(
+            "display:\n  tick: 0.25\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(main, ["-l", "~/music", "configuration", "--default"])
+        assert result.exit_code == 0
+        expected = Configuration().to_dict()
+        expected["library"]["directory_path"] = str(home / "music")
         assert yaml.safe_load(result.output) == expected
 
     def test_configuration_file(self, runner, tmp_path):

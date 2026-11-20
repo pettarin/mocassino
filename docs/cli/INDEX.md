@@ -173,7 +173,8 @@ Options:
                                 [0.0<=x<=1.0]
   --default                     Print the default values, ignoring the
                                 configuration file and the global options
-                                (except -s / --simulator).
+                                (except -l / --library-directory-path and -s /
+                                --simulator).
   --orientation [0|90|180|270]  Set the orientation of the display
                                 (display.orientation), in degrees clockwise.
   -o, --output-file-path FILE   Write the configuration to this file instead
@@ -221,7 +222,8 @@ $ mocassino configuration --brightness 0.6 -o -y
 ```
 
 With `--default`, it prints the default values instead,
-whatever the configuration file and the global options other than `-s / --simulator` say.
+whatever the configuration file and the global options other than
+`-l / --library-directory-path` and `-s / --simulator` say.
 It works even if the configuration file is not valid,
 and its output can be used as a starting point for a configuration file:
 

@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `mocassino configuration --default` honors the global options
+  `-l / --library-directory-path` and `-s / --simulator`
 - The default music root directory (`library.directory_path`) is the home directory
   of the user running the service, instead of `/music`
 - The default values of the configuration are defined in the new `mocassino.defaults` module
