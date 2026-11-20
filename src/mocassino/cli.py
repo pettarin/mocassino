@@ -202,6 +202,11 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
     "without a value, to the default configuration file.",
 )
 @click.option(
+    "--simulator",
+    is_flag=True,
+    help="Set 'buttons.origin=simulator' and 'display.target=simulator'.",
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -214,6 +219,7 @@ def configuration(
     default: bool,
     orientation: str | None,
     output_file_path: Path | None,
+    simulator: bool,
     yes: bool,
 ) -> None:
     """Print the effective configuration, in YAML format, or write it to a file."""
@@ -227,6 +233,12 @@ def configuration(
         effective = replace(
             effective,
             display=replace(effective.display, orientation=int(orientation)),
+        )
+    if simulator:
+        effective = replace(
+            effective,
+            buttons=replace(effective.buttons, origin="simulator"),
+            display=replace(effective.display, target="simulator"),
         )
     content = yaml.safe_dump(effective.to_dict(), sort_keys=True)
     if output_file_path is None:
