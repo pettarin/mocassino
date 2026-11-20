@@ -196,7 +196,8 @@ class Renderer:
         At the bottom, the icon of the state followed by the progress bar, with the times.
         The capital letters of the artist are centred on the icons of the buttons at the top.
         The title starts where the volume bar starts, and the album sits on the line
-        where the volume bar ends.
+        where the volume bar ends; without the progress bar, it sits on the line
+        where the progress bar would end, leaving no gap above the times.
         The bottom of the digits of the times leaves the same border as the icons.
         The bottom is level with the two rows of icons of the buttons there:
         the progress bar is centred on the upper row, and the times, with the icon
@@ -252,8 +253,13 @@ class Renderer:
                     fill=self._colors.normal,
                     font=title_font,
                 )
+            album_bottom = (
+                HEIGHT - VOLUME_BAR_TOP
+                if settings.show_progress_bar
+                else bar_top + PROGRESS_BAR_HEIGHT
+            )
             draw.text(
-                (left, HEIGHT - VOLUME_BAR_TOP),
+                (left, album_bottom),
                 self._fit(status.album, album_font, width),
                 anchor="ls",
                 fill=self._colors.muted,
