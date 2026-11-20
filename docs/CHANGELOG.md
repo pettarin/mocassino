@@ -20,7 +20,8 @@ All notable changes to this project will be documented in this file.
   (`remaining_time`) instead of the end time, the length of the track (`end_time`)
 - The `run.save_state` settings (`on_exit`, `on_refresh`, `on_startup`, `on_state_change`,
   `on_track_change`, `on_volume_change`), and the `Save state` menu in the new `Run` menu
-  of the `Settings` menu, to choose when the state file is written
+  of the `Settings` menu, to choose when the state file is written;
+  turning on `On refresh` from the menu asks for a confirmation
 - The `Refresh delay (s)` menu in the `Run` menu of the `Settings` menu,
   to change `run.refresh_delay` while the service runs
 

@@ -452,7 +452,6 @@ class TestController:
         ("moves", "label", "attribute"),
         [
             (0, "On exit", "run_save_state_on_exit"),
-            (1, "On refresh", "run_save_state_on_refresh"),
             (2, "On startup", "run_save_state_on_startup"),
             (3, "On state change", "run_save_state_on_state_change"),
             (4, "On track change", "run_save_state_on_track_change"),
@@ -483,6 +482,58 @@ class TestController:
         assert state.current_menu.selected.label == label
         assert state.current_menu.selected.checked is not before
         save_settings.assert_called_once_with(state.settings)
+
+    def test_menu_select_save_state_on_refresh_is_confirmed(
+        self, mocker, state, moc, library, system
+    ):
+        save_settings = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_settings=save_settings,
+        )
+        for event in (A_LONG, Y, B, Y, Y, B, Y, Y, B, Y):
+            controller.handle(event)
+        assert state.current_menu.title == "Save state"
+        assert state.current_menu.selected.label == "On refresh"
+        assert state.current_menu.selected.checked is False
+        # turning it on asks for a confirmation, which is cancelled
+        controller.handle(B)
+        assert state.current_menu.title == "Save on refresh?"
+        assert state.current_menu.selected.label == "Cancel"
+        assert state.settings.run_save_state_on_refresh is False
+        # the explanation above the choices does nothing when selected
+        controller.handle(X)
+        assert state.current_menu.selected.label == "it is not recommended."
+        controller.handle(B)
+        assert state.current_menu.title == "Save on refresh?"
+        assert state.settings.run_save_state_on_refresh is False
+        controller.handle(Y)
+        assert state.current_menu.selected.label == "Cancel"
+        controller.handle(B)
+        assert state.current_menu.title == "Save state"
+        assert state.current_menu.selected.label == "On refresh"
+        assert state.settings.run_save_state_on_refresh is False
+        save_settings.assert_not_called()
+        # then it is asked again, and confirmed
+        controller.handle(B)
+        controller.handle(Y)
+        assert state.current_menu.selected.label == "Confirm"
+        controller.handle(B)
+        assert state.settings.run_save_state_on_refresh is True
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Run", "Save state"]
+        assert state.current_menu.selected.label == "On refresh"
+        assert state.current_menu.selected.checked is True
+        save_settings.assert_called_once_with(state.settings)
+        # turning it off asks for no confirmation
+        controller.handle(B)
+        assert state.settings.run_save_state_on_refresh is False
+        assert state.current_menu.title == "Save state"
+        assert state.current_menu.selected.checked is False
+        assert save_settings.call_count == 2
 
     def test_menu_select_right_timer_value(self, mocker, state, moc, library, system):
         save_settings = mocker.Mock()

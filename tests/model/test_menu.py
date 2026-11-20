@@ -20,6 +20,7 @@ from mocassino.model.menu import (
     MenuCommand,
     MenuItem,
     _label,
+    build_confirm_run_save_state_on_refresh_menu,
     build_display_brightness_menu,
     build_display_color_menu,
     build_display_colors_menu,
@@ -66,6 +67,29 @@ def library(tmp_path):
     (root / "Empty").mkdir()
     (root / "loose.mp3").touch()
     return Library(root)
+
+
+class TestBuildConfirmRunSaveStateOnRefreshMenu:
+    """Tests for the build_confirm_run_save_state_on_refresh_menu function"""
+
+    def test_items(self):
+        assert build_confirm_run_save_state_on_refresh_menu() == Menu(
+            title="Save on refresh?",
+            items=(
+                MenuItem(label="Enabling this will write"),
+                MenuItem(label="to disk/card a lot and"),
+                MenuItem(label="it is not recommended."),
+                MenuItem(label="Cancel", command=MenuCommand.BACK),
+                MenuItem(label="Confirm", command=MenuCommand.CONFIRM_RUN_SAVE_STATE_ON_REFRESH),
+            ),
+            selected_index=3,
+        )
+        assert build_confirm_run_save_state_on_refresh_menu().selected.label == "Cancel"
+
+    def test_explanation_rows_only_show_information(self):
+        menu = build_confirm_run_save_state_on_refresh_menu()
+        for item in menu.items[:3]:
+            assert (item.checked, item.command, item.submenu) == (None, None, None)
 
 
 class TestBuildDisplayMenu:

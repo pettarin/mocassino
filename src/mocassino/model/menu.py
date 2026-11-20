@@ -67,6 +67,7 @@ class MenuCommand(StrEnum):
     """What the controller is asked to do when an item is selected."""
 
     BACK = "back"
+    CONFIRM_RUN_SAVE_STATE_ON_REFRESH = "confirm_run_save_state_on_refresh"
     PLAY = "play"
     REBOOT = "reboot"
     RESET_ALL_COLORS = "reset_all_colors"
@@ -233,6 +234,26 @@ def _label(value: str) -> str:
     words = [ACRONYMS.get(word, word) for word in value.split("_")]
     words[0] = words[0][:1].upper() + words[0][1:]
     return " ".join(words)
+
+
+def build_confirm_run_save_state_on_refresh_menu() -> Menu:
+    """Build the menu asking to confirm that the state is saved at every refresh.
+
+    It is asked as the state file is then written about once a second during the playback,
+    which may wear out an SD card. The menu first says so, on three rows that only show
+    information, so that each fits the width of the display; the default choice is to cancel.
+    """
+    return Menu(
+        title="Save on refresh?",
+        items=(
+            MenuItem(label="Enabling this will write"),
+            MenuItem(label="to disk/card a lot and"),
+            MenuItem(label="it is not recommended."),
+            MenuItem(label="Cancel", command=MenuCommand.BACK),
+            MenuItem(label="Confirm", command=MenuCommand.CONFIRM_RUN_SAVE_STATE_ON_REFRESH),
+        ),
+        selected_index=3,
+    )
 
 
 def build_display_brightness_menu(settings: Settings) -> Menu:

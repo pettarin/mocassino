@@ -23,6 +23,7 @@ from mocassino.model.library import Library
 from mocassino.model.menu import (
     Menu,
     MenuCommand,
+    build_confirm_run_save_state_on_refresh_menu,
     build_display_brightness_menu,
     build_display_color_menu,
     build_display_orientation_menu,
@@ -46,6 +47,11 @@ from mocassino.model.settings import Settings
 from mocassino.model.state import AppState
 from mocassino.model.system import System, SystemShutdownError
 
+# The menu commands turning on or off a setting that need a confirmation to turn it on:
+# for each, the menu asking for it
+CONFIRMED_TOGGLES: dict[MenuCommand, Callable[[], Menu]] = {
+    MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_REFRESH: build_confirm_run_save_state_on_refresh_menu,
+}
 LOGGER: logging.Logger = logging.getLogger(__name__)
 # For each menu command setting a setting to the value of the selected item:
 # the setting, how to get its value from that of the item, and the menu to show again
@@ -250,6 +256,9 @@ class Controller:
             self._state.open_menu(item.submenu())
         elif item.command is MenuCommand.BACK:
             self._state.pop_menu()
+        elif item.command is MenuCommand.CONFIRM_RUN_SAVE_STATE_ON_REFRESH:
+            self._state.pop_menu()
+            self._switch(MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_REFRESH, True)
         elif item.command is MenuCommand.PLAY and item.path is not None:
             self._state.close_menus()
             self._moc.play(item.path)
@@ -270,12 +279,12 @@ class Controller:
         elif item.command is MenuCommand.SHUTDOWN:
             self._halt(self._system.shutdown)
         elif item.command in TOGGLES:
-            settings = self._state.settings
-            attribute, build_menu = TOGGLES[item.command]
-            setattr(settings, attribute, not getattr(settings, attribute))
-            self._state.replace_menu(build_menu(settings))
-            if self._save_settings is not None:
-                self._save_settings(settings)
+            attribute, _ = TOGGLES[item.command]
+            on = not getattr(self._state.settings, attribute)
+            if on and item.command in CONFIRMED_TOGGLES:
+                self._state.open_menu(CONFIRMED_TOGGLES[item.command]())
+            else:
+                self._switch(item.command, on)
 
     def _menu_up(self) -> None:
         """Select the previous item of the current menu."""
@@ -332,6 +341,19 @@ class Controller:
     def _seek_forward(self) -> None:
         """Seek forward in the current track."""
         self._moc.seek(self._state.settings.playback_seek_step)
+
+    def _switch(self, command: MenuCommand, on: bool) -> None:
+        """Turn on or off the setting of a toggling command, and show its menu again.
+
+        The menu shown is the one with the toggling command, which keeps its selection;
+        the change is saved, as any other change of the settings.
+        """
+        settings = self._state.settings
+        attribute, build_menu = TOGGLES[command]
+        setattr(settings, attribute, on)
+        self._state.replace_menu(build_menu(settings))
+        if self._save_settings is not None:
+            self._save_settings(settings)
 
     def _volume_down(self) -> None:
         """Turn the volume down."""

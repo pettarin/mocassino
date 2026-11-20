@@ -710,6 +710,10 @@ The top level menu has the following items:
       - `On exit` (`run.save_state.on_exit`): whether it is saved when the service exits,
         and before the host is rebooted or shut down.
       - `On refresh` (`run.save_state.on_refresh`): whether it is saved at every refresh.
+        Turning it on asks for a confirmation (`Save on refresh?`, which says that enabling it
+        will write to disk/card a lot and it is not recommended, followed by `Cancel` and `Confirm`),
+        as the state file is then written about once a second during the playback
+        (e.g., on an SD card); turning it off does not.
       - `On startup` (`run.save_state.on_startup`): whether it is saved when the service starts.
       - `On state change` (`run.save_state.on_state_change`):
         whether it is saved when the playback is paused, resumed, or stopped.
