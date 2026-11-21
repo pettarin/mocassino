@@ -13,8 +13,10 @@ SERVICE_NAME="mocassino"
 PYPI_PACKAGE_NAME="$SERVICE_NAME"
 
 # Library directory on target
-DEFAULT_LIBRARY_DIRECTORY_PATH="/"
 DEFAULT_DISPLAY_ORIENTATION="0"
+DEFAULT_LIBRARY_DIRECTORY_PATH="/"
+DEFAULT_RUN_AS_GROUP="pi"
+DEFAULT_RUN_AS_USER="pi"
 
 # ###########################################################################
 # DO NOT MODIFY BELOW THIS LINE!
@@ -46,6 +48,8 @@ INSTALL_VENV=1
 LIBRARY_DIRECTORY_PATH="$DEFAULT_LIBRARY_DIRECTORY_PATH"
 DISPLAY_ORIENTATION="$DEFAULT_DISPLAY_ORIENTATION"
 RUN_ARGUMENTS="run --foreground"
+RUN_AS_GROUP="$DEFAULT_RUN_AS_GROUP"
+RUN_AS_USER="$DEFAULT_RUN_AS_USER"
 UNINSTALL=1
 UNINSTALL_ONLY=0
 WRITE_CONFIGURATION=1
@@ -81,6 +85,14 @@ while [[ $# -gt 0 ]]; do
             RUN_ARGUMENTS="$2"
             shift 2
             ;;
+        --run-as-group)
+            RUN_AS_GROUP="$2"
+            shift 2
+            ;;
+        --run-as-user)
+            RUN_AS_USER="$2"
+            shift 2
+            ;;
         --uninstall)
             UNINSTALL=1
             UNINSTALL_ONLY=1
@@ -97,6 +109,8 @@ while [[ $# -gt 0 ]]; do
             echo "  --no-uninstall-first                  Do not remove a previous installation before installing"
             echo "  --no-write-configuration              Do not write the configuration to file"
             echo "  --run-arguments STRING                Use the provided STRING as argument to the ExecStart command line of the systemd service (default: '$RUN_ARGUMENTS')"
+            echo "  --run-as-group STRING                 Use the provided STRING as group for the service (default: '$DEFAULT_RUN_AS_GROUP')"
+            echo "  --run-as-user STRING                  Use the provided STRING as user for the service (default: '$DEFAULT_RUN_AS_USER')"
             echo "  --uninstall                           Remove a previous installation and exit"
             echo ""
             echo "Note: this script must be executed as root, for instance with sudo"
@@ -110,14 +124,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Print effective arguments
-echo "[INFO] Running as:              '$EUID' ($USER)"
-echo "[INFO] Installation directory:  '$INSTALLATION_DIRECTORY_PATH'"
-echo "[INFO] Venv directory:          '$VENV_DIRECTORY_PATH'"
-echo "[INFO] Configuration directory: '$CONFIG_DIRECTORY_PATH'"
-echo "[INFO] Configuration file:      '$CONFIGURATION_FILE_PATH'"
+echo "[INFO] Running installation as:   '$EUID' ($USER)"
+echo "[INFO] Systemd service to run as:"
+echo "[INFO]   group: '$RUN_AS_GROUP'"
+echo "[INFO]    user: '$RUN_AS_USER'"
+echo "[INFO] Installation directory:    '$INSTALLATION_DIRECTORY_PATH'"
+echo "[INFO] Venv directory:            '$VENV_DIRECTORY_PATH'"
+echo "[INFO] Configuration directory:   '$CONFIG_DIRECTORY_PATH'"
+echo "[INFO] Configuration file:        '$CONFIGURATION_FILE_PATH'"
 echo "[INFO] Configuration arguments:"
 echo "[INFO]   --library-directory-path '$LIBRARY_DIRECTORY_PATH'"
-echo "[INFO]   --orientation '$DISPLAY_ORIENTATION'"
+echo "[INFO]              --orientation '$DISPLAY_ORIENTATION'"
 
 # Check the script is run as root
 if [[ $EUID -ne 0 ]]; then
@@ -167,9 +184,9 @@ if [[ $INSTALL_VENV -eq 1 ]]; then
     # print version to prove installation was successful
     $EXECUTABLE_FILE_PATH --version
 
+    chown -R "$RUN_AS_USER:$RUN_AS_GROUP" "$INSTALLATION_DIRECTORY_PATH"
     echo "[INFO] Installing venv (be patient, it might take a few minutes) ... done"
 fi
-
 
 # Write configuration file
 if [[ $WRITE_CONFIGURATION -eq 1 ]]; then
@@ -181,6 +198,8 @@ if [[ $WRITE_CONFIGURATION -eq 1 ]]; then
             --orientation "$DISPLAY_ORIENTATION" \
             --yes \
             --output-file-path "$CONFIGURATION_FILE_PATH"
+
+    chown "$RUN_AS_USER:$RUN_AS_GROUP" "$CONFIGURATION_FILE_NAME"
     echo "[INFO] Writing configuarion ... done"
 fi
 
@@ -200,6 +219,8 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
     echo "Type=simple" >> "$D"
     echo "# assume mocassino is installed in $VENV_DIRECTORY_PATH," >> "$D"
     echo "# and $RUN_DIRECTORY_PATH exists, acting as the working directory" >> "$D"
+    echo "User=$RUN_AS_USER" >> "$D"
+    echo "Group=$RUN_AS_GROUP" >> "$D"
     echo "Environment=LG_WD=$RUN_DIRECTORY_PATH" >> "$D"
     echo "Environment=HOME=$RUN_DIRECTORY_PATH" >> "$D"
     echo "Environment=XDG_CONFIG_HOME=$XDG_CONFIG_DIRECTORY_PATH" >> "$D"
@@ -216,7 +237,7 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
     echo "PrivateTmp=yes" >> "$D"
     echo "" >> "$D"
     echo "[Install]" >> "$D"
-    echo "WantedBy=default.target" >> "$D"
+    echo "WantedBy=multi-user.target" >> "$D"
 
     systemctl daemon-reload
     systemctl enable "$SERVICE_NAME"
