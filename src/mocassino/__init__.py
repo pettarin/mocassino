@@ -7,17 +7,12 @@
 
 import logging
 
-# from mocassino.clients import (...)
-
 # The library logs under the "mocassino" logger;
 # without a handler of the user's (the CLI installs its own),
 # the records go nowhere, silently
 logging.getLogger("mocassino").addHandler(logging.NullHandler())
 
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 __author__ = "Alberto Pettarin"
 __email__ = "alberto@albertopettarin.it"
 
-__all__ = [
-    # "symbol",
-]
