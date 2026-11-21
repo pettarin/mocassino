@@ -14,7 +14,7 @@ Environment=HOME=/opt/mocassino/run
 Environment=XDG_CONFIG_HOME=/opt/mocassino/run/.config
 WorkingDirectory=/opt/mocassino/run
 ReadWritePaths=/opt/mocassino/run
-ExecStart=/opt/mocassino/venv/bin/mocassino -v run -f
+ExecStart=/opt/mocassino/venv/bin/mocassino -l /music -v run -f
 Restart=on-failure
 RestartSec=5
 
