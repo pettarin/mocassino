@@ -15,7 +15,7 @@ PYPI_PACKAGE_NAME="$SERVICE_NAME"
 # Library directory on target
 DEFAULT_DISPLAY_ORIENTATION="0"
 DEFAULT_LIBRARY_DIRECTORY_PATH="/"
-DEFAULT_RUN_AS_GROUP="pi"
+DEFAULT_RUN_AS_GROUP="audio"
 DEFAULT_RUN_AS_USER="pi"
 
 # ###########################################################################
@@ -199,7 +199,7 @@ if [[ $WRITE_CONFIGURATION -eq 1 ]]; then
             --yes \
             --output-file-path "$CONFIGURATION_FILE_PATH"
 
-    chown "$RUN_AS_USER:$RUN_AS_GROUP" "$CONFIGURATION_FILE_NAME"
+    chown "$RUN_AS_USER:$RUN_AS_GROUP" "$CONFIGURATION_FILE_PATH"
     echo "[INFO] Writing configuarion ... done"
 fi
 
