@@ -62,7 +62,7 @@ DEFAULT_COLOR_SPECS: dict[str, str] = {
     "normal": "white",
     "track": "dimgray",
 }
-DEFAULT_CONFIGURATION_FILE_PATH: Path = Path("~/.mocassino/configuration.yaml")
+DEFAULT_CONFIGURATION_FILE_PATH: Path = Path("~/.config/mocassino/configuration.yaml")
 DEFAULT_DISPLAY_BRIGHTNESS: float = 1.0
 # None for the font bundled with mocassino (Roboto Regular)
 DEFAULT_DISPLAY_FONT_FILE_PATH: Path | None = None
@@ -93,7 +93,7 @@ DEFAULT_RUN_SAVE_STATE_ON_VOLUME_CHANGE: bool = True
 DEFAULT_STARTUP_PLAYLIST: str = StartupPlaylist.USE_SAVED.value
 DEFAULT_STARTUP_STATE: str = StartupState.USE_SAVED.value
 DEFAULT_STARTUP_VOLUME: str = StartupVolume.USE_SAVED.value
-DEFAULT_STATE_FILE_PATH: Path = Path("~/.mocassino/state.yaml")
+DEFAULT_STATE_FILE_PATH: Path = Path("~/.config/mocassino/state.yaml")
 DEFAULT_SYSTEM_MOCP_FILE_PATH: str = "mocp"
 DEFAULT_SYSTEM_REBOOT_COMMAND: tuple[str, ...] = ("sudo", "reboot")
 DEFAULT_SYSTEM_SHUTDOWN_COMMAND: tuple[str, ...] = ("sudo", "shutdown", "-h", "now")

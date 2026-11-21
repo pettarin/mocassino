@@ -63,7 +63,7 @@ class TestStateFile:
     """Tests for the StateFile class"""
 
     def test_default_path(self, home):
-        assert StateFile().path == home / ".mocassino" / "state.yaml"
+        assert StateFile().path == home / ".config" / "mocassino" / "state.yaml"
 
     def test_load(self, path):
         write(path, FULL)

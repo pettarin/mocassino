@@ -11,11 +11,6 @@ All notable changes to this project will be documented in this file.
 
 ## [0.0.4] - To be released
 
-### Changed
-
-- The default configuration file and the state file are now
-  `~/.mocassino/configuration.yaml` and `~/.mocassino/state.yaml`
-
 
 ## [0.0.3] - 2026-11-20
 

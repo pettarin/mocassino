@@ -187,7 +187,7 @@ Options:
 
 With `-o / --output-file-path`, the configuration is written to a file instead of being printed.
 The value is optional: without it, the file is the default configuration file,
-`~/.mocassino/configuration.yaml`.
+`~/.config/mocassino/configuration.yaml`.
 If the file already exists, the command fails without touching it,
 unless `-y / --yes` is given too:
 
@@ -308,7 +308,7 @@ system:
 The permanent settings are read from a YAML file:
 the one given with `-c / --configuration-file-path`, or,
 if the option is not given and the file exists,
-`~/.mocassino/configuration.yaml`.
+`~/.config/mocassino/configuration.yaml`.
 
 The file has the same structure printed by `mocassino configuration`.
 Every section and every key is optional:
@@ -318,7 +318,7 @@ Unknown sections, unknown keys, and invalid values are reported as errors.
 So that the service can always start, `mocassino run` does not stop on a file that is not valid
 (e.g., not valid YAML, or with an unknown key or an invalid value):
 it moves the file to a backup next to it, named after the time,
-e.g., `~/.mocassino/configuration.yaml.20261119153005.bak`,
+e.g., `~/.config/mocassino/configuration.yaml.20261119153005.bak`,
 writes a new file with the default values in its place, logs a warning, and starts.
 The older backups are kept.
 As with `Reset all settings`, the new file keeps the simulator for the buttons and the display,
@@ -417,7 +417,7 @@ playback:
 ### State File
 
 The player remembers its state from one run to the next
-in the `~/.mocassino/state.yaml` file, which it writes by itself:
+in the `~/.config/mocassino/state.yaml` file, which it writes by itself:
 
 ```yaml
 playback:

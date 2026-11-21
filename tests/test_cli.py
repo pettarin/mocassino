@@ -46,7 +46,7 @@ class TestConfigurationCommand:
     """Tests for the configuration command"""
 
     def test_default(self, runner, home):
-        directory = home / ".mocassino"
+        directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
             "playback:\n  volume_default: 30\n",
@@ -82,7 +82,7 @@ class TestConfigurationCommand:
         assert yaml.safe_load(result.output) == expected
 
     def test_library_directory_path_with_default(self, runner, home):
-        directory = home / ".mocassino"
+        directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
             "run:\n  refresh_delay: 0.25\n",
@@ -143,7 +143,7 @@ class TestConfigurationCommand:
         assert output["run"]["refresh_delay"] == 0.25
 
     def test_brightness_with_default(self, runner, home):
-        directory = home / ".mocassino"
+        directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
             "run:\n  refresh_delay: 0.25\n",
@@ -201,7 +201,7 @@ class TestConfigurationCommand:
         assert output["run"]["refresh_delay"] == 0.25
 
     def test_orientation_with_default(self, runner, home):
-        directory = home / ".mocassino"
+        directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
             "run:\n  refresh_delay: 0.25\n",
@@ -258,7 +258,7 @@ class TestConfigurationCommand:
         assert f"Error: Cannot write '{path}'" in result.output
 
     def test_output_file_default_location(self, runner, home):
-        path = home / ".mocassino" / "configuration.yaml"
+        path = home / ".config" / "mocassino" / "configuration.yaml"
         result = runner.invoke(main, ["--display-target", "none", "configuration", "-o"])
         assert result.exit_code == 0
         assert result.output == f"Configuration written to '{path}'\n"
@@ -273,7 +273,7 @@ class TestConfigurationCommand:
         assert written.display.target == "simulator"
 
     def test_output_file_with_default(self, runner, home, tmp_path):
-        directory = home / ".mocassino"
+        directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
             "playback:\n  volume_step: 7\n",
@@ -321,7 +321,7 @@ class TestConfigurationCommand:
         assert output["display"]["target"] == "none"
 
     def test_simulator_with_default(self, runner, home):
-        directory = home / ".mocassino"
+        directory = home / ".config" / "mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
             "run:\n  refresh_delay: 0.25\n",
@@ -614,7 +614,7 @@ class TestRunCommand:
     def test_invalid_configuration_file_is_replaced(
         self, runner, app, arguments, daemonize, home, caplog, content, reason
     ):
-        path = home / ".mocassino" / "configuration.yaml"
+        path = home / ".config" / "mocassino" / "configuration.yaml"
         path.parent.mkdir(parents=True)
         path.write_text(content, encoding="utf-8")
         with caplog.at_level(logging.WARNING):
@@ -648,7 +648,7 @@ class TestRunCommand:
     def test_invalid_configuration_file_backups_are_kept(
         self, runner, app, arguments, daemonize, home
     ):
-        path = home / ".mocassino" / "configuration.yaml"
+        path = home / ".config" / "mocassino" / "configuration.yaml"
         path.parent.mkdir(parents=True)
         for content in ("first: 1\n", "second: 2\n"):
             path.write_text(content, encoding="utf-8")
@@ -662,7 +662,7 @@ class TestRunCommand:
     def test_invalid_configuration_file_keeps_the_simulator(
         self, runner, app, daemonize, home, tmp_path
     ):
-        path = home / ".mocassino" / "configuration.yaml"
+        path = home / ".config" / "mocassino" / "configuration.yaml"
         path.parent.mkdir(parents=True)
         path.write_text("display: [unclosed\n", encoding="utf-8")
         app.simulator = None
@@ -674,7 +674,7 @@ class TestRunCommand:
     def test_invalid_configuration_file_cannot_be_replaced(
         self, runner, mocker, app, arguments, daemonize, home, caplog
     ):
-        path = home / ".mocassino" / "configuration.yaml"
+        path = home / ".config" / "mocassino" / "configuration.yaml"
         path.parent.mkdir(parents=True)
         path.write_text("display: [unclosed\n", encoding="utf-8")
         mocker.patch(
@@ -692,7 +692,7 @@ class TestRunCommand:
     def test_invalid_configuration_after_the_replacement(
         self, runner, mocker, app, arguments, daemonize, home
     ):
-        path = home / ".mocassino" / "configuration.yaml"
+        path = home / ".config" / "mocassino" / "configuration.yaml"
         path.parent.mkdir(parents=True)
         path.write_text("display: [unclosed\n", encoding="utf-8")
         mocker.patch(
@@ -711,7 +711,7 @@ class TestRunCommand:
         app.run.assert_not_called()
 
     def test_invalid_configuration_file_is_kept_by_the_configuration_command(self, runner, home):
-        path = home / ".mocassino" / "configuration.yaml"
+        path = home / ".config" / "mocassino" / "configuration.yaml"
         path.parent.mkdir(parents=True)
         path.write_text("display: [unclosed\n", encoding="utf-8")
         result = runner.invoke(main, ["configuration"])
