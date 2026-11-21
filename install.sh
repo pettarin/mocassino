@@ -13,8 +13,8 @@ SERVICE_NAME="mocassino"
 PYPI_PACKAGE_NAME="$SERVICE_NAME"
 
 # Library directory on target
-DEFAULT_LIBRARY_DIRECTORY_PATH="/music"
-DEFAULT_ORIENTATION="180"
+DEFAULT_LIBRARY_DIRECTORY_PATH="/"
+DEFAULT_DISPLAY_ORIENTATION="0"
 
 # ###########################################################################
 # DO NOT MODIFY BELOW THIS LINE!
@@ -44,14 +44,23 @@ SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH="/lib/systemd/system/$SERVICE_SYSTEMD
 INSTALL_SYSTEMD=1
 INSTALL_VENV=1
 LIBRARY_DIRECTORY_PATH="$DEFAULT_LIBRARY_DIRECTORY_PATH"
-ORIENTATION="$DEFAULT_ORIENTATION"
+DISPLAY_ORIENTATION="$DEFAULT_DISPLAY_ORIENTATION"
 RUN_ARGUMENTS="run --foreground"
 UNINSTALL=1
 UNINSTALL_ONLY=0
+WRITE_CONFIGURATION=1
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --display-orientation)
+            DISPLAY_ORIENTATION="$2"
+            shift 2
+            ;;
+        --library-directory-path)
+            LIBRARY_DIRECTORY_PATH="$2"
+            shift 2
+            ;;
         --no-install-systemd)
             INSTALL_SYSTEMD=0
             shift
@@ -62,6 +71,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-uninstall-first)
             UNINSTALL=0
+            shift
+            ;;
+        --no-write-configuration)
+            WRITE_CONFIGURATION=0
             shift
             ;;
         --run-arguments)
@@ -77,11 +90,14 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: bash $0 [options]"
             echo ""
             echo "Options:"
-            echo "  --no-install-systemd            Do not install the systemd service"
-            echo "  --no-install-venv               Do not install the virtual environment"
-            echo "  --no-uninstall-first            Do not remove a previous installation before installing"
-            echo "  --run-arguments STRING          Use the provided STRING as argument to the ExecStart command line of the systemd service (default: '$RUN_ARGUMENTS')"
-            echo "  --uninstall                     Remove a previous installation and exit"
+            echo "  --display-orientation [0|90|180|270]  Configure the specified display orientation (default: '$DEFAULT_DISPLAY_ORIENTATION')"
+            echo "  --library-directory-path PATH         Configure the specified PATH as the root directory for the library (default: '$DEFAULT_LIBRARY_DIRECTORY_PATH')"
+            echo "  --no-install-systemd                  Do not install the systemd service"
+            echo "  --no-install-venv                     Do not install the virtual environment"
+            echo "  --no-uninstall-first                  Do not remove a previous installation before installing"
+            echo "  --no-write-configuration              Do not write the configuration to file"
+            echo "  --run-arguments STRING                Use the provided STRING as argument to the ExecStart command line of the systemd service (default: '$RUN_ARGUMENTS')"
+            echo "  --uninstall                           Remove a previous installation and exit"
             echo ""
             echo "Note: this script must be executed as root, for instance with sudo"
             exit 0
@@ -93,21 +109,21 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-
-# Check root
-if [[ $EUID -ne 0 ]]; then
-    echo "[ERRO] This script must be executed as root, for instance with sudo."
-    exit 2
-fi
-
-echo "[INFO] Running as:              '$EUID' (root)"
+# Print effective arguments
+echo "[INFO] Running as:              '$EUID' ($USER)"
 echo "[INFO] Installation directory:  '$INSTALLATION_DIRECTORY_PATH'"
 echo "[INFO] Venv directory:          '$VENV_DIRECTORY_PATH'"
 echo "[INFO] Configuration directory: '$CONFIG_DIRECTORY_PATH'"
 echo "[INFO] Configuration file:      '$CONFIGURATION_FILE_PATH'"
 echo "[INFO] Configuration arguments:"
 echo "[INFO]   --library-directory-path '$LIBRARY_DIRECTORY_PATH'"
-echo "[INFO]   --orientation '$ORIENTATION'"
+echo "[INFO]   --orientation '$DISPLAY_ORIENTATION'"
+
+# Check the script is run as root
+if [[ $EUID -ne 0 ]]; then
+    echo "[ERRO] This script must be executed as root, for instance with sudo."
+    exit 2
+fi
 
 # Uninstall
 if [[ $UNINSTALL -eq 1 ]]; then
@@ -151,15 +167,21 @@ if [[ $INSTALL_VENV -eq 1 ]]; then
     # print version to prove installation was successful
     $EXECUTABLE_FILE_PATH --version
 
-    # write the configuration
+    echo "[INFO] Installing venv (be patient, it might take a few minutes) ... done"
+fi
+
+
+# Write configuration file
+if [[ $WRITE_CONFIGURATION -eq 1 ]]; then
+    echo "[INFO] Writing configuarion ..."
     $EXECUTABLE_FILE_PATH \
         --library-directory-path "$LIBRARY_DIRECTORY_PATH" \
         configuration \
             --default \
-            --orientation "$ORIENTATION" \
+            --orientation "$DISPLAY_ORIENTATION" \
             --yes \
             --output-file-path "$CONFIGURATION_FILE_PATH"
-    echo "[INFO] Installing venv (be patient, it might take a few minutes) ... done"
+    echo "[INFO] Writing configuarion ... done"
 fi
 
 # Install the systemd service
@@ -176,8 +198,8 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
     echo "" >> "$D"
     echo "[Service]" >> "$D"
     echo "Type=simple" >> "$D"
-    echo "# assume mocassino is installed in $VENV_NAME," >> "$D"
-    echo "# and $RUN_DIRECTORY_PATH exists (acting as the $HOME for the service)" >> "$D"
+    echo "# assume mocassino is installed in $VENV_DIRECTORY_PATH," >> "$D"
+    echo "# and $RUN_DIRECTORY_PATH exists, acting as the working directory" >> "$D"
     echo "Environment=LG_WD=$RUN_DIRECTORY_PATH" >> "$D"
     echo "Environment=HOME=$RUN_DIRECTORY_PATH" >> "$D"
     echo "Environment=XDG_CONFIG_HOME=$XDG_CONFIG_DIRECTORY_PATH" >> "$D"
@@ -198,7 +220,7 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
 
     systemctl daemon-reload
     systemctl enable "$SERVICE_NAME"
-    systemctl start "$SERVICE_NAME"
+    systemctl restart "$SERVICE_NAME"
     sleep 1
     systemctl status "$SERVICE_NAME"
     echo "[INFO] Installing systemd service ... done"
