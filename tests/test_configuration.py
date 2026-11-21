@@ -178,7 +178,7 @@ class TestLoadConfiguration:
         }
 
     def test_default_file_is_read(self, home):
-        directory = home / ".config" / "mocassino"
+        directory = home / ".mocassino"
         directory.mkdir(parents=True)
         (directory / "configuration.yaml").write_text(
             "playback:\n  volume_default: 30\n",
@@ -648,7 +648,7 @@ class TestReplaceInvalidConfigurationFile:
         assert before <= stamp <= after
 
     def test_default_file(self, home):
-        path = home / ".config" / "mocassino" / "configuration.yaml"
+        path = home / ".mocassino" / "configuration.yaml"
         path.parent.mkdir(parents=True)
         path.write_text("first: 1\n", encoding="utf-8")
         defaults = Configuration(display=DisplayConfiguration(target="simulator"))
@@ -685,7 +685,7 @@ class TestUpdateConfigurationFile:
 
     def test_default_file_is_created(self, home):
         path = update_configuration_file(None, {"display": {"orientation": 90}})
-        assert path == home / ".config" / "mocassino" / "configuration.yaml"
+        assert path == home / ".mocassino" / "configuration.yaml"
         assert path.read_text(encoding="utf-8") == "display:\n  orientation: 90\n"
         assert load_configuration().display.orientation == 90
 
@@ -745,7 +745,7 @@ class TestWriteConfigurationFile:
 
     def test_default_file_is_created(self, home):
         path = write_configuration_file(None, Configuration())
-        assert path == home / ".config" / "mocassino" / "configuration.yaml"
+        assert path == home / ".mocassino" / "configuration.yaml"
         assert load_configuration() == Configuration()
 
     def test_existing_file_is_replaced(self, tmp_path):

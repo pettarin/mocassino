@@ -136,7 +136,7 @@ By default they perform the following actions:
 | `Y` | Volume down; hold: seek backward | Down; hold: select |
 
 The permanent settings, including the action of each button,
-can be stored in the `~/.config/mocassino/configuration.yaml` file:
+can be stored in the `~/.mocassino/configuration.yaml` file:
 
 ```yaml
 display:

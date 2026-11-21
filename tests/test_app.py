@@ -940,7 +940,7 @@ class TestBuildApp:
         app = build_app(self.configuration("none", "none"))
         for event in TOGGLE_SIDE_ICONS:
             app._controller.handle(event)
-        path = tmp_path / ".config" / "mocassino" / "configuration.yaml"
+        path = tmp_path / ".mocassino" / "configuration.yaml"
         assert path.read_text(encoding="utf-8") == (
             "display:\n"
             "  brightness: 1.0\n"
@@ -1002,7 +1002,7 @@ class TestBuildApp:
         assert StateFile(state_file_path).load() == SavedState(volume=30)
 
     def test_volume_from_the_default_state_file(self, tmp_path):
-        directory = tmp_path / ".config" / "mocassino"
+        directory = tmp_path / ".mocassino"
         directory.mkdir(parents=True)
         (directory / "state.yaml").write_text("playback:\n  volume: 85\n", encoding="utf-8")
         app = build_app(self.configuration("none", "none", volume_default=30))
@@ -1706,7 +1706,7 @@ class TestBuildApp:
         app = build_app(self.configuration("none", "none"))
         for event in RESET_ALL_SETTINGS:
             app._controller.handle(event)
-        path = tmp_path / ".config" / "mocassino" / "configuration.yaml"
+        path = tmp_path / ".mocassino" / "configuration.yaml"
         assert load_configuration(path) == Configuration()
 
     def test_reset_all_settings_cannot_be_written(self, tmp_path, caplog):
