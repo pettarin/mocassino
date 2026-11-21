@@ -13,7 +13,8 @@ SERVICE_NAME="mocassino"
 PYPI_PACKAGE_NAME="$SERVICE_NAME"
 
 # Library directory on target
-LIBRARY_DIRECTORY_PATH="/music"
+DEFAULT_LIBRARY_DIRECTORY_PATH="/music"
+DEFAULT_ORIENTATION=180
 
 # ###########################################################################
 # DO NOT MODIFY BELOW THIS LINE!
@@ -40,7 +41,9 @@ SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH="/lib/systemd/system/$SERVICE_SYSTEMD
 # Script logic starts here
 INSTALL_SYSTEMD=1
 INSTALL_VENV=1
-RUN_ARGUMENTS="run"
+LIBRARY_DIRECTORY_PATH="$DEFAULT_LIBRARY_DIRECTORY_PATH"
+ORIENTATION="$DEFAULT_ORIENTATION"
+RUN_ARGUMENTS="run --foreground"
 UNINSTALL=1
 UNINSTALL_ONLY=0
 
@@ -87,6 +90,7 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
 
 # Check root
 if [[ $EUID -ne 0 ]]; then
@@ -143,8 +147,13 @@ if [[ $INSTALL_VENV -eq 1 ]]; then
     $EXECUTABLE_FILE_PATH --version
 
     # write the configuration
-    $EXECUTABLE_FILE_PATH -l "$LIBRARY_DIRECTORY_PATH" configuration --default -o -y
-
+    $EXECUTABLE_FILE_PATH \
+        --library-directory-path "$LIBRARY_DIRECTORY_PATH" \
+        configuration \
+            --default \
+            --orientation "$ORIENTATION" \
+            --yes \
+            --output-file-path
     echo "[INFO] Installing venv (be patient, it might take a few minutes) ... done"
 fi
 
@@ -184,7 +193,9 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
 
     systemctl daemon-reload
     systemctl enable "$SERVICE_NAME"
-    systemctl restart "$SERVICE_NAME"
+    systemctl start "$SERVICE_NAME"
+    sleep 1
+    systemctl status "$SERVICE_NAME"
     echo "[INFO] Installing systemd service ... done"
 fi
 
