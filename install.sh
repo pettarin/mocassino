@@ -14,7 +14,7 @@ PYPI_PACKAGE_NAME="$SERVICE_NAME"
 
 # Library directory on target
 DEFAULT_LIBRARY_DIRECTORY_PATH="/music"
-DEFAULT_ORIENTATION=180
+DEFAULT_ORIENTATION="180"
 
 # ###########################################################################
 # DO NOT MODIFY BELOW THIS LINE!
@@ -27,6 +27,7 @@ PROJECT_DIRECTORY_PATH="$SCRIPT_DIRECTORY_PATH"
 # File and directory names
 VENV_NAME="venv"
 EXECUTABLE_FILE_NAME="mocassino"
+CONFIGURATION_FILE_NAME="configuration.yaml"
 SERVICE_SYSTEMD_UNIT_FILE_NAME="$SERVICE_NAME.service"
 
 # Absolute paths
@@ -34,6 +35,7 @@ INSTALLATION_DIRECTORY_PATH="/opt/$SERVICE_NAME"
 RUN_DIRECTORY_PATH="$INSTALLATION_DIRECTORY_PATH/run"
 XDG_CONFIG_DIRECTORY_PATH="$RUN_DIRECTORY_PATH/.config"
 CONFIG_DIRECTORY_PATH="$XDG_CONFIG_DIRECTORY_PATH/$SERVICE_NAME"
+CONFIGURATION_FILE_PATH="$CONFIG_DIRECTORY_PATH/$CONFIGURATION_FILE_NAME"
 VENV_DIRECTORY_PATH="$INSTALLATION_DIRECTORY_PATH/$VENV_NAME"
 EXECUTABLE_FILE_PATH="$VENV_DIRECTORY_PATH/bin/$EXECUTABLE_FILE_NAME"
 SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH="/lib/systemd/system/$SERVICE_SYSTEMD_UNIT_FILE_NAME"
@@ -98,11 +100,14 @@ if [[ $EUID -ne 0 ]]; then
     exit 2
 fi
 
-echo "[INFO] Running as:             '$EUID' (root)"
-echo "[INFO] Installation directory: '$INSTALLATION_DIRECTORY_PATH'"
-echo "[INFO] Config directory:       '$CONFIG_DIRECTORY_PATH'"
-echo "[INFO] Venv directory:         '$VENV_DIRECTORY_PATH'"
-echo "[INFO] Run arguments:          '$RUN_ARGUMENTS'"
+echo "[INFO] Running as:              '$EUID' (root)"
+echo "[INFO] Installation directory:  '$INSTALLATION_DIRECTORY_PATH'"
+echo "[INFO] Venv directory:          '$VENV_DIRECTORY_PATH'"
+echo "[INFO] Configuration directory: '$CONFIG_DIRECTORY_PATH'"
+echo "[INFO] Configuration file:      '$CONFIGURATION_FILE_PATH'"
+echo "[INFO] Configuration arguments:"
+echo "[INFO]   --library-directory-path '$LIBRARY_DIRECTORY_PATH'"
+echo "[INFO]   --orientation '$ORIENTATION'"
 
 # Uninstall
 if [[ $UNINSTALL -eq 1 ]]; then
@@ -153,7 +158,7 @@ if [[ $INSTALL_VENV -eq 1 ]]; then
             --default \
             --orientation "$ORIENTATION" \
             --yes \
-            --output-file-path
+            --output-file-path "$CONFIGURATION_FILE_PATH"
     echo "[INFO] Installing venv (be patient, it might take a few minutes) ... done"
 fi
 
