@@ -231,7 +231,6 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
     echo "RestartSec=5" >> "$D"
     echo "" >> "$D"
     echo "# Security hardening" >> "$D"
-    echo "NoNewPrivileges=yes" >> "$D"
     echo "ProtectHome=yes" >> "$D"
     echo "ProtectSystem=strict" >> "$D"
     echo "PrivateTmp=yes" >> "$D"
