@@ -31,7 +31,8 @@ SERVICE_SYSTEMD_UNIT_FILE_NAME="$SERVICE_NAME.service"
 # Absolute paths
 INSTALLATION_DIRECTORY_PATH="/opt/$SERVICE_NAME"
 RUN_DIRECTORY_PATH="$INSTALLATION_DIRECTORY_PATH/run"
-CONFIG_DIRECTORY_PATH="$RUN_DIRECTORY_PATH/.config"
+XDG_CONFIG_DIRECTORY_PATH="$RUN_DIRECTORY_PATH/.config"
+CONFIG_DIRECTORY_PATH="XDG_CONFIG_DIRECTORY_PATH/$SERVICE_NAME"
 VENV_DIRECTORY_PATH="$INSTALLATION_DIRECTORY_PATH/$VENV_NAME"
 EXECUTABLE_FILE_PATH="$VENV_DIRECTORY_PATH/bin/$EXECUTABLE_FILE_NAME"
 SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH="/lib/systemd/system/$SERVICE_SYSTEMD_UNIT_FILE_NAME"
@@ -93,10 +94,11 @@ if [[ $EUID -ne 0 ]]; then
     exit 2
 fi
 
-echo "[INFO] Running as:      '$EUID' (root)"
-echo "[INFO] Run arguments:   '$RUN_ARGUMENTS'"
-echo "[INFO] Opt directory:   '$OPT_DIRECTORY_PATH'"
-echo "[INFO] Venv directory:  '$VENV_DIRECTORY_PATH'"
+echo "[INFO] Running as:             '$EUID' (root)"
+echo "[INFO] Installation directory: '$INSTALLATION_DIRECTORY_PATH'"
+echo "[INFO] Config directory:       '$CONFIG_DIRECTORY_PATH'"
+echo "[INFO] Venv directory:         '$VENV_DIRECTORY_PATH'"
+echo "[INFO] Run arguments:          '$RUN_ARGUMENTS'"
 
 # Uninstall
 if [[ $UNINSTALL -eq 1 ]]; then
@@ -130,7 +132,7 @@ if [[ $INSTALL_VENV -eq 1 ]]; then
     echo "[INFO] Installing venv ..."
 
     mkdir -p "$INSTALLATION_DIRECTORY_PATH"
-    mkdir -p "$CONFIG_DIRECTORY_PATH"
+    mkdir -p "$XDG_CONFIG_DIRECTORY_PATH"
 
     cd "$INSTALLATION_DIRECTORY_PATH"
     python3 -m venv "$VENV_NAME"
@@ -166,7 +168,7 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
     echo "# and $RUN_DIRECTORY_PATH exists (acting as the $HOME for the service)" >> "$D"
     echo "Environment=LG_WD=$RUN_DIRECTORY_PATH" >> "$D"
     echo "Environment=HOME=$RUN_DIRECTORY_PATH" >> "$D"
-    echo "Environment=XDG_CONFIG_HOME=$CONFIG_DIRECTORY_PATH" >> "$D"
+    echo "Environment=XDG_CONFIG_HOME=$XDG_CONFIG_DIRECTORY_PATH" >> "$D"
     echo "WorkingDirectory=$RUN_DIRECTORY_PATH" >> "$D"
     echo "ReadWritePaths=$RUN_DIRECTORY_PATH" >> "$D"
     echo "ExecStart=$EXECUTABLE_FILE_PATH $RUN_ARGUMENTS" >> "$D"
