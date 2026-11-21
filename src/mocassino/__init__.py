@@ -1,4 +1,5 @@
-"""mocassino - Lightweight audio player based on MOC for Raspberry Pi Zero 2 devices with Pimoroni Pirate Audio hats
+"""mocassino - Lightweight audio player based on MOC for Raspberry Pi Zero 2
+               devices with Pimoroni Pirate Audio hats
 
 :copyright: Copyright (C) 2026 Alberto Pettarin
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
