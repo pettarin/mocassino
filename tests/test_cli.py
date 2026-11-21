@@ -72,7 +72,7 @@ class TestConfigurationCommand:
         assert yaml.safe_load(result.output) == Configuration().to_dict()
 
     def test_default_ignores_the_other_options_but_library_and_simulator(self, runner):
-        arguments = ["-s", "-l", "/srv/music", "--display-target", "none", "configuration"]
+        arguments = ["--simulator", "-l", "/srv/music", "--display-target", "none", "configuration"]
         result = runner.invoke(main, [*arguments, "--default"])
         assert result.exit_code == 0
         expected = Configuration().to_dict()
@@ -157,7 +157,7 @@ class TestConfigurationCommand:
 
     def test_brightness_is_written_to_the_output_file(self, runner, tmp_path):
         path = tmp_path / "written.yaml"
-        arguments = ["-s", "configuration", "--brightness", "0.7", "-o", str(path)]
+        arguments = ["--simulator", "configuration", "--brightness", "0.7", "-o", str(path)]
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         written = load_configuration(path)
@@ -215,7 +215,7 @@ class TestConfigurationCommand:
 
     def test_orientation_is_written_to_the_output_file(self, runner, tmp_path):
         path = tmp_path / "written.yaml"
-        arguments = ["-s", "configuration", "--orientation", "180", "-o", str(path)]
+        arguments = ["--simulator", "configuration", "--orientation", "180", "-o", str(path)]
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         written = load_configuration(path)
@@ -224,7 +224,8 @@ class TestConfigurationCommand:
 
     def test_output_file(self, runner, tmp_path):
         path = tmp_path / "new" / "written.yaml"
-        result = runner.invoke(main, ["-s", "-l", "/srv/music", "configuration", "-o", str(path)])
+        arguments = ["--simulator", "-l", "/srv/music", "configuration", "-o", str(path)]
+        result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         assert result.output == f"Configuration written to '{path}'\n"
         written = load_configuration(path)
@@ -266,7 +267,7 @@ class TestConfigurationCommand:
         result = runner.invoke(main, ["configuration", "-o"])
         assert result.exit_code == 1
         assert "already exists" in result.output
-        result = runner.invoke(main, ["-s", "configuration", "-o", "-y"])
+        result = runner.invoke(main, ["--simulator", "configuration", "-o", "-y"])
         assert result.exit_code == 0
         written = load_configuration(path)
         assert written.buttons.origin == "simulator"
@@ -283,7 +284,8 @@ class TestConfigurationCommand:
         result = runner.invoke(main, ["configuration", "--default", "-o", str(path)])
         assert result.exit_code == 0
         assert load_configuration(path) == Configuration()
-        result = runner.invoke(main, ["-s", "configuration", "--default", "-o", str(path), "-y"])
+        arguments = ["--simulator", "configuration", "--default", "-o", str(path), "-y"]
+        result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         assert load_configuration(path) == simulated_defaults(buttons=True, display=True)
 
@@ -327,7 +329,7 @@ class TestConfigurationCommand:
             "run:\n  refresh_delay: 0.25\n",
             encoding="utf-8",
         )
-        result = runner.invoke(main, ["-s", "configuration", "--default"])
+        result = runner.invoke(main, ["--simulator", "configuration", "--default"])
         assert result.exit_code == 0
         expected = Configuration().to_dict()
         expected["buttons"]["origin"] = "simulator"
@@ -501,7 +503,8 @@ class TestMain:
     def test_short_options(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
         path.write_text("playback:\n  volume_default: 30\n", encoding="utf-8")
-        result = runner.invoke(main, ["-c", str(path), "-l", "/srv/music", "-s", "configuration"])
+        arguments = ["-c", str(path), "-l", "/srv/music", "--simulator", "configuration"]
+        result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["buttons"]["origin"] == "simulator"
@@ -566,8 +569,9 @@ class TestRunCommand:
         build_app.return_value.simulator = None
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0
-        effective, configuration_file_path = build_app.call_args.args
+        effective, configuration_file_path, state_file_path = build_app.call_args.args
         assert configuration_file_path is None
+        assert state_file_path is None
         assert effective.display.target == "none"
         assert effective.library.directory_path == tmp_path
 
@@ -578,7 +582,7 @@ class TestRunCommand:
         path.write_text("playback:\n  volume_default: 30\n", encoding="utf-8")
         result = runner.invoke(main, ["-c", str(path), *arguments])
         assert result.exit_code == 0
-        effective, configuration_file_path = build_app.call_args.args
+        effective, configuration_file_path, _ = build_app.call_args.args
         assert effective.playback.volume_default == 30
         assert configuration_file_path == path
 
@@ -639,7 +643,7 @@ class TestRunCommand:
         result = runner.invoke(main, ["-c", str(path), *arguments])
         assert result.exit_code == 0
         assert len(list(tmp_path.glob("custom.yaml.*.bak"))) == 1
-        effective, configuration_file_path = build_app.call_args.args
+        effective, configuration_file_path, _ = build_app.call_args.args
         assert configuration_file_path == path
         assert effective.playback.volume_default == 50
         assert effective.display.target == "none"
@@ -666,7 +670,7 @@ class TestRunCommand:
         path.parent.mkdir(parents=True)
         path.write_text("display: [unclosed\n", encoding="utf-8")
         app.simulator = None
-        result = runner.invoke(main, ["-s", "-l", str(tmp_path), "run", "-f"])
+        result = runner.invoke(main, ["--simulator", "-l", str(tmp_path), "run", "-f"])
         assert result.exit_code == 0
         written = load_configuration(path)
         assert (written.buttons.origin, written.display.target) == ("simulator", "simulator")
@@ -762,7 +766,7 @@ class TestRunCommand:
             ("background", ["-b"], True),
         ],
     )
-    @pytest.mark.parametrize("simulator", [[], ["-s"]])
+    @pytest.mark.parametrize("simulator", [[], ["--simulator"]])
     def test_run_mode(self, runner, app, daemonize, tmp_path, mode, options, detached, simulator):
         path = tmp_path / "custom.yaml"
         path.write_text(f"run:\n  mode: {mode}\n", encoding="utf-8")
@@ -779,3 +783,14 @@ class TestRunCommand:
         app.stop.assert_not_called()
         handlers[signal.SIGTERM](signal.SIGTERM, None)
         app.stop.assert_called_once_with()
+
+    @pytest.mark.parametrize("option", ["-s", "--state-file-path"])
+    def test_state_file_is_passed_on(self, runner, mocker, arguments, daemonize, tmp_path, option):
+        build_app = mocker.patch("mocassino.cli.build_app")
+        build_app.return_value.simulator = None
+        path = tmp_path / "custom-state.yaml"
+        result = runner.invoke(main, [option, str(path), *arguments])
+        assert result.exit_code == 0
+        _, configuration_file_path, state_file_path = build_app.call_args.args
+        assert configuration_file_path is None
+        assert state_file_path == path

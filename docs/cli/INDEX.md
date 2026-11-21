@@ -21,8 +21,9 @@ Options:
   -l, --library-directory-path DIRECTORY
                                   Music root directory
                                   (library.directory_path).
-  -s, --simulator                 Shortcut for '--buttons-origin simulator
+  --simulator                     Shortcut for '--buttons-origin simulator
                                   --display-target simulator'.
+  -s, --state-file-path FILE      YAML state file.
   -v, --verbose                   Log debug messages.
   -V, --version                   Show the version and exit.
   --help                          Show this message and exit.
@@ -126,7 +127,7 @@ pin 20 is used by the audio and cannot be read, so only pin 24 is;
 on the earlier ones, pin 24 is not connected, so it never reports a press.
 If `Y` cannot be read on either pin, the service stops with an error.
 
-The `-s / --simulator` option selects the simulator for both.
+The `--simulator` option selects the simulator for both.
 The simulator is a window showing the display, enlarged, and the four buttons:
 
 ```bash
@@ -173,7 +174,7 @@ Options:
                                 [0.0<=x<=1.0]
   --default                     Print the default values, ignoring the
                                 configuration file and the global options
-                                (except -l / --library-directory-path and -s /
+                                (except -l / --library-directory-path and
                                 --simulator).
   --orientation [0|90|180|270]  Set the orientation of the display
                                 (display.orientation), in degrees clockwise.
@@ -223,7 +224,7 @@ $ mocassino configuration --brightness 0.6 -o -y
 
 With `--default`, it prints the default values instead,
 whatever the configuration file and the global options other than
-`-l / --library-directory-path` and `-s / --simulator` say.
+`-l / --library-directory-path` and `--simulator` say.
 It works even if the configuration file is not valid,
 and its output can be used as a starting point for a configuration file:
 
@@ -417,7 +418,16 @@ playback:
 ### State File
 
 The player remembers its state from one run to the next
-in the `~/.config/mocassino/state.yaml` file, which it writes by itself:
+in a YAML file, which it writes by itself:
+the one given with `-s / --state-file-path`, or,
+if the option is not given, `~/.config/mocassino/state.yaml`.
+The file does not need to exist: it is created when the state is first saved.
+
+```bash
+$ mocassino --state-file-path /path/to/state.yaml run
+```
+
+The file looks like this:
 
 ```yaml
 playback:

@@ -48,6 +48,7 @@ class GlobalOptions:
     display_target: str | None
     library_directory_path: Path | None
     simulator: bool
+    state_file_path: Path | None
 
 
 def _daemonize() -> None:
@@ -187,7 +188,7 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
     "--default",
     is_flag=True,
     help="Print the default values, ignoring the configuration file and the global options "
-    "(except -l / --library-directory-path and -s / --simulator).",
+    "(except -l / --library-directory-path and --simulator).",
 )
 @click.option(
     "--orientation",
@@ -283,10 +284,15 @@ def configuration(
     help="Music root directory (library.directory_path).",
 )
 @click.option(
-    "-s",
     "--simulator",
     is_flag=True,
     help="Shortcut for '--buttons-origin simulator --display-target simulator'.",
+)
+@click.option(
+    "-s",
+    "--state-file-path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="YAML state file.",
 )
 @click.option("-v", "--verbose", is_flag=True, help="Log debug messages.")
 @click.version_option(__version__, "-V", "--version", prog_name="mocassino")
@@ -298,6 +304,7 @@ def main(
     display_target: str | None,
     library_directory_path: Path | None,
     simulator: bool,
+    state_file_path: Path | None,
     verbose: bool,
 ) -> None:
     """Lightweight audio player based on MOC for Pirate Audio hats.
@@ -310,6 +317,7 @@ def main(
         display_target=display_target,
         library_directory_path=library_directory_path,
         simulator=simulator,
+        state_file_path=state_file_path,
     )
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -344,7 +352,7 @@ def run(options: GlobalOptions, background: bool | None) -> None:
     if background:
         _daemonize()
     try:
-        app = build_app(effective, options.configuration_file_path)
+        app = build_app(effective, options.configuration_file_path, options.state_file_path)
 
         def stop(signal_number: int, frame: FrameType | None) -> None:
             app.stop()

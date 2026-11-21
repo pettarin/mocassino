@@ -190,6 +190,9 @@ $ mocassino --verbose run --foreground
 $ # run the service with a given configuration file
 $ mocassino --configuration-file-path /path/to/configuration.yaml run
 
+$ # run the service with a given state file
+$ mocassino --state-file-path /path/to/state.yaml run
+
 $ # run the service on a PC, with the simulator window
 $ mocassino --simulator --library-directory-path ~/music run --foreground
 

@@ -11,6 +11,16 @@ All notable changes to this project will be documented in this file.
 
 ## [0.0.4] - To be released
 
+### Added
+
+- Global option `-s / --state-file-path` to set the state file
+  (default: `~/.config/mocassino/state.yaml`)
+
+### Removed
+
+- The short form `-s` of the global option `--simulator`,
+  as `-s` is now the short form of `--state-file-path`
+
 
 ## [0.0.3] - 2026-11-20
 
