@@ -10,7 +10,7 @@ set -euo pipefail
 SERVICE_NAME="mocassino"
 
 # Name of the PyPI package
-PYPI_NAME="$SERVICE_NAME"
+PYPI_PACKAGE_NAME="$SERVICE_NAME"
 
 # Library directory on target
 LIBRARY_DIRECTORY_PATH="/music"
@@ -129,7 +129,7 @@ fi
 
 # Install the venv
 if [[ $INSTALL_VENV -eq 1 ]]; then
-    echo "[INFO] Installing venv ..."
+    echo "[INFO] Installing venv (be patient, it might take a few minutes) ..."
 
     mkdir -p "$INSTALLATION_DIRECTORY_PATH"
     mkdir -p "$XDG_CONFIG_DIRECTORY_PATH"
@@ -146,7 +146,7 @@ if [[ $INSTALL_VENV -eq 1 ]]; then
     $EXECUTABLE_FILE_PATH configuration -l "$LIBRARY_DIRECTORY_PATH" --defaults --orientation 180 -o -y
 
     deactivate
-    echo "[INFO] Installing venv ... done"
+    echo "[INFO] Installing venv (be patient, it might take a few minutes) ... done"
 fi
 
 # Install the systemd service
@@ -154,7 +154,6 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
     echo "[INFO] Installing systemd service ..."
 
     D="$SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH"
-
     echo "# This file is part of the mocassino project" > "$D"
     echo "" >> "$D"
     echo "[Unit]" >> "$D"
