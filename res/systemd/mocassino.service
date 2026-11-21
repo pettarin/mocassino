@@ -7,10 +7,9 @@ After=sound.target
 
 [Service]
 Type=simple
-# this assumes that mocassino was installed in a venv
-# located at $HOME/.config/mocassino/venv/
-# (%h is the home directory of the user running the service, resolved by systemd)
-ExecStart=%h/.config/mocassino/venv/bin/mocassino -v run -f
+# mocassino must be installed in a venv located at $HOME/.mocassino/venv/
+# (%h is the systemd placeholder for the home directory of the user running the service)
+ExecStart=%h/.mocassino/venv/bin/mocassino -v run -f
 Restart=on-failure
 RestartSec=5
 
