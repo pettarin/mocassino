@@ -143,7 +143,7 @@ if [[ $INSTALL_VENV -eq 1 ]]; then
     $EXECUTABLE_FILE_PATH --version
 
     # write the configuration
-    $EXECUTABLE_FILE_PATH configuration -l "$LIBRARY_DIRECTORY_PATH" --defaults --orientation 180 -o -y
+    $EXECUTABLE_FILE_PATH -l "$LIBRARY_DIRECTORY_PATH" configuration --defaults -o -y
 
     deactivate
     echo "[INFO] Installing venv (be patient, it might take a few minutes) ... done"
