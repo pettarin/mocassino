@@ -53,8 +53,8 @@ Usage: mocassino run [OPTIONS]
 Options:
   -b, --background / -f, --foreground
                                   Run detached from the terminal or attached
-                                  to it. If neither is given, as run.mode says
-                                  in the configuration.
+                                  to it (run.mode). If neither is given, as
+                                  the configuration says.
   --help                          Show this message and exit.
 ```
 

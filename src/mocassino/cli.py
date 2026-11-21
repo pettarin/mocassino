@@ -330,8 +330,8 @@ def main(
     "-b/-f",
     "--background/--foreground",
     default=None,
-    help="Run detached from the terminal or attached to it. "
-    "If neither is given, as run.mode says in the configuration.",
+    help="Run detached from the terminal or attached to it (run.mode). "
+    "If neither is given, as the configuration says.",
 )
 @click.pass_obj
 def run(options: GlobalOptions, background: bool | None) -> None:
