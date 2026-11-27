@@ -265,36 +265,37 @@ fi
 if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
     echo "[INFO] Installing systemd service ..."
 
-    D="$SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH"
-    echo "# This file is part of the mocassino project" > "$D"
-    echo "" >> "$D"
-    echo "[Unit]" >> "$D"
-    echo "Description=Lightweight audio player based on MOC for Raspberry Pi Zero 2 devices with Pimoroni Pirate Audio hats" >> "$D"
-    echo "Documentation=https://github.com/pettarin/mocassino" >> "$D"
-    echo "After=sound.target" >> "$D"
-    echo "" >> "$D"
-    echo "[Service]" >> "$D"
-    echo "Type=simple" >> "$D"
-    echo "# assume mocassino is installed in $VENV_DIRECTORY_PATH," >> "$D"
-    echo "# and $RUN_DIRECTORY_PATH exists, acting as the working directory" >> "$D"
-    echo "User=$RUN_AS_USER" >> "$D"
-    echo "Group=$RUN_AS_GROUP" >> "$D"
-    echo "Environment=LG_WD=$RUN_DIRECTORY_PATH" >> "$D"
-    echo "Environment=HOME=$RUN_DIRECTORY_PATH" >> "$D"
-    echo "Environment=XDG_CONFIG_HOME=$XDG_CONFIG_DIRECTORY_PATH" >> "$D"
-    echo "WorkingDirectory=$RUN_DIRECTORY_PATH" >> "$D"
-    echo "ReadWritePaths=$RUN_DIRECTORY_PATH" >> "$D"
-    echo "ExecStart=$EXECUTABLE_FILE_PATH $RUN_ARGUMENTS" >> "$D"
-    echo "Restart=on-failure" >> "$D"
-    echo "RestartSec=5" >> "$D"
-    echo "" >> "$D"
-    echo "# Security hardening" >> "$D"
-    echo "ProtectHome=yes" >> "$D"
-    echo "ProtectSystem=strict" >> "$D"
-    echo "PrivateTmp=yes" >> "$D"
-    echo "" >> "$D"
-    echo "[Install]" >> "$D"
-    echo "WantedBy=multi-user.target" >> "$D"
+    cat > "$SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH" <<EOF
+# This file is part of the mocassino project
+
+[Unit]
+Description=Lightweight audio player based on MOC for Raspberry Pi Zero 2 devices with Pimoroni Pirate Audio hats
+Documentation=https://github.com/pettarin/mocassino
+After=sound.target
+
+[Service]
+Type=simple
+# assume mocassino is installed in $VENV_DIRECTORY_PATH,
+# and $RUN_DIRECTORY_PATH exists, acting as the working directory
+User=$RUN_AS_USER
+Group=$RUN_AS_GROUP
+Environment=LG_WD=$RUN_DIRECTORY_PATH
+Environment=HOME=$RUN_DIRECTORY_PATH
+Environment=XDG_CONFIG_HOME=$XDG_CONFIG_DIRECTORY_PATH
+WorkingDirectory=$RUN_DIRECTORY_PATH
+ReadWritePaths=$RUN_DIRECTORY_PATH
+ExecStart=$EXECUTABLE_FILE_PATH $RUN_ARGUMENTS
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+ProtectHome=yes
+ProtectSystem=strict
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
 
     systemctl daemon-reload
     systemctl enable "$SERVICE_NAME"
