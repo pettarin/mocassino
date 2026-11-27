@@ -377,30 +377,88 @@ class TestBuildInformationMenu:
     """Tests for the build_information_menu function"""
 
     def test_items(self, system):
-        assert build_information_menu(system) == Menu(
-            title="About mocassino",
+        menu = build_information_menu(system)
+        assert menu.title == "About mocassino"
+        assert [item.label for item in menu.items] == [
+            f"mocassino {mocassino.__version__}",
+            "Host",
+            "OS",
+            "Python",
+        ]
+        assert menu.items[0] == MenuItem(label=f"mocassino {mocassino.__version__}")
+        assert [item.command for item in menu.items] == [None] * 4
+        assert [item.submenu().title for item in menu.items[1:]] == ["Host", "OS", "Python"]
+
+    def test_host(self, system):
+        assert build_information_menu(system).items[1].submenu() == Menu(
+            title="Host",
             items=(
                 MenuItem(label="Name: pirate"),
                 MenuItem(label="IP: 192.168.1.20"),
-                MenuItem(label="Versions"),
-                MenuItem(label=f" mocassino {mocassino.__version__}"),
-                MenuItem(label=f" python {platform.python_version()}"),
-                MenuItem(label=f" kernel {platform.release()}"),
             ),
         )
 
-    def test_kernel_release(self, mocker, system):
-        mocker.patch("mocassino.model.menu.platform.release", return_value="6.12.47+rpt-rpi-v8")
-        item = build_information_menu(system).items[5]
-        assert item == MenuItem(label=" kernel 6.12.47+rpt-rpi-v8")
+    def test_host_is_asked_when_its_menu_is_opened(self, system):
+        build_information_menu(system)
+        system.hostname.assert_not_called()
+        system.ip_address.assert_not_called()
 
-    def test_python_version(self, mocker, system):
-        mocker.patch("mocassino.model.menu.platform.python_version", return_value="3.13.1")
-        assert build_information_menu(system).items[4] == MenuItem(label=" python 3.13.1")
-
-    def test_no_ip_address(self, system):
+    def test_host_without_ip_address(self, system):
         system.ip_address.return_value = None
-        assert build_information_menu(system).items[1].label == "IP: not available"
+        host = build_information_menu(system).items[1].submenu()
+        assert host.items[1] == MenuItem(label="IP: not available")
+
+    def test_os(self, mocker, system):
+        mocker.patch("mocassino.model.menu.platform.machine", return_value="aarch64")
+        mocker.patch("mocassino.model.menu.platform.release", return_value="6.12.47+rpt-rpi-v8")
+        mocker.patch("mocassino.model.menu.platform.system", return_value="Linux")
+        assert build_information_menu(system).items[2].submenu() == Menu(
+            title="OS",
+            items=(
+                MenuItem(label="Kernel: 6.12.47+rpt-rpi-v8"),
+                MenuItem(label="Machine: aarch64"),
+                MenuItem(label="System: Linux"),
+            ),
+        )
+
+    def test_python(self, mocker, system):
+        mocker.patch("mocassino.model.menu.platform.python_version", return_value="3.13.1")
+        packages = [
+            mocker.Mock(version="6.0.2"),
+            mocker.Mock(version="13.0.0"),
+            mocker.Mock(version="8.1.7"),
+            mocker.Mock(version="1.0"),
+            mocker.Mock(version="12.0.0"),
+            mocker.Mock(version="2.2.0"),
+        ]
+        # A mock takes its name as an attribute, not as an argument;
+        # pillow is there twice, the first one being used, and a package has no name
+        for package, name in zip(
+            packages, ["PyYAML", "pillow", "click", None, "pillow", "gpiozero"], strict=True
+        ):
+            package.name = name
+        mocker.patch("mocassino.model.menu.distributions", return_value=packages)
+        assert build_information_menu(system).items[3].submenu() == Menu(
+            title="Python",
+            items=(
+                MenuItem(label="Python 3.13.1"),
+                MenuItem(label="click 8.1.7"),
+                MenuItem(label="gpiozero 2.2.0"),
+                MenuItem(label="pillow 13.0.0"),
+                MenuItem(label="PyYAML 6.0.2"),
+            ),
+        )
+
+    def test_python_packages_of_this_environment(self, system):
+        menu = build_information_menu(system).items[3].submenu()
+        labels = [item.label for item in menu.items]
+        assert labels[0] == f"Python {platform.python_version()}"
+        names = [label.split()[0].casefold() for label in labels[1:]]
+        assert names == sorted(names)
+        assert len(names) == len(set(names))
+        assert {"click", "mocassino", "pillow", "pytest"} <= set(names)
+        assert {item.command for item in menu.items} == {None}
+        assert {item.submenu for item in menu.items} == {None}
 
 
 class TestBuildLibraryDirectoryMenu:

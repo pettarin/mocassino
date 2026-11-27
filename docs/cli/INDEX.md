@@ -803,12 +803,16 @@ The top level menu has the following items:
   The display is turned off before the command is run,
   and turned on again if the command fails.
   With the simulator, the command is only logged, and never run.
-- `About mocassino`: show the name (`Name`) and the IP address (`IP`) of the host,
-  and, under `Versions`, the version of the service (e.g., `mocassino 0.0.7`),
-  the version of Python running it (e.g., `python 3.13.1`),
-  and the release of the kernel of the host, as `uname -r` prints it
-  (e.g., `kernel 6.12.47+rpt-rpi-v8`), each on its row;
-  if the host has no IP address, `IP: not available` is shown.
+- `About mocassino`: show the version of the service (e.g., `mocassino 0.0.7`),
+  followed by three menus about what it runs on. Their items only show information.
+  - `Host`: the name (`Name`) and the IP address (`IP`) of the host;
+    if the host has no IP address, `IP: not available` is shown.
+  - `OS`: the release of the kernel of the host (`Kernel`), as `uname -r` prints it
+    (e.g., `Kernel: 6.12.47+rpt-rpi-v8`), the type of the machine (e.g., `Machine: aarch64`),
+    and the name of the system (e.g., `System: Linux`).
+  - `Python`: the version of Python running the service (e.g., `Python 3.13.1`),
+    followed by the packages installed in its environment, each with its version
+    (e.g., `pillow 13.0.0`), in alphabetical order, ignoring the case.
 
 To leave the top level menu and go back to the playback, press the back button
 (`A`, with the default button map).

@@ -361,16 +361,39 @@ class TestController:
             controller.handle(event)
         assert state.current_menu.title == "About mocassino"
         assert [item.label for item in state.current_menu.items] == [
-            "Name: pirate",
-            "IP: 192.168.1.20",
-            "Versions",
-            f" mocassino {mocassino.__version__}",
-            f" python {platform.python_version()}",
-            f" kernel {platform.release()}",
+            f"mocassino {mocassino.__version__}",
+            "Host",
+            "OS",
+            "Python",
         ]
-        # Its items only show information: selecting one does nothing
+        # The version only shows information: selecting it does nothing
         controller.handle(B)
         assert [menu.title for menu in state.menus] == ["Menu", "About mocassino"]
+        # Down to the host, and open it
+        for event in (Y, B):
+            controller.handle(event)
+        assert [menu.title for menu in state.menus] == ["Menu", "About mocassino", "Host"]
+        assert [item.label for item in state.current_menu.items] == [
+            "Name: pirate",
+            "IP: 192.168.1.20",
+        ]
+        controller.handle(B)
+        assert state.current_menu.title == "Host"
+        # Back, down to the operating system, and open it; then the same for Python
+        for event in (A, Y, B):
+            controller.handle(event)
+        assert state.current_menu.title == "OS"
+        assert [item.label for item in state.current_menu.items] == [
+            f"Kernel: {platform.release()}",
+            f"Machine: {platform.machine()}",
+            f"System: {platform.system()}",
+        ]
+        for event in (A, Y, B):
+            controller.handle(event)
+        assert state.current_menu.title == "Python"
+        labels = [item.label for item in state.current_menu.items]
+        assert labels[0] == f"Python {platform.python_version()}"
+        assert any(label.startswith("mocassino ") for label in labels[1:])
         assert moc.mock_calls == []
         system.reboot.assert_not_called()
         system.restart_service.assert_not_called()

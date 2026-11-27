@@ -14,6 +14,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import partial
+from importlib.metadata import distributions
 from pathlib import Path
 
 from mocassino import __version__
@@ -158,6 +159,17 @@ def _build_choice_menu(
     )
 
 
+def _build_host_menu(system: System) -> Menu:
+    """Build the menu showing the name and the IP address of the host."""
+    return Menu(
+        title="Host",
+        items=(
+            MenuItem(label=f"Name: {system.hostname()}"),
+            MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
+        ),
+    )
+
+
 def _build_number_menu(
     title: str,
     choices: tuple[float, ...],
@@ -184,6 +196,49 @@ def _build_number_menu(
             for choice in choices
         ),
         selected_index=min(range(len(choices)), key=lambda index: abs(choices[index] - current)),
+    )
+
+
+def _build_os_menu() -> Menu:
+    """Build the menu showing the operating system of the host.
+
+    That is: the release of its kernel, as "uname -r" prints it; the type of the machine
+    (e.g., "aarch64"); and the name of the system (e.g., "Linux").
+    """
+    return Menu(
+        title="OS",
+        items=(
+            MenuItem(label=f"Kernel: {platform.release()}"),
+            MenuItem(label=f"Machine: {platform.machine()}"),
+            MenuItem(label=f"System: {platform.system()}"),
+        ),
+    )
+
+
+def _build_python_menu() -> Menu:
+    """Build the menu showing the version of Python running the service, and its packages.
+
+    The version of Python comes first; then the packages installed in its environment,
+    each with its version, sorted by name, ignoring the case.
+    A package found more than once is listed once, as the first one found,
+    which is the one Python uses; one without a name is skipped.
+    """
+    packages: dict[str, str] = {}
+    for distribution in distributions():
+        if distribution.name:
+            packages.setdefault(distribution.name, distribution.version)
+    return Menu(
+        title="Python",
+        items=(
+            MenuItem(label=f"Python {platform.python_version()}"),
+            *(
+                MenuItem(label=f"{name} {version}")
+                for name, version in sorted(
+                    packages.items(),
+                    key=lambda package: (package[0].casefold(), package[0]),
+                )
+            ),
+        ),
     )
 
 
@@ -445,21 +500,19 @@ def build_display_ui_elements_menu(settings: Settings) -> Menu:
 
 
 def build_information_menu(system: System) -> Menu:
-    """Build the menu showing the name and the IP address of the host, and the versions.
+    """Build the menu showing the version of the service, and leading to what it runs on.
 
-    The versions are that of the service, that of Python running it, and the release
-    of the kernel of the host (as "uname -r" prints it):
-    they follow a row saying so, and start with a space, as if indented under it.
+    That is: the host, with its name and its IP address; its operating system,
+    with the release of its kernel, its machine type, and its name;
+    and Python, with its version and its packages.
     """
     return Menu(
         title="About mocassino",
         items=(
-            MenuItem(label=f"Name: {system.hostname()}"),
-            MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
-            MenuItem(label="Versions"),
-            MenuItem(label=f" mocassino {__version__}"),
-            MenuItem(label=f" python {platform.python_version()}"),
-            MenuItem(label=f" kernel {platform.release()}"),
+            MenuItem(label=f"mocassino {__version__}"),
+            MenuItem(label="Host", submenu=partial(_build_host_menu, system)),
+            MenuItem(label="OS", submenu=_build_os_menu),
+            MenuItem(label="Python", submenu=_build_python_menu),
         ),
     )
 
