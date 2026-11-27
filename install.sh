@@ -12,7 +12,7 @@ SERVICE_NAME="mocassino"
 # Name of the PyPI package
 PYPI_PACKAGE_NAME="$SERVICE_NAME"
 
-# Library directory on target
+# Default values for the options of this installer script
 DEFAULT_ALSA_CARD_NUMBER="0"
 DEFAULT_DISPLAY_ORIENTATION="0"
 DEFAULT_LIBRARY_DIRECTORY_PATH="/"
@@ -29,21 +29,27 @@ PROJECT_DIRECTORY_PATH="$SCRIPT_DIRECTORY_PATH"
 
 # File and directory names
 ASOUNDRC_FILE_NAME=".asoundrc"
-VENV_NAME="venv"
-EXECUTABLE_FILE_NAME="mocassino"
 CONFIGURATION_FILE_NAME="configuration.yaml"
+EXECUTABLE_FILE_NAME="$SERVICE_NAME"
 SERVICE_SYSTEMD_UNIT_FILE_NAME="$SERVICE_NAME.service"
+VENV_NAME="venv"
 
-# Absolute paths
+# Absolute paths (note that order matters here)
 INSTALLATION_DIRECTORY_PATH="/opt/$SERVICE_NAME"
+
 RUN_DIRECTORY_PATH="$INSTALLATION_DIRECTORY_PATH/run"
+VENV_DIRECTORY_PATH="$INSTALLATION_DIRECTORY_PATH/$VENV_NAME"
+
 ASOUNDRC_FILE_PATH="$RUN_DIRECTORY_PATH/$ASOUNDRC_FILE_NAME"
 XDG_CONFIG_DIRECTORY_PATH="$RUN_DIRECTORY_PATH/.config"
+
 CONFIG_DIRECTORY_PATH="$XDG_CONFIG_DIRECTORY_PATH/$SERVICE_NAME"
+
 CONFIGURATION_FILE_PATH="$CONFIG_DIRECTORY_PATH/$CONFIGURATION_FILE_NAME"
-VENV_DIRECTORY_PATH="$INSTALLATION_DIRECTORY_PATH/$VENV_NAME"
+
 EXECUTABLE_FILE_PATH="$VENV_DIRECTORY_PATH/bin/$EXECUTABLE_FILE_NAME"
-SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH="/lib/systemd/system/$SERVICE_SYSTEMD_UNIT_FILE_NAME"
+
+SERVICE_SYSTEMD_UNIT_FILE_PATH="/lib/systemd/system/$SERVICE_SYSTEMD_UNIT_FILE_NAME"
 
 # Script logic starts here
 ALSA_CARD_NUMBER="$DEFAULT_ALSA_CARD_NUMBER"
@@ -191,9 +197,9 @@ if [[ $UNINSTALL -eq 1 ]]; then
     # stop, disable and remove systemd unit file
     systemctl stop "$SERVICE_NAME" 2>/dev/null || true
     systemctl disable "$SERVICE_NAME" 2>/dev/null || true
-    rm -f "$SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH"
+    rm -f "$SERVICE_SYSTEMD_UNIT_FILE_PATH"
     systemctl daemon-reload
-    echo "[INFO] Uninstalled $SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH"
+    echo "[INFO] Uninstalled $SERVICE_SYSTEMD_UNIT_FILE_PATH"
 
     # remove the venv directory
     rm -rf "$VENV_DIRECTORY_PATH"
@@ -285,7 +291,7 @@ fi
 if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
     echo "[INFO] Installing systemd service ..."
 
-    cat > "$SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH" <<EOF
+    cat > "$SERVICE_SYSTEMD_UNIT_FILE_PATH" <<EOF
 # This file is part of the mocassino project
 
 [Unit]
