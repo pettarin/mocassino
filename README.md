@@ -58,7 +58,7 @@ bash install.sh --help
 ```
 
 Then install the service, adding the relevant options as needed.
-This requires privilege elevation, for instace with `sudo`:
+This requires privilege elevation, for instance with `sudo`:
 
 ```bash
 # install the service with the default options
@@ -122,7 +122,7 @@ TODO add screenshots here
 The default actions for the four buttons of the hat are:
 
 | Button | Short Click  | Long/Hold Click |
-|--------|--------------------------------|
+|--------|--------------|-----------------|
 | `A`    | Play/pause   | Open the menu   |
 | `B`    | Next track   | Previous track  |
 | `X`    | Volume up    | Seek forward    |
