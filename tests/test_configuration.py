@@ -89,7 +89,7 @@ class TestConfiguration:
         )
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
-            reboot_command=("sudo", "reboot"),
+            reboot_command=("sudo", "systemctl", "reboot"),
             shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
 
@@ -145,7 +145,7 @@ class TestConfiguration:
             },
             "system": {
                 "mocp_file_path": "mocp",
-                "reboot_command": ["sudo", "reboot"],
+                "reboot_command": ["sudo", "systemctl", "reboot"],
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
             },
         }

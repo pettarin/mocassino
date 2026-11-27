@@ -15,4 +15,3 @@ logging.getLogger("mocassino").addHandler(logging.NullHandler())
 __version__ = "0.0.5"
 __author__ = "Alberto Pettarin"
 __email__ = "alberto@albertopettarin.it"
-

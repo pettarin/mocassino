@@ -1763,7 +1763,7 @@ class TestBuildApp:
         build_app(self.configuration(origin, target))
         system_class.assert_called_once_with(
             dry_run=dry_run,
-            reboot_command=("sudo", "reboot"),
+            reboot_command=("sudo", "systemctl", "reboot"),
             shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
 
