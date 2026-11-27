@@ -15,7 +15,7 @@ from mocassino.constants import Button, ButtonPress, Mode, RightTimerValue
 from mocassino.controller.actions import parse_button_map, resolve_button_map
 from mocassino.controller.events import ButtonEvent
 from mocassino.model.colors import parse_color
-from mocassino.model.menu import Menu
+from mocassino.model.menu import Menu, MenuCommand
 from mocassino.model.moc import MocState, MocStatus
 from mocassino.model.playlist import playlist_fraction
 from mocassino.model.state import AppState
@@ -128,7 +128,8 @@ class Renderer:
     def _draw_menu(self, draw: ImageDraw.ImageDraw, menu: Menu) -> None:
         """Draw a menu: its title, the items around the selected one, and a scrollbar.
 
-        On the right of its row, an item with a submenu has an arrow, an item standing for
+        On the right of its row, an item with a submenu, or opening the menus to choose
+        the music root directory, has an arrow, an item standing for
         a setting that is on or off has a square: solid if on, empty if off,
         and an item standing for a color has a square filled with it.
         """
@@ -158,7 +159,8 @@ class Renderer:
             elif item.command is None and item.submenu is None:
                 color = self._colors.muted
             label_width = right - 2 * MARGIN
-            if item.submenu is not None:
+            opens_menus = item.command is MenuCommand.CHOOSE_LIBRARY_DIRECTORY
+            if item.submenu is not None or opens_menus:
                 draw.text((right - MARGIN, middle), ">", anchor="rm", fill=color, font=font)
                 label_width -= 2 * MARGIN
             box_top = middle - MENU_CHECK_SIZE // 2

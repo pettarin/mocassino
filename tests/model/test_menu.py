@@ -4,6 +4,8 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
+from pathlib import Path
+
 import pytest
 
 from mocassino.constants import (
@@ -29,6 +31,7 @@ from mocassino.model.menu import (
     build_display_right_timer_value_menu,
     build_display_timeout_menu,
     build_display_ui_elements_menu,
+    build_library_directory_menu,
     build_library_menu,
     build_playback_menu,
     build_playback_seek_step_menu,
@@ -367,6 +370,60 @@ class TestBuildDisplayOrientationMenu:
         assert [item for item in menu.items if item.checked] == []
 
 
+class TestBuildLibraryDirectoryMenu:
+    """Tests for the build_library_directory_menu function"""
+
+    def test_directory(self, library):
+        root = library.directory_path
+        menu = build_library_directory_menu(root)
+        assert menu.title == "music"
+        assert [item.label for item in menu.items] == ["Use this folder", "Artist", "Empty"]
+        assert menu.items[0] == MenuItem(
+            label="Use this folder",
+            command=MenuCommand.SET_LIBRARY_DIRECTORY,
+            path=root,
+        )
+        assert menu.selected_index == 0
+
+    def test_directory_without_subdirectories(self, library):
+        empty = library.directory_path / "Empty"
+        assert build_library_directory_menu(empty) == Menu(
+            title="Empty",
+            items=(
+                MenuItem(
+                    label="Use this folder",
+                    command=MenuCommand.SET_LIBRARY_DIRECTORY,
+                    path=empty,
+                ),
+                MenuItem(label="(no folders)"),
+            ),
+        )
+
+    def test_root_of_the_host(self):
+        menu = build_library_directory_menu(Path("/"))
+        assert menu.title == "/"
+        assert menu.items[0].path == Path("/")
+
+    def test_selected_subdirectory(self, library):
+        root = library.directory_path
+        menu = build_library_directory_menu(root, root / "Empty")
+        assert menu.selected.label == "Empty"
+
+    def test_selected_subdirectory_not_listed(self, library):
+        root = library.directory_path
+        menu = build_library_directory_menu(root, root / "missing")
+        assert menu.selected.label == "Use this folder"
+
+    def test_subdirectories_are_built_when_opened(self, library):
+        root = library.directory_path
+        artist = build_library_directory_menu(root).items[1].submenu()
+        assert artist.title == "Artist"
+        assert [item.label for item in artist.items] == ["Use this folder", "Album"]
+        assert artist.items[0].path == root / "Artist"
+        assert artist.selected_index == 0
+        assert artist.items[1].submenu().items[0].path == root / "Artist" / "Album"
+
+
 class TestBuildLibraryMenu:
     """Tests for the build_library_menu function"""
 
@@ -441,14 +498,16 @@ class TestBuildRunMenu:
         menu = build_run_menu(Settings())
         assert menu.title == "Run"
         labels = ["MOC state on exit", "Refresh delay (s)", "Save state"]
-        assert [item.label for item in menu.items] == labels
-        assert [item.checked for item in menu.items] == [None] * 3
-        assert [item.command for item in menu.items] == [None] * 3
-        assert [item.submenu().title for item in menu.items] == labels
+        assert [item.label for item in menu.items] == ["Library directory", *labels]
+        assert [item.checked for item in menu.items] == [None] * 4
+        assert menu.items[0].command is MenuCommand.CHOOSE_LIBRARY_DIRECTORY
+        assert menu.items[0].submenu is None
+        assert [item.command for item in menu.items[1:]] == [None] * 3
+        assert [item.submenu().title for item in menu.items[1:]] == labels
 
     def test_moc_state_on_exit_submenu(self):
         settings = Settings()
-        item = build_run_menu(settings).items[0]
+        item = build_run_menu(settings).items[1]
         assert item.submenu().selected.label == "Do nothing"
         settings.run_moc_state_on_exit = MocStateOnExit.STOP
         assert item.submenu().selected.label == "Stop"
@@ -554,9 +613,9 @@ class TestBuildSettingsMenu:
         settings.playback_seek_step = 30
         assert playback.submenu().items[0].submenu().selected.label == "30"
         assert display.submenu().items[4].submenu().items[3].checked is True
-        assert run.submenu().items[0].submenu().selected.label == "Do nothing"
-        assert run.submenu().items[1].submenu().selected.label == "0.5"
-        assert run.submenu().items[2].submenu().items[0].checked is True
+        assert run.submenu().items[1].submenu().selected.label == "Do nothing"
+        assert run.submenu().items[2].submenu().selected.label == "0.5"
+        assert run.submenu().items[3].submenu().items[0].checked is True
         assert startup.submenu().items[2].submenu().selected.label == "Use saved"
         settings.show_side_icons = False
         settings.run_moc_state_on_exit = MocStateOnExit.STOP
@@ -564,9 +623,9 @@ class TestBuildSettingsMenu:
         settings.run_save_state_on_exit = False
         settings.startup_volume = StartupVolume.USE_DEFAULT
         assert display.submenu().items[4].submenu().items[3].checked is False
-        assert run.submenu().items[0].submenu().selected.label == "Stop"
-        assert run.submenu().items[1].submenu().selected.label == "2.0"
-        assert run.submenu().items[2].submenu().items[0].checked is False
+        assert run.submenu().items[1].submenu().selected.label == "Stop"
+        assert run.submenu().items[2].submenu().selected.label == "2.0"
+        assert run.submenu().items[3].submenu().items[0].checked is False
         assert startup.submenu().items[2].submenu().selected.label == "Use default"
 
     def test_other_items_are_not_checkable(self, library, system):

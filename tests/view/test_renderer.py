@@ -217,6 +217,16 @@ class TestRenderer:
         assert not has_content(image, (205, row_top(1), 231, row_top(2)))
         assert has_content(image, (205, row_top(2), 231, row_top(3)))
 
+    def test_menu_item_opening_the_library_directory_menus_has_an_arrow(self, renderer):
+        items = (
+            MenuItem(label="Command", command=MenuCommand.BACK),
+            MenuItem(label="Library directory", command=MenuCommand.CHOOSE_LIBRARY_DIRECTORY),
+            MenuItem(label="Command", command=MenuCommand.BACK),
+        )
+        image = renderer.render(AppState(menus=[Menu(title="Kinds", items=items)]))
+        assert has_content(image, (205, row_top(1), 231, row_top(2)))
+        assert not has_content(image, (205, row_top(2), 231, row_top(3)))
+
     @pytest.mark.parametrize("selected", [False, True])
     def test_menu_checkable_items(self, renderer, selected):
         items = (

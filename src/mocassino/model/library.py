@@ -29,6 +29,10 @@ class Library:
         """The music root directory."""
         return self._directory_path
 
+    @directory_path.setter
+    def directory_path(self, directory_path: Path) -> None:
+        self._directory_path = directory_path
+
     def list_entries(self, directory_path: Path | None = None) -> list[LibraryEntry]:
         """List the subdirectories and the audio files of a directory of the library.
 
@@ -68,3 +72,21 @@ class LibraryEntry:
     is_directory: bool
     name: str
     path: Path
+
+
+def list_directories(directory_path: Path) -> list[Path]:
+    """List the subdirectories of a directory, which can be anywhere on the host.
+
+    They are sorted by name, ignoring the case, and the hidden ones are skipped.
+    A directory that cannot be read is reported as having none.
+    """
+    try:
+        directories = [
+            child
+            for child in directory_path.iterdir()
+            if not child.name.startswith(".") and child.is_dir()
+        ]
+    except OSError as exc:
+        LOGGER.warning("Cannot list '%s': %s", directory_path, exc)
+        return []
+    return sorted(directories, key=lambda child: (child.name.casefold(), child.name))

@@ -727,8 +727,19 @@ The top level menu has the following items:
       in steps of 5; the current one has the solid square.
     - `Volume step (%)` (`playback.volume_step`): a menu with the choices
       `1`, `2`, `4`, `5`, and `10`.
-  - `Run`: what is done to MOC on exit, how long the main loop waits before each refresh,
-    and when the state is saved.
+  - `Run`: the music root directory, what is done to MOC on exit,
+    how long the main loop waits before each refresh, and when the state is saved.
+    - `Library directory` (`library.directory_path`): choose the music root directory
+      among the directories of the host.
+      A menu is shown for the current music root directory, with `Use this folder` followed by
+      its subdirectories (or by `(no folders)`, if it has none); the hidden ones are not listed.
+      Select a subdirectory to open it, or go back one level to go up to the parent directory,
+      up to the root of the host (`/`), and then back to the `Run` menu.
+      `Use this folder` makes the directory being shown the music root directory,
+      without asking for confirmation: the `Library` menu shows it at once,
+      what is being played is left as it is, and the `Run` menu is shown again.
+      If the service is started with `-l / --library-directory-path`,
+      that option still takes precedence the next time the service starts.
     - `MOC state on exit` (`run.moc_state_on_exit`): a menu with the four choices
       `Do nothing`, `Pause`, `Quit`, and `Stop`; the current one has the solid square.
       The choice applies when the service exits, after its state has been saved.

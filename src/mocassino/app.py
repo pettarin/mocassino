@@ -461,6 +461,20 @@ def _reset_all_settings(
     return _build_settings(defaults)
 
 
+def _save_library_directory(configuration_file_path: Path | None, directory_path: Path) -> None:
+    """Write the music root directory changed from the menus to the configuration file.
+
+    An error is logged, not raised: the change still applies until the service stops.
+    """
+    updates = {"library": {"directory_path": str(directory_path)}}
+    try:
+        path = update_configuration_file(configuration_file_path, updates)
+    except ConfigurationError as exc:
+        LOGGER.error("Cannot save the music root directory: %s", exc)
+    else:
+        LOGGER.info("Music root directory saved to '%s'", path)
+
+
 def _save_settings(configuration_file_path: Path | None, settings: Settings) -> None:
     """Write the settings changed from the menus to the configuration file.
 
@@ -573,6 +587,7 @@ def build_app(
         system,
         button_map=configuration.buttons.button_map,
         reset_all_settings=partial(_reset_all_settings, configuration, configuration_file_path),
+        save_library_directory=partial(_save_library_directory, configuration_file_path),
         save_settings=partial(_save_settings, configuration_file_path),
         switch_display=partial(_switch_display, display),
     )

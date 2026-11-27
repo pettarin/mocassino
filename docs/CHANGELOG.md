@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- The `Library directory` item in the `Settings > Run` menu
 - The `Restart service` item in the `System` menu
 
 ### Changed

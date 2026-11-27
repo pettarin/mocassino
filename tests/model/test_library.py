@@ -6,7 +6,7 @@
 
 import pytest
 
-from mocassino.model.library import Library, LibraryEntry
+from mocassino.model.library import Library, LibraryEntry, list_directories
 
 
 @pytest.fixture
@@ -27,6 +27,14 @@ class TestLibrary:
 
     def test_directory_path(self, root):
         assert Library(root).directory_path == root
+
+    def test_directory_path_is_changed(self, root):
+        library = Library(root)
+        library.directory_path = root / "beta"
+        assert library.directory_path == root / "beta"
+        assert library.list_entries() == [
+            LibraryEntry(is_directory=True, name="Album", path=root / "beta" / "Album"),
+        ]
 
     def test_list_entries_of_empty_directory(self, root):
         assert Library(root).list_entries(root / "Alpha") == []
@@ -53,3 +61,20 @@ class TestLibrary:
     def test_list_entries_outside_root(self, root):
         with pytest.raises(ValueError, match="is outside"):
             Library(root).list_entries(root.parent)
+
+
+class TestListDirectories:
+    """Tests for the list_directories function"""
+
+    def test_directories_only_sorted_and_not_hidden(self, root):
+        assert list_directories(root) == [root / "Alpha", root / "beta"]
+
+    def test_directory_outside_the_library(self, root):
+        assert list_directories(root.parent) == [root]
+
+    def test_directory_without_subdirectories(self, root):
+        assert list_directories(root / "beta" / "Album") == []
+
+    def test_missing_directory(self, root, caplog):
+        assert list_directories(root / "missing") == []
+        assert "Cannot list" in caplog.text

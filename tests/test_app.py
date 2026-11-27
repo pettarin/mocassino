@@ -55,6 +55,17 @@ from mocassino.view.renderer import Renderer
 from tests.model.fake_moc import FakeMoc
 
 PLAYING = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Title")
+# From playback mode: open the menu, go down to Settings, open it, go down twice to Run,
+# open it, and select Library directory
+CHANGE_LIBRARY_DIRECTORY = (
+    ButtonEvent(Button.A, ButtonPress.LONG),
+    ButtonEvent(Button.Y),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.Y),
+    ButtonEvent(Button.Y),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.B),
+)
 # From playback mode: open the menu, go up to System, open it, go up three times
 # to Restart service, open it, go down to Restart now, and select it
 RESTART_SERVICE = (
@@ -899,6 +910,45 @@ class TestBuildApp:
         )
         assert build_app(configuration)._state.settings.show_side_icons is False
 
+    def test_library_directory_is_changed_and_saved(self, tmp_path):
+        music = tmp_path / "music"
+        (music / "Album").mkdir(parents=True)
+        path = tmp_path / "custom.yaml"
+        path.write_text(f"library:\n  directory_path: {music}\n", encoding="utf-8")
+        configuration = load_configuration(
+            path,
+            {"buttons": {"origin": "none"}, "display": {"target": "none"}},
+        )
+        app = build_app(configuration, path)
+        for event in CHANGE_LIBRARY_DIRECTORY:
+            app._controller.handle(event)
+        assert app._state.current_menu.title == "music"
+        # Down to the album, open it, and use it
+        for button in (Button.Y, Button.B, Button.B):
+            app._controller.handle(ButtonEvent(button))
+        assert app._state.current_menu.title == "Run"
+        assert (
+            path.read_text(encoding="utf-8") == f"library:\n  directory_path: {music / 'Album'}\n"
+        )
+        assert load_configuration(path).library.directory_path == music / "Album"
+
+    def test_library_directory_cannot_be_saved(self, tmp_path, caplog):
+        blocker = tmp_path / "blocker"
+        blocker.touch()
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"target": "none"},
+                "library": {"directory_path": str(tmp_path)},
+            }
+        )
+        app = build_app(configuration, blocker / "configuration.yaml")
+        with caplog.at_level(logging.ERROR):
+            for event in (*CHANGE_LIBRARY_DIRECTORY, ButtonEvent(Button.B)):
+                app._controller.handle(event)
+        assert "Cannot save the music root directory: Cannot write" in caplog.text
+        assert app._state.current_menu.title == "Run"
+
     def test_settings_are_saved(self, tmp_path):
         path = tmp_path / "custom.yaml"
         path.write_text("playback:\n  volume_default: 30\n", encoding="utf-8")
@@ -1176,6 +1226,7 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
@@ -1205,6 +1256,7 @@ class TestBuildApp:
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
+            ButtonEvent(Button.Y),
             ButtonEvent(Button.B),
             ButtonEvent(Button.Y),
             ButtonEvent(Button.Y),

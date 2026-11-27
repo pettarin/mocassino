@@ -199,7 +199,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, Y, B, Y, B):
+        for event in (A_LONG, Y, B, Y, Y, B, Y, Y, B):
             controller.handle(event)
         titles = ["Menu", "Settings", "Run", "Refresh delay (s)"]
         assert [menu.title for menu in state.menus] == titles
@@ -222,7 +222,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, Y, B, B):
+        for event in (A_LONG, Y, B, Y, Y, B, Y, B):
             controller.handle(event)
         titles = ["Menu", "Settings", "Run", "MOC state on exit"]
         assert [menu.title for menu in state.menus] == titles
@@ -286,6 +286,71 @@ class TestController:
         reset_all_settings.assert_not_called()
         assert state.settings.show_volume_bar is False
         assert [menu.title for menu in state.menus] == ["Menu", "Settings"]
+
+    def test_menu_select_change_library_directory(self, mocker, state, moc, library, system):
+        save_library_directory = mocker.Mock()
+        controller = Controller(
+            state,
+            moc,
+            library,
+            system,
+            DEFAULT_BUTTON_MAP,
+            save_library_directory=save_library_directory,
+        )
+        root = library.directory_path
+        for event in (A_LONG, Y, B, Y, Y, B):
+            controller.handle(event)
+        assert state.current_menu.selected.label == "Library directory"
+        controller.handle(B)
+        # One menu for each directory, from the root of the host to the music root directory
+        titles = [menu.title for menu in state.menus]
+        assert titles[:4] == ["Menu", "Settings", "Run", "/"]
+        assert titles[-2:] == [root.parent.name, "music"]
+        assert len(titles) == 3 + len(root.parts)
+        assert [item.label for item in state.current_menu.items] == ["Use this folder", "Album"]
+        assert state.current_menu.selected.label == "Use this folder"
+        # Down to the album, and use it
+        for event in (Y, B):
+            controller.handle(event)
+        assert state.current_menu.title == "Album"
+        assert [item.label for item in state.current_menu.items] == [
+            "Use this folder",
+            "(no folders)",
+        ]
+        save_library_directory.assert_not_called()
+        assert library.directory_path == root
+        controller.handle(B)
+        assert library.directory_path == root / "Album"
+        save_library_directory.assert_called_once_with(root / "Album")
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Run"]
+        assert state.current_menu.selected.label == "Library directory"
+        moc.play.assert_not_called()
+        moc.stop.assert_not_called()
+
+    def test_menu_select_change_library_directory_to_the_parent(self, controller, state, library):
+        root = library.directory_path
+        for event in (A_LONG, Y, B, Y, Y, B, B, A):
+            controller.handle(event)
+        # Going back shows the parent directory, with the music root directory selected
+        assert state.current_menu.title == root.parent.name
+        assert state.current_menu.selected.label == "music"
+        for event in (X, B):
+            controller.handle(event)
+        assert library.directory_path == root.parent
+        assert [menu.title for menu in state.menus] == ["Menu", "Settings", "Run"]
+        # The library menu shows the new music root directory
+        for event in (A, A, X, B):
+            controller.handle(event)
+        assert state.current_menu.title == "Library"
+        assert [item.label for item in state.current_menu.items] == ["Play this folder", "music"]
+
+    def test_menu_select_change_library_directory_without_path(self, controller, state, library):
+        root = library.directory_path
+        item = MenuItem(label="Use this folder", command=MenuCommand.SET_LIBRARY_DIRECTORY)
+        open_single_item_menu(state, item)
+        controller.handle(B)
+        assert library.directory_path == root
+        assert state.current_menu.title == "Above"
 
     def test_menu_select_reboot(self, controller, state, system):
         for event in (A_LONG, Y, Y, B, X, X):
@@ -507,7 +572,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, Y, B, Y, Y, B, *[Y] * moves):
+        for event in (A_LONG, Y, B, Y, Y, B, Y, Y, Y, B, *[Y] * moves):
             controller.handle(event)
         assert state.current_menu.title == "Save state"
         assert state.current_menu.selected.label == label
@@ -532,7 +597,7 @@ class TestController:
             DEFAULT_BUTTON_MAP,
             save_settings=save_settings,
         )
-        for event in (A_LONG, Y, B, Y, Y, B, Y, Y, B, Y):
+        for event in (A_LONG, Y, B, Y, Y, B, Y, Y, Y, B, Y):
             controller.handle(event)
         assert state.current_menu.title == "Save state"
         assert state.current_menu.selected.label == "On refresh"

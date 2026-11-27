@@ -7,6 +7,7 @@
 import logging
 from collections.abc import Callable, Mapping
 from functools import partial
+from pathlib import Path
 
 from mocassino.constants import (
     Action,
@@ -30,6 +31,7 @@ from mocassino.model.menu import (
     build_display_right_timer_value_menu,
     build_display_timeout_menu,
     build_display_ui_elements_menu,
+    build_library_directory_menu,
     build_library_menu,
     build_playback_seek_step_menu,
     build_playback_volume_default_menu,
@@ -174,6 +176,7 @@ class Controller:
         system: System,
         button_map: Mapping[str, Mapping[str, str]],
         reset_all_settings: Callable[[], Settings] | None = None,
+        save_library_directory: Callable[[Path], None] | None = None,
         save_settings: Callable[[Settings], None] | None = None,
         switch_display: Callable[[bool], None] | None = None,
     ) -> None:
@@ -183,6 +186,9 @@ class Controller:
         :param reset_all_settings: called to make the default settings permanent,
                                returning them; without it, the defaults are the
                                ones of the Settings class, and they are not permanent
+        :param save_library_directory: called with the music root directory when it is
+                                       changed from the settings menu, to make
+                                       the change permanent
         :param save_settings: called with the settings when one of them is changed
                               from the settings menu, to make the change permanent
         :param switch_display: called to turn the display off (False) before the host
@@ -205,8 +211,12 @@ class Controller:
             Action.VOLUME_UP: self._volume_up,
         }
         self._library = library
+        # How many menus were shown when the menus to choose the music root directory
+        # were opened: those above are closed once it is chosen
+        self._library_directory_menus_base = 0
         self._moc = moc
         self._reset_all_settings_callback = reset_all_settings
+        self._save_library_directory = save_library_directory
         self._save_settings = save_settings
         self._state = state
         self._switch_display = switch_display
@@ -215,6 +225,19 @@ class Controller:
     def _change_volume(self, delta: int) -> None:
         """Change the volume by the given amount."""
         self._moc.set_volume(self._state.change_volume(delta))
+
+    def _choose_library_directory(self) -> None:
+        """Show the menus to choose the music root directory, starting from the current one.
+
+        A menu is opened for each directory from the root of the host down to
+        the music root directory, each with the next directory selected:
+        going back one level then goes up to the parent directory.
+        """
+        self._library_directory_menus_base = len(self._state.menus)
+        directory_path = self._library.directory_path.absolute()
+        paths = [*reversed(directory_path.parents), directory_path]
+        for path, selected_path in zip(paths, [*paths[1:], None], strict=True):
+            self._state.open_menu(build_library_directory_menu(path, selected_path))
 
     def _halt(self, halt: Callable[[], None]) -> None:
         """Reboot or shut down the host, with the display turned off.
@@ -256,6 +279,8 @@ class Controller:
             self._state.open_menu(item.submenu())
         elif item.command is MenuCommand.BACK:
             self._state.pop_menu()
+        elif item.command is MenuCommand.CHOOSE_LIBRARY_DIRECTORY:
+            self._choose_library_directory()
         elif item.command is MenuCommand.CONFIRM_RUN_SAVE_STATE_ON_REFRESH:
             self._state.pop_menu()
             self._switch(MenuCommand.TOGGLE_RUN_SAVE_STATE_ON_REFRESH, True)
@@ -279,6 +304,8 @@ class Controller:
         elif item.command is MenuCommand.RESTART_SERVICE:
             self._state.close_menus()
             self._system.restart_service()
+        elif item.command is MenuCommand.SET_LIBRARY_DIRECTORY and item.path is not None:
+            self._set_library_directory(item.path)
         elif item.command is MenuCommand.SHUTDOWN:
             self._halt(self._system.shutdown)
         elif item.command in TOGGLES:
@@ -344,6 +371,19 @@ class Controller:
     def _seek_forward(self) -> None:
         """Seek forward in the current track."""
         self._moc.seek(self._state.settings.playback_seek_step)
+
+    def _set_library_directory(self, directory_path: Path) -> None:
+        """Use the directory as the music root directory, at once, and close its menus.
+
+        The menus opened to choose the directory are closed, going back to the one
+        they were opened from; what is being played is left as it is.
+        The change is saved, as any change of the settings.
+        """
+        self._library.directory_path = directory_path
+        del self._state.menus[self._library_directory_menus_base :]
+        LOGGER.info("The music root directory is now '%s'", directory_path)
+        if self._save_library_directory is not None:
+            self._save_library_directory(directory_path)
 
     def _switch(self, command: MenuCommand, on: bool) -> None:
         """Turn on or off the setting of a toggling command, and show its menu again.

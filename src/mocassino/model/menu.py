@@ -28,7 +28,7 @@ from mocassino.constants import (
     StartupVolume,
 )
 from mocassino.model.colors import COLOR_NAMES, COLOR_ROLES, color_name
-from mocassino.model.library import Library
+from mocassino.model.library import Library, list_directories
 from mocassino.model.settings import Settings
 from mocassino.model.system import System
 
@@ -67,6 +67,7 @@ class MenuCommand(StrEnum):
     """What the controller is asked to do when an item is selected."""
 
     BACK = "back"
+    CHOOSE_LIBRARY_DIRECTORY = "choose_library_directory"
     CONFIRM_RUN_SAVE_STATE_ON_REFRESH = "confirm_run_save_state_on_refresh"
     PLAY = "play"
     REBOOT = "reboot"
@@ -81,6 +82,7 @@ class MenuCommand(StrEnum):
     SET_DISPLAY_COLORS_TRACK = "set_display_colors_track"
     SET_DISPLAY_ORIENTATION = "set_display_orientation"
     SET_DISPLAY_TIMEOUT = "set_display_timeout"
+    SET_LIBRARY_DIRECTORY = "set_library_directory"
     SET_PLAYBACK_SEEK_STEP = "set_playback_seek_step"
     SET_PLAYBACK_VOLUME_DEFAULT = "set_playback_volume_default"
     SET_PLAYBACK_VOLUME_STEP = "set_playback_volume_step"
@@ -112,7 +114,8 @@ class MenuItem:
     An item standing for a setting that is either on or off says which, as checked;
     the other items leave it to None.
     An item standing for a color has it, as a name or an HTML code, to show it.
-    The path is the file or directory to play, for the PLAY command.
+    The path is the file or directory to play, for the PLAY command,
+    or the directory to use as the music root directory, for the SET_LIBRARY_DIRECTORY command.
     The value is what a setting is set to, for the commands setting one.
     The submenu is a function, so that it is built only when it is opened.
     """
@@ -439,6 +442,38 @@ def build_display_ui_elements_menu(settings: Settings) -> Menu:
     )
 
 
+def build_library_directory_menu(directory_path: Path, selected_path: Path | None = None) -> Menu:
+    """Build the menu of a directory of the host, to choose the music root directory.
+
+    The directory can be chosen, or one of its subdirectories can be opened.
+
+    :param directory_path: the directory, which can be anywhere on the host
+    :param selected_path: the subdirectory to select, if it is listed;
+                          otherwise, the first item is selected
+    """
+    directories = list_directories(directory_path)
+    items = [
+        MenuItem(
+            label="Use this folder",
+            command=MenuCommand.SET_LIBRARY_DIRECTORY,
+            path=directory_path,
+        )
+    ]
+    if not directories:
+        items.append(MenuItem(label="(no folders)"))
+    for directory in directories:
+        submenu = partial(build_library_directory_menu, directory)
+        items.append(MenuItem(label=directory.name, submenu=submenu))
+    selected_index = 0
+    if selected_path in directories:
+        selected_index = directories.index(selected_path) + 1
+    return Menu(
+        title=directory_path.name or str(directory_path),
+        items=tuple(items),
+        selected_index=selected_index,
+    )
+
+
 def build_library_menu(library: Library, directory_path: Path | None = None) -> Menu:
     """Build the menu of a directory of the library.
 
@@ -541,12 +576,13 @@ def build_root_menu(library: Library, system: System, settings: Settings) -> Men
 def build_run_menu(settings: Settings) -> Menu:
     """Build the menu leading to the settings of how the service is run.
 
-    That is: what is done to MOC on exit, how long the main loop waits before each refresh,
-    and when the state is saved.
+    That is: the music root directory, what is done to MOC on exit,
+    how long the main loop waits before each refresh, and when the state is saved.
     """
     return Menu(
         title="Run",
         items=(
+            MenuItem(label="Library directory", command=MenuCommand.CHOOSE_LIBRARY_DIRECTORY),
             MenuItem(
                 label="MOC state on exit",
                 submenu=partial(build_run_moc_state_on_exit_menu, settings),
