@@ -276,6 +276,9 @@ class Controller:
             self._reset_all_colors()
         elif item.command is MenuCommand.RESET_ALL_SETTINGS:
             self._reset_all_settings()
+        elif item.command is MenuCommand.RESTART_SERVICE:
+            self._state.close_menus()
+            self._system.restart_service()
         elif item.command is MenuCommand.SHUTDOWN:
             self._halt(self._system.shutdown)
         elif item.command in TOGGLES:

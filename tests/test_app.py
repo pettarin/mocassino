@@ -55,6 +55,19 @@ from mocassino.view.renderer import Renderer
 from tests.model.fake_moc import FakeMoc
 
 PLAYING = MocStatus(file_path="/music/a.flac", state=MocState.PLAY, title="Title")
+# From playback mode: open the menu, go up to System, open it, go up three times
+# to Restart service, open it, go down to Restart now, and select it
+RESTART_SERVICE = (
+    ButtonEvent(Button.A, ButtonPress.LONG),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.X),
+    ButtonEvent(Button.B),
+    ButtonEvent(Button.Y),
+    ButtonEvent(Button.B),
+)
 # From playback mode: open the menu, go up to System, open it, go up to Shut down,
 # open it, go down to Shut down now, and select it
 SHUT_DOWN = (
@@ -1764,6 +1777,7 @@ class TestBuildApp:
         system_class.assert_called_once_with(
             dry_run=dry_run,
             reboot_command=("sudo", "systemctl", "reboot"),
+            restart_service_command=("sudo", "systemctl", "restart", "mocassino.service"),
             shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
 
@@ -1794,6 +1808,36 @@ class TestBuildApp:
             app._controller.handle(event)
         assert run.call_args.args[0] == ["systemctl", "reboot"]
         assert app._display.is_on is False
+
+    def test_restart_service_with_the_simulator_runs_no_command(self, mocker, caplog):
+        run = mocker.patch("mocassino.model.system.subprocess.run")
+        app = build_app(self.configuration("simulator", "simulator"))
+        with caplog.at_level(logging.WARNING):
+            for event in RESTART_SERVICE:
+                app._controller.handle(event)
+        run.assert_not_called()
+        assert "Not restarting the service (dry run)" in caplog.text
+        assert app._state.shutting_down is False
+        assert app._display._is_on is True
+
+    def test_restart_service_without_the_simulator_runs_the_command(self, mocker):
+        run = mocker.patch(
+            "mocassino.model.system.subprocess.run",
+            return_value=subprocess.CompletedProcess([], 0, stdout="", stderr=""),
+        )
+        configuration = load_configuration(
+            overrides={
+                "buttons": {"origin": "none"},
+                "display": {"target": "none"},
+                "system": {"restart_service_command": "systemctl restart player.service"},
+            }
+        )
+        app = build_app(configuration)
+        for event in RESTART_SERVICE:
+            app._controller.handle(event)
+        assert run.call_args.args[0] == ["systemctl", "restart", "player.service"]
+        assert app._display.is_on is True
+        assert app._state.shutting_down is False
 
     def test_shutdown_with_the_simulator_runs_no_command(self, mocker):
         run = mocker.patch("mocassino.model.system.subprocess.run")

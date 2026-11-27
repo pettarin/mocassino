@@ -96,4 +96,10 @@ DEFAULT_STARTUP_VOLUME: str = StartupVolume.USE_SAVED.value
 DEFAULT_STATE_FILE_PATH: Path = Path("~/.config/mocassino/state.yaml")
 DEFAULT_SYSTEM_MOCP_FILE_PATH: str = "mocp"
 DEFAULT_SYSTEM_REBOOT_COMMAND: tuple[str, ...] = ("sudo", "systemctl", "reboot")
+DEFAULT_SYSTEM_RESTART_SERVICE_COMMAND: tuple[str, ...] = (
+    "sudo",
+    "systemctl",
+    "restart",
+    "mocassino.service",
+)
 DEFAULT_SYSTEM_SHUTDOWN_COMMAND: tuple[str, ...] = ("sudo", "shutdown", "-h", "now")

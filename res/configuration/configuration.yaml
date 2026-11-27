@@ -63,7 +63,13 @@ system:
   mocp_file_path: mocp
   reboot_command:
   - sudo
+  - systemctl
   - reboot
+  restart_service_command:
+  - sudo
+  - systemctl
+  - restart
+  - mocassino.service
   shutdown_command:
   - sudo
   - shutdown

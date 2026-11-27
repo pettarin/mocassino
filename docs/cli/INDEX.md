@@ -149,6 +149,8 @@ With the simulator, `Reboot now` and `Shut down now` in the `System` menu never 
 so that the development machine is not rebooted or shut down by mistake:
 the command is only logged, and the window goes dark as the display would,
 until the window is closed.
+Likewise, `Restart now` never runs `system.restart_service_command`:
+the command is only logged, with a warning, and nothing else happens.
 
 The simulator requires Tk (the `tkinter` module of the Python standard library),
 which is only loaded when the simulator is used.
@@ -295,7 +297,13 @@ system:
   mocp_file_path: mocp
   reboot_command:
   - sudo
+  - systemctl
   - reboot
+  restart_service_command:
+  - sudo
+  - systemctl
+  - restart
+  - mocassino.service
   shutdown_command:
   - sudo
   - shutdown
@@ -367,6 +375,7 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
 | `system.reboot_command` | `sudo systemctl reboot` | The command rebooting the host, as a string or as a list; it is never run when the simulator is used |
+| `system.restart_service_command` | `sudo systemctl restart mocassino.service` | The command restarting the service, as a string or as a list; it is never run when the simulator is used |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
 
 > [!NOTE]
@@ -756,7 +765,12 @@ The top level menu has the following items:
     All the values are reset, not only those of the `Settings` menu
     (e.g., `library.directory_path`, `system.reboot_command`, and `system.shutdown_command` too),
     except that the simulator is kept for the buttons and for the display, if it is in use.
-- `System`: show the name and the IP address of the host, `Reboot`, and `Shut down`.
+- `System`: show the name and the IP address of the host,
+  `Restart service`, `Reboot`, and `Shut down`.
+  `Restart service` asks for confirmation before running `system.restart_service_command`,
+  which restarts the service (by default, the `mocassino.service` unit of `systemd`):
+  the service exits as when it is stopped, saving the state if the settings say so.
+  If the command fails, the error is logged, and the player carries on.
   `Reboot` and `Shut down` ask for confirmation
   before running `system.reboot_command` and `system.shutdown_command`, respectively.
   The display is turned off before the command is run,

@@ -11,6 +11,14 @@ All notable changes to this project will be documented in this file.
 
 ## [0.0.6] - To be released
 
+### Added
+
+- The `Restart service` item in the `System` menu
+
+### Changed
+
+- Reboot command in the example configuration file and in the documentation
+
 
 ## [0.0.5] - 2026-11-27
 

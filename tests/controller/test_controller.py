@@ -314,6 +314,43 @@ class TestController:
         assert [call.args for call in calls.switch_display.call_args_list] == [(False,), (True,)]
         assert state.shutting_down is False
 
+    def test_menu_select_restart_service(self, mocker, state, moc, library, system):
+        switch_display = mocker.Mock()
+        controller = Controller(
+            state, moc, library, system, DEFAULT_BUTTON_MAP, switch_display=switch_display
+        )
+        for event in (A_LONG, Y, Y, B, X, X, X):
+            controller.handle(event)
+        assert state.current_menu.selected.label == "Restart service"
+        controller.handle(B)
+        assert state.current_menu.title == "Restart service?"
+        assert state.current_menu.selected.label == "Cancel"
+        system.restart_service.assert_not_called()
+        controller.handle(Y)
+        controller.handle(B)
+        system.restart_service.assert_called_once_with()
+        system.reboot.assert_not_called()
+        system.shutdown.assert_not_called()
+        switch_display.assert_not_called()
+        assert state.mode == Mode.PLAYBACK
+        assert state.shutting_down is False
+
+    def test_menu_select_restart_service_cancelled(self, controller, state, system):
+        for event in (A_LONG, Y, Y, B, X, X, X, B, B):
+            controller.handle(event)
+        system.restart_service.assert_not_called()
+        assert state.current_menu.title == "System"
+
+    def test_menu_select_restart_service_that_fails(self, controller, state, system, caplog):
+        system.restart_service.side_effect = SystemShutdownError("denied")
+        with caplog.at_level(logging.ERROR):
+            for event in (A_LONG, Y, Y, B, X, X, X, B, Y, B):
+                controller.handle(event)
+        system.restart_service.assert_called_once_with()
+        assert "denied" in caplog.text
+        assert state.mode == Mode.PLAYBACK
+        assert state.shutting_down is False
+
     def test_menu_select_shutdown(self, controller, state, system):
         controller.handle(A_LONG)
         controller.handle(Y)

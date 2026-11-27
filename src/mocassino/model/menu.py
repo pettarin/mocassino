@@ -72,6 +72,7 @@ class MenuCommand(StrEnum):
     REBOOT = "reboot"
     RESET_ALL_COLORS = "reset_all_colors"
     RESET_ALL_SETTINGS = "reset_all_settings"
+    RESTART_SERVICE = "restart_service"
     SET_DISPLAY_BRIGHTNESS = "set_display_brightness"
     SET_DISPLAY_COLORS_ACCENTED = "set_display_colors_accented"
     SET_DISPLAY_COLORS_BACKGROUND = "set_display_colors_background"
@@ -210,6 +211,17 @@ def _build_reset_all_settings_menu() -> Menu:
         items=(
             MenuItem(label="Cancel", command=MenuCommand.BACK),
             MenuItem(label="Reset now", command=MenuCommand.RESET_ALL_SETTINGS),
+        ),
+    )
+
+
+def _build_restart_service_menu() -> Menu:
+    """Build the menu asking to confirm the restart of the service; the default is to cancel."""
+    return Menu(
+        title="Restart service?",
+        items=(
+            MenuItem(label="Cancel", command=MenuCommand.BACK),
+            MenuItem(label="Restart now", command=MenuCommand.RESTART_SERVICE),
         ),
     )
 
@@ -687,13 +699,14 @@ def build_startup_volume_menu(settings: Settings) -> Menu:
 def build_system_menu(system: System) -> Menu:
     """Build the menu showing the name and the IP address of the host.
 
-    It also reboots or shuts down the host, after a confirmation.
+    It also restarts the service, and reboots or shuts down the host, after a confirmation.
     """
     return Menu(
         title="System",
         items=(
             MenuItem(label=f"Name: {system.hostname()}"),
             MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
+            MenuItem(label="Restart service", submenu=_build_restart_service_menu),
             MenuItem(label="Reboot", submenu=_build_reboot_menu),
             MenuItem(label="Shut down", submenu=_build_shutdown_menu),
         ),

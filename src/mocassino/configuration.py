@@ -67,6 +67,7 @@ from mocassino.defaults import (
     DEFAULT_STARTUP_VOLUME,
     DEFAULT_SYSTEM_MOCP_FILE_PATH,
     DEFAULT_SYSTEM_REBOOT_COMMAND,
+    DEFAULT_SYSTEM_RESTART_SERVICE_COMMAND,
     DEFAULT_SYSTEM_SHUTDOWN_COMMAND,
 )
 from mocassino.model.colors import parse_color
@@ -212,6 +213,7 @@ class SystemConfiguration:
 
     mocp_file_path: str = DEFAULT_SYSTEM_MOCP_FILE_PATH
     reboot_command: tuple[str, ...] = DEFAULT_SYSTEM_REBOOT_COMMAND
+    restart_service_command: tuple[str, ...] = DEFAULT_SYSTEM_RESTART_SERVICE_COMMAND
     shutdown_command: tuple[str, ...] = DEFAULT_SYSTEM_SHUTDOWN_COMMAND
 
 
@@ -239,6 +241,7 @@ class Configuration:
         )
         values["library"]["directory_path"] = str(self.library.directory_path)
         values["system"]["reboot_command"] = list(self.system.reboot_command)
+        values["system"]["restart_service_command"] = list(self.system.restart_service_command)
         values["system"]["shutdown_command"] = list(self.system.shutdown_command)
         return values
 
@@ -285,6 +288,7 @@ def _build(*sources: Mapping[str, Any]) -> Configuration:
         "system": {
             "mocp_file_path": _to_str,
             "reboot_command": _to_command,
+            "restart_service_command": _to_command,
             "shutdown_command": _to_command,
         },
     }

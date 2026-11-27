@@ -773,6 +773,7 @@ class TestBuildSystemMenu:
         assert [item.label for item in menu.items] == [
             "Name: pirate",
             "IP: 192.168.1.20",
+            "Restart service",
             "Reboot",
             "Shut down",
         ]
@@ -784,7 +785,7 @@ class TestBuildSystemMenu:
         assert build_system_menu(system).items[1].label == "IP: not available"
 
     def test_reboot_is_confirmed(self, system):
-        item = build_system_menu(system).items[2]
+        item = build_system_menu(system).items[3]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Reboot?",
@@ -795,8 +796,20 @@ class TestBuildSystemMenu:
         )
         system.reboot.assert_not_called()
 
+    def test_restart_service_is_confirmed(self, system):
+        item = build_system_menu(system).items[2]
+        assert item.command is None
+        assert item.submenu() == Menu(
+            title="Restart service?",
+            items=(
+                MenuItem(label="Cancel", command=MenuCommand.BACK),
+                MenuItem(label="Restart now", command=MenuCommand.RESTART_SERVICE),
+            ),
+        )
+        system.restart_service.assert_not_called()
+
     def test_shutdown_is_confirmed(self, system):
-        item = build_system_menu(system).items[3]
+        item = build_system_menu(system).items[4]
         assert item.command is None
         assert item.submenu() == Menu(
             title="Shut down?",

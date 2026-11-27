@@ -90,6 +90,7 @@ class TestConfiguration:
         assert configuration.system == SystemConfiguration(
             mocp_file_path="mocp",
             reboot_command=("sudo", "systemctl", "reboot"),
+            restart_service_command=("sudo", "systemctl", "restart", "mocassino.service"),
             shutdown_command=("sudo", "shutdown", "-h", "now"),
         )
 
@@ -146,6 +147,7 @@ class TestConfiguration:
             "system": {
                 "mocp_file_path": "mocp",
                 "reboot_command": ["sudo", "systemctl", "reboot"],
+                "restart_service_command": ["sudo", "systemctl", "restart", "mocassino.service"],
                 "shutdown_command": ["sudo", "shutdown", "-h", "now"],
             },
         }
@@ -313,6 +315,7 @@ class TestLoadConfiguration:
             ("startup", "volume", True),
             ("system", "mocp_file_path", ["mocp"]),
             ("system", "reboot_command", 5),
+            ("system", "restart_service_command", 5),
             ("system", "shutdown_command", "'unbalanced"),
             ("system", "shutdown_command", ""),
             ("system", "shutdown_command", ["shutdown", 0]),
@@ -594,6 +597,15 @@ class TestLoadConfiguration:
     def test_section_not_a_mapping(self, tmp_path):
         with pytest.raises(ConfigurationError, match="Section 'buttons' must be a mapping"):
             load_configuration(write_yaml(tmp_path, "buttons: gpio\n"))
+
+    def test_restart_service_command_as_string(self):
+        overrides = {"system": {"restart_service_command": "systemctl restart 'player.service'"}}
+        configuration = load_configuration(overrides=overrides)
+        assert configuration.system.restart_service_command == (
+            "systemctl",
+            "restart",
+            "player.service",
+        )
 
     def test_shutdown_command_as_string(self):
         overrides = {"system": {"shutdown_command": "sudo shutdown -h 'now'"}}

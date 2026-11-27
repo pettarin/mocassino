@@ -554,6 +554,7 @@ def build_app(
     system = System(
         dry_run=simulator is not None,
         reboot_command=configuration.system.reboot_command,
+        restart_service_command=configuration.system.restart_service_command,
         shutdown_command=configuration.system.shutdown_command,
     )
     library = Library(directory_path=configuration.library.directory_path)
