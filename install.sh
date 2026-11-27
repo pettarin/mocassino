@@ -56,7 +56,7 @@ RUN_AS_GROUP="$DEFAULT_RUN_AS_GROUP"
 RUN_AS_USER="$DEFAULT_RUN_AS_USER"
 UNINSTALL=1
 UNINSTALL_ONLY=0
-WRITE_ASOUNDRC=1
+WRITE_ALSA_CONFIGURATION=1
 WRITE_CONFIGURATION=1
 
 # Parse arguments
@@ -86,8 +86,8 @@ while [[ $# -gt 0 ]]; do
             UNINSTALL=0
             shift
             ;;
-        --no-write-asoundrc)
-            WRITE_ASOUNDRC=0
+        --no-write-alsa-configuration)
+            WRITE_ALSA_CONFIGURATION=0
             shift
             ;;
         --no-write-configuration)
@@ -121,7 +121,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --no-install-systemd                  Do not install the systemd service"
             echo "  --no-install-venv                     Do not install the virtual environment"
             echo "  --no-uninstall-first                  Do not remove a previous installation before installing"
-            echo "  --no-write-asoundrc                   Do not write the ALSA configuration (software volume control) to file"
+            echo "  --no-write-alsa-configuration         Do not write the ALSA configuration to file"
             echo "  --no-write-configuration              Do not write the configuration to file"
             echo "  --run-arguments STRING                Use the provided STRING as argument to the ExecStart command line of the systemd service (default: '$RUN_ARGUMENTS')"
             echo "  --run-as-group STRING                 Use the provided STRING as group for the service (default: '$DEFAULT_RUN_AS_GROUP')"
@@ -144,6 +144,25 @@ if [[ ! "$ALSA_CARD_NUMBER" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+# Check the display orientation
+if [[ ! "$DISPLAY_ORIENTATION" =~ ^(0|90|180|270)$ ]]; then
+    echo "[ERRO] The display orientation must be one of [0, 90, 180, 270]: '$DISPLAY_ORIENTATION'"
+    exit 1
+fi
+
+# Check the group and the user of the service exist
+# except when uninstalling only
+if [[ $UNINSTALL_ONLY -eq 0 ]]; then
+    if ! getent group "$RUN_AS_GROUP" > /dev/null; then
+        echo "[ERRO] The group to run the service as does not exist: '$RUN_AS_GROUP'"
+        exit 1
+    fi
+    if ! getent passwd "$RUN_AS_USER" > /dev/null; then
+        echo "[ERRO] The user to run the service as does not exist: '$RUN_AS_USER'"
+        exit 1
+    fi
+fi
+
 # Print effective arguments
 echo "[INFO] Running installation as:   '$EUID' ($USER)"
 echo "[INFO] Systemd service to run as:"
@@ -151,10 +170,10 @@ echo "[INFO]   group: '$RUN_AS_GROUP'"
 echo "[INFO]    user: '$RUN_AS_USER'"
 echo "[INFO] Installation directory:    '$INSTALLATION_DIRECTORY_PATH'"
 echo "[INFO] Venv directory:            '$VENV_DIRECTORY_PATH'"
+echo "[INFO] ALSA card number:          '$ALSA_CARD_NUMBER'"
+echo "[INFO] ALSA configuration file:   '$ASOUNDRC_FILE_PATH'"
 echo "[INFO] Configuration directory:   '$CONFIG_DIRECTORY_PATH'"
 echo "[INFO] Configuration file:        '$CONFIGURATION_FILE_PATH'"
-echo "[INFO] ALSA configuration file:   '$ASOUNDRC_FILE_PATH'"
-echo "[INFO] ALSA card number:          '$ALSA_CARD_NUMBER'"
 echo "[INFO] Configuration arguments:"
 echo "[INFO]   --library-directory-path '$LIBRARY_DIRECTORY_PATH'"
 echo "[INFO]              --orientation '$DISPLAY_ORIENTATION'"
@@ -226,9 +245,10 @@ if [[ $WRITE_CONFIGURATION -eq 1 ]]; then
     echo "[INFO] Writing configuarion ... done"
 fi
 
-# Write the ALSA configuration file, defining a software volume control:
-# the DAC of the Pirate Audio hat has no hardware mixer
-if [[ $WRITE_ASOUNDRC -eq 1 ]]; then
+# Write the ALSA configuration file needed for having
+# a software volume control on DACs
+# that do not have hardware volume controls
+if [[ $WRITE_ALSA_CONFIGURATION -eq 1 ]]; then
     echo "[INFO] Writing ALSA configuration ..."
 
     mkdir -p "$RUN_DIRECTORY_PATH"
