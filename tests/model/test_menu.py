@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+import mocassino
 from mocassino.constants import (
     MocStateOnExit,
     RightTimerValue,
@@ -380,6 +381,7 @@ class TestBuildInformationMenu:
             items=(
                 MenuItem(label="Name: pirate"),
                 MenuItem(label="IP: 192.168.1.20"),
+                MenuItem(label=f"Version: {mocassino.__version__}"),
             ),
         )
 

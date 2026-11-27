@@ -15,6 +15,7 @@ from enum import StrEnum
 from functools import partial
 from pathlib import Path
 
+from mocassino import __version__
 from mocassino.constants import (
     DISPLAY_TIMEOUT_CHOICES,
     ORIENTATIONS,
@@ -443,12 +444,13 @@ def build_display_ui_elements_menu(settings: Settings) -> Menu:
 
 
 def build_information_menu(system: System) -> Menu:
-    """Build the menu showing information about the host: its name and its IP address."""
+    """Build the menu showing the name and the IP address of the host, and the version."""
     return Menu(
         title="Information",
         items=(
             MenuItem(label=f"Name: {system.hostname()}"),
             MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
+            MenuItem(label=f"Version: {__version__}"),
         ),
     )
 

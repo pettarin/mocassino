@@ -803,7 +803,8 @@ The top level menu has the following items:
   The display is turned off before the command is run,
   and turned on again if the command fails.
   With the simulator, the command is only logged, and never run.
-- `Information`: show the name (`Name`) and the IP address (`IP`) of the host;
+- `Information`: show the name (`Name`) and the IP address (`IP`) of the host,
+  and the version of the service (`Version`, e.g., `Version: 0.0.7`);
   if the host has no IP address, `IP: not available` is shown.
 
 To leave the top level menu and go back to the playback, press the back button
