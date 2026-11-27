@@ -793,8 +793,7 @@ The top level menu has the following items:
     All the values are reset, not only those of the `Settings` menu
     (e.g., `library.directory_path`, `system.reboot_command`, and `system.shutdown_command` too),
     except that the simulator is kept for the buttons and for the display, if it is in use.
-- `System`: show the name and the IP address of the host,
-  `Restart service`, `Reboot`, and `Shut down`.
+- `System`: `Restart service`, `Reboot`, and `Shut down`.
   `Restart service` asks for confirmation before running `system.restart_service_command`,
   which restarts the service (by default, the `mocassino.service` unit of `systemd`):
   the service exits as when it is stopped, saving the state if the settings say so.
@@ -804,6 +803,8 @@ The top level menu has the following items:
   The display is turned off before the command is run,
   and turned on again if the command fails.
   With the simulator, the command is only logged, and never run.
+- `Information`: show the name (`Name`) and the IP address (`IP`) of the host;
+  if the host has no IP address, `IP: not available` is shown.
 
 To leave the top level menu and go back to the playback, press the back button
 (`A`, with the default button map).

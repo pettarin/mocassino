@@ -66,11 +66,12 @@ CHANGE_LIBRARY_DIRECTORY = (
     ButtonEvent(Button.B),
     ButtonEvent(Button.B),
 )
-# From playback mode: open the menu, go up to System, open it, go up three times
+# From playback mode: open the menu, go up twice to System, open it, go up three times
 # to Restart service, open it, go down to Restart now, and select it
 RESTART_SERVICE = (
     ButtonEvent(Button.A, ButtonPress.LONG),
     ButtonEvent(Button.X),
+    ButtonEvent(Button.X),
     ButtonEvent(Button.B),
     ButtonEvent(Button.X),
     ButtonEvent(Button.X),
@@ -79,21 +80,23 @@ RESTART_SERVICE = (
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
 )
-# From playback mode: open the menu, go up to System, open it, go up to Shut down,
+# From playback mode: open the menu, go up twice to System, open it, go up to Shut down,
 # open it, go down to Shut down now, and select it
 SHUT_DOWN = (
     ButtonEvent(Button.A, ButtonPress.LONG),
     ButtonEvent(Button.X),
+    ButtonEvent(Button.X),
     ButtonEvent(Button.B),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
     ButtonEvent(Button.Y),
     ButtonEvent(Button.B),
 )
-# From playback mode: open the menu, go up to System, open it, go up twice to Reboot,
+# From playback mode: open the menu, go up twice to System, open it, go up twice to Reboot,
 # open it, go down to Reboot now, and select it
 REBOOT = (
     ButtonEvent(Button.A, ButtonPress.LONG),
+    ButtonEvent(Button.X),
     ButtonEvent(Button.X),
     ButtonEvent(Button.B),
     ButtonEvent(Button.X),

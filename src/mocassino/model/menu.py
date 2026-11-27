@@ -442,6 +442,17 @@ def build_display_ui_elements_menu(settings: Settings) -> Menu:
     )
 
 
+def build_information_menu(system: System) -> Menu:
+    """Build the menu showing information about the host: its name and its IP address."""
+    return Menu(
+        title="Information",
+        items=(
+            MenuItem(label=f"Name: {system.hostname()}"),
+            MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
+        ),
+    )
+
+
 def build_library_directory_menu(directory_path: Path, selected_path: Path | None = None) -> Menu:
     """Build the menu of a directory of the host, to choose the music root directory.
 
@@ -569,6 +580,7 @@ def build_root_menu(library: Library, system: System, settings: Settings) -> Men
             MenuItem(label="Library", submenu=partial(build_library_menu, library)),
             MenuItem(label="Settings", submenu=partial(build_settings_menu, settings)),
             MenuItem(label="System", submenu=partial(build_system_menu, system)),
+            MenuItem(label="Information", submenu=partial(build_information_menu, system)),
         ),
     )
 
@@ -733,15 +745,13 @@ def build_startup_volume_menu(settings: Settings) -> Menu:
 
 
 def build_system_menu(system: System) -> Menu:
-    """Build the menu showing the name and the IP address of the host.
+    """Build the menu restarting the service, and rebooting or shutting down the host.
 
-    It also restarts the service, and reboots or shuts down the host, after a confirmation.
+    Each of them is done after a confirmation.
     """
     return Menu(
         title="System",
         items=(
-            MenuItem(label=f"Name: {system.hostname()}"),
-            MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
             MenuItem(label="Restart service", submenu=_build_restart_service_menu),
             MenuItem(label="Reboot", submenu=_build_reboot_menu),
             MenuItem(label="Shut down", submenu=_build_shutdown_menu),

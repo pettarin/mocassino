@@ -133,6 +133,8 @@ class TestController:
         controller.handle(X)
         assert menu.selected.label == "Library"
         controller.handle(X)
+        assert menu.selected.label == "Information"
+        controller.handle(X)
         assert menu.selected.label == "System"
 
     def test_menu_select_back(self, controller, state):
@@ -351,6 +353,22 @@ class TestController:
         controller.handle(B)
         assert library.directory_path == root
         assert state.current_menu.title == "Above"
+
+    def test_menu_select_information_menu(self, controller, state, moc, system):
+        for event in (A_LONG, X, B):
+            controller.handle(event)
+        assert state.current_menu.title == "Information"
+        assert [item.label for item in state.current_menu.items] == [
+            "Name: pirate",
+            "IP: 192.168.1.20",
+        ]
+        # Its items only show information: selecting one does nothing
+        controller.handle(B)
+        assert [menu.title for menu in state.menus] == ["Menu", "Information"]
+        assert moc.mock_calls == []
+        system.reboot.assert_not_called()
+        system.restart_service.assert_not_called()
+        system.shutdown.assert_not_called()
 
     def test_menu_select_reboot(self, controller, state, system):
         for event in (A_LONG, Y, Y, B, X, X):
