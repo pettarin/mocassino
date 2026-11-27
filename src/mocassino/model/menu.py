@@ -9,6 +9,7 @@ the commands are executed by the controller, not here.
 
 from __future__ import annotations
 
+import platform
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -444,13 +445,21 @@ def build_display_ui_elements_menu(settings: Settings) -> Menu:
 
 
 def build_information_menu(system: System) -> Menu:
-    """Build the menu showing the name and the IP address of the host, and the version."""
+    """Build the menu showing the name and the IP address of the host, and the versions.
+
+    The versions are that of the service, that of Python running it, and the release
+    of the kernel of the host (as "uname -r" prints it):
+    they follow a row saying so, and start with a space, as if indented under it.
+    """
     return Menu(
         title="About mocassino",
         items=(
             MenuItem(label=f"Name: {system.hostname()}"),
             MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
-            MenuItem(label=f"Version: {__version__}"),
+            MenuItem(label="Versions"),
+            MenuItem(label=f" mocassino {__version__}"),
+            MenuItem(label=f" python {platform.python_version()}"),
+            MenuItem(label=f" kernel {platform.release()}"),
         ),
     )
 

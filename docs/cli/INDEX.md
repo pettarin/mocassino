@@ -804,7 +804,10 @@ The top level menu has the following items:
   and turned on again if the command fails.
   With the simulator, the command is only logged, and never run.
 - `About mocassino`: show the name (`Name`) and the IP address (`IP`) of the host,
-  and the version of the service (`Version`, e.g., `Version: 0.0.7`);
+  and, under `Versions`, the version of the service (e.g., `mocassino 0.0.7`),
+  the version of Python running it (e.g., `python 3.13.1`),
+  and the release of the kernel of the host, as `uname -r` prints it
+  (e.g., `kernel 6.12.47+rpt-rpi-v8`), each on its row;
   if the host has no IP address, `IP: not available` is shown.
 
 To leave the top level menu and go back to the playback, press the back button

@@ -4,6 +4,7 @@
 :license: GNU General Public License v3.0 (see the LICENSE file for details)
 """
 
+import platform
 from pathlib import Path
 
 import pytest
@@ -381,9 +382,21 @@ class TestBuildInformationMenu:
             items=(
                 MenuItem(label="Name: pirate"),
                 MenuItem(label="IP: 192.168.1.20"),
-                MenuItem(label=f"Version: {mocassino.__version__}"),
+                MenuItem(label="Versions"),
+                MenuItem(label=f" mocassino {mocassino.__version__}"),
+                MenuItem(label=f" python {platform.python_version()}"),
+                MenuItem(label=f" kernel {platform.release()}"),
             ),
         )
+
+    def test_kernel_release(self, mocker, system):
+        mocker.patch("mocassino.model.menu.platform.release", return_value="6.12.47+rpt-rpi-v8")
+        item = build_information_menu(system).items[5]
+        assert item == MenuItem(label=" kernel 6.12.47+rpt-rpi-v8")
+
+    def test_python_version(self, mocker, system):
+        mocker.patch("mocassino.model.menu.platform.python_version", return_value="3.13.1")
+        assert build_information_menu(system).items[4] == MenuItem(label=" python 3.13.1")
 
     def test_no_ip_address(self, system):
         system.ip_address.return_value = None

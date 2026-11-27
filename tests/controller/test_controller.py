@@ -5,6 +5,7 @@
 """
 
 import logging
+import platform
 
 import pytest
 
@@ -362,7 +363,10 @@ class TestController:
         assert [item.label for item in state.current_menu.items] == [
             "Name: pirate",
             "IP: 192.168.1.20",
-            f"Version: {mocassino.__version__}",
+            "Versions",
+            f" mocassino {mocassino.__version__}",
+            f" python {platform.python_version()}",
+            f" kernel {platform.release()}",
         ]
         # Its items only show information: selecting one does nothing
         controller.handle(B)
