@@ -115,7 +115,7 @@ class TestConfigurationCommand:
 
     @pytest.mark.parametrize(("brightness", "value"), [("0", 0.0), ("0.35", 0.35), ("1", 1.0)])
     def test_brightness(self, runner, brightness, value):
-        result = runner.invoke(main, ["configuration", "--brightness", brightness])
+        result = runner.invoke(main, ["--display-brightness", brightness, "configuration"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["brightness"] == value
@@ -125,9 +125,9 @@ class TestConfigurationCommand:
 
     @pytest.mark.parametrize("brightness", ["-0.1", "1.5", "50", "bright"])
     def test_brightness_not_valid(self, runner, brightness):
-        result = runner.invoke(main, ["configuration", "--brightness", brightness])
+        result = runner.invoke(main, ["--display-brightness", brightness, "configuration"])
         assert result.exit_code == 2
-        assert "Invalid value for '--brightness'" in result.output
+        assert "Invalid value for '--display-brightness'" in result.output
 
     def test_brightness_overrides_the_configuration_file(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
@@ -136,7 +136,9 @@ class TestConfigurationCommand:
         )
         result = runner.invoke(main, ["-c", str(path), "configuration"])
         assert yaml.safe_load(result.output)["display"]["brightness"] == 0.8
-        result = runner.invoke(main, ["-c", str(path), "configuration", "--brightness", "0.2"])
+        result = runner.invoke(
+            main, ["-c", str(path), "--display-brightness", "0.2", "configuration"]
+        )
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["brightness"] == 0.2
@@ -149,7 +151,7 @@ class TestConfigurationCommand:
             "run:\n  refresh_delay: 0.25\n",
             encoding="utf-8",
         )
-        result = runner.invoke(main, ["configuration", "--default", "--brightness", "0.6"])
+        result = runner.invoke(main, ["--display-brightness", "0.6", "configuration", "--default"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["brightness"] == 0.6
@@ -157,7 +159,7 @@ class TestConfigurationCommand:
 
     def test_brightness_is_written_to_the_output_file(self, runner, tmp_path):
         path = tmp_path / "written.yaml"
-        arguments = ["--simulator", "configuration", "--brightness", "0.7", "-o", str(path)]
+        arguments = ["--simulator", "--display-brightness", "0.7", "configuration", "-o", str(path)]
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         written = load_configuration(path)
@@ -165,7 +167,7 @@ class TestConfigurationCommand:
         assert written.display.target == "simulator"
 
     def test_brightness_and_orientation(self, runner):
-        arguments = ["configuration", "--brightness", "0.5", "--orientation", "90"]
+        arguments = ["--display-brightness", "0.5", "--display-orientation", "90", "configuration"]
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
@@ -173,7 +175,7 @@ class TestConfigurationCommand:
 
     @pytest.mark.parametrize("orientation", ["0", "90", "180", "270"])
     def test_orientation(self, runner, orientation):
-        result = runner.invoke(main, ["configuration", "--orientation", orientation])
+        result = runner.invoke(main, ["--display-orientation", orientation, "configuration"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["orientation"] == int(orientation)
@@ -183,9 +185,9 @@ class TestConfigurationCommand:
 
     @pytest.mark.parametrize("orientation", ["45", "360", "-90", "up"])
     def test_orientation_not_valid(self, runner, orientation):
-        result = runner.invoke(main, ["configuration", "--orientation", orientation])
+        result = runner.invoke(main, ["--display-orientation", orientation, "configuration"])
         assert result.exit_code == 2
-        assert "Invalid value for '--orientation'" in result.output
+        assert "Invalid value for '--display-orientation'" in result.output
 
     def test_orientation_overrides_the_configuration_file(self, runner, tmp_path):
         path = tmp_path / "custom.yaml"
@@ -194,7 +196,9 @@ class TestConfigurationCommand:
         )
         result = runner.invoke(main, ["-c", str(path), "configuration"])
         assert yaml.safe_load(result.output)["display"]["orientation"] == 90
-        result = runner.invoke(main, ["-c", str(path), "configuration", "--orientation", "270"])
+        result = runner.invoke(
+            main, ["-c", str(path), "--display-orientation", "270", "configuration"]
+        )
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["orientation"] == 270
@@ -207,7 +211,7 @@ class TestConfigurationCommand:
             "run:\n  refresh_delay: 0.25\n",
             encoding="utf-8",
         )
-        result = runner.invoke(main, ["configuration", "--default", "--orientation", "180"])
+        result = runner.invoke(main, ["--display-orientation", "180", "configuration", "--default"])
         assert result.exit_code == 0
         output = yaml.safe_load(result.output)
         assert output["display"]["orientation"] == 180
@@ -215,7 +219,14 @@ class TestConfigurationCommand:
 
     def test_orientation_is_written_to_the_output_file(self, runner, tmp_path):
         path = tmp_path / "written.yaml"
-        arguments = ["--simulator", "configuration", "--orientation", "180", "-o", str(path)]
+        arguments = [
+            "--simulator",
+            "--display-orientation",
+            "180",
+            "configuration",
+            "-o",
+            str(path),
+        ]
         result = runner.invoke(main, arguments)
         assert result.exit_code == 0
         written = load_configuration(path)
@@ -667,6 +678,33 @@ class TestRunCommand:
             "first: 1\n",
             "second: 2\n",
         ]
+
+    def test_display_options_override_the_configuration_file(
+        self, runner, mocker, app, daemonize, tmp_path
+    ):
+        path = tmp_path / "custom.yaml"
+        path.write_text("display:\n  brightness: 0.8\n  orientation: 90\n", encoding="utf-8")
+        arguments = [
+            "-c",
+            str(path),
+            "--display-brightness",
+            "0.4",
+            "--display-orientation",
+            "180",
+            "--display-target",
+            "none",
+            "-l",
+            str(tmp_path),
+            "run",
+            "-f",
+        ]
+        result = runner.invoke(main, arguments)
+        assert result.exit_code == 0
+        effective = mocassino.cli.build_app.call_args.args[0]
+        assert (effective.display.brightness, effective.display.orientation) == (0.4, 180)
+        # The configuration file is left as it is
+        written = load_configuration(path)
+        assert (written.display.brightness, written.display.orientation) == (0.8, 90)
 
     def test_invalid_configuration_file_keeps_the_simulator(
         self, runner, app, daemonize, home, tmp_path

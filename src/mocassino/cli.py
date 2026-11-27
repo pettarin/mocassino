@@ -45,6 +45,8 @@ class GlobalOptions:
 
     buttons_origin: str | None
     configuration_file_path: Path | None
+    display_brightness: float | None
+    display_orientation: int | None
     display_target: str | None
     library_directory_path: Path | None
     simulator: bool
@@ -90,7 +92,11 @@ def _load_configuration(options: GlobalOptions, recover: bool = False) -> Config
         display_target = display_target or DisplayTarget.SIMULATOR.value
     overrides = {
         "buttons": {"origin": buttons_origin},
-        "display": {"target": display_target},
+        "display": {
+            "brightness": options.display_brightness,
+            "orientation": options.display_orientation,
+            "target": display_target,
+        },
         "library": {"directory_path": options.library_directory_path},
     }
     path = options.configuration_file_path
@@ -180,20 +186,11 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 
 @click.command()
 @click.option(
-    "--brightness",
-    type=click.FloatRange(0.0, 1.0),
-    help="Set the brightness of the display (display.brightness), between 0.0 and 1.0.",
-)
-@click.option(
     "--default",
     is_flag=True,
     help="Print the default values, ignoring the configuration file and the global options "
-    "(except -l / --library-directory-path and --simulator).",
-)
-@click.option(
-    "--orientation",
-    type=click.Choice([str(orientation) for orientation in ORIENTATIONS]),
-    help="Set the orientation of the display (display.orientation), in degrees clockwise.",
+    "(except --display-brightness, --display-orientation, -l / --library-directory-path, "
+    "and --simulator).",
 )
 @click.option(
     "-o",
@@ -213,23 +210,21 @@ def _run_with_simulator(app: App, simulator: TkSimulator) -> None:
 @click.pass_obj
 def configuration(
     options: GlobalOptions,
-    brightness: float | None,
     default: bool,
-    orientation: str | None,
     output_file_path: Path | None,
     yes: bool,
 ) -> None:
     """Print the effective configuration, in YAML format, or write it to a file."""
     effective = Configuration() if default else _load_configuration(options)
-    if brightness is not None:
+    if default and options.display_brightness is not None:
         effective = replace(
             effective,
-            display=replace(effective.display, brightness=brightness),
+            display=replace(effective.display, brightness=options.display_brightness),
         )
-    if orientation is not None:
+    if default and options.display_orientation is not None:
         effective = replace(
             effective,
-            display=replace(effective.display, orientation=int(orientation)),
+            display=replace(effective.display, orientation=options.display_orientation),
         )
     if default and options.library_directory_path is not None:
         directory_path = options.library_directory_path.expanduser()
@@ -273,6 +268,16 @@ def configuration(
     help="YAML configuration file.",
 )
 @click.option(
+    "--display-brightness",
+    type=click.FloatRange(0.0, 1.0),
+    help="Brightness of the display (display.brightness), between 0.0 and 1.0.",
+)
+@click.option(
+    "--display-orientation",
+    type=click.Choice([str(orientation) for orientation in ORIENTATIONS]),
+    help="Orientation of the display (display.orientation), in degrees clockwise.",
+)
+@click.option(
     "--display-target",
     type=click.Choice([target.value for target in DisplayTarget]),
     help="Where the screen is drawn (display.target).",
@@ -301,6 +306,8 @@ def main(
     context: click.Context,
     buttons_origin: str | None,
     configuration_file_path: Path | None,
+    display_brightness: float | None,
+    display_orientation: str | None,
     display_target: str | None,
     library_directory_path: Path | None,
     simulator: bool,
@@ -314,6 +321,8 @@ def main(
     context.obj = GlobalOptions(
         buttons_origin=buttons_origin,
         configuration_file_path=configuration_file_path,
+        display_brightness=display_brightness,
+        display_orientation=None if display_orientation is None else int(display_orientation),
         display_target=display_target,
         library_directory_path=library_directory_path,
         simulator=simulator,

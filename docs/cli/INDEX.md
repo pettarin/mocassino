@@ -16,6 +16,13 @@ Options:
                                   (buttons.origin).
   -c, --configuration-file-path FILE
                                   YAML configuration file.
+  --display-brightness FLOAT RANGE
+                                  Brightness of the display
+                                  (display.brightness), between 0.0 and 1.0.
+                                  [0.0<=x<=1.0]
+  --display-orientation [0|90|180|270]
+                                  Orientation of the display
+                                  (display.orientation), in degrees clockwise.
   --display-target [none|pirateaudio|simulator|st7789]
                                   Where the screen is drawn (display.target).
   -l, --library-directory-path DIRECTORY
@@ -169,24 +176,20 @@ so it can be used to check what the service would run with
 ```text
 Usage: mocassino configuration [OPTIONS]
 
-  Print the effective configuration, in YAML format.
+  Print the effective configuration, in YAML format, or write it to a file.
 
 Options:
-  --brightness FLOAT RANGE      Set the brightness of the display
-                                (display.brightness), between 0.0 and 1.0.
-                                [0.0<=x<=1.0]
-  --default                     Print the default values, ignoring the
-                                configuration file and the global options
-                                (except -l / --library-directory-path and
-                                --simulator).
-  --orientation [0|90|180|270]  Set the orientation of the display
-                                (display.orientation), in degrees clockwise.
-  -o, --output-file-path FILE   Write the configuration to this file instead
-                                of printing it; without a value, to the
-                                default configuration file.
-  -y, --yes                     Write the output file even if it already
-                                exists.
-  --help                        Show this message and exit.
+  --default                    Print the default values, ignoring the
+                               configuration file and the global options
+                               (except --display-brightness, --display-
+                               orientation, -l / --library-directory-path, and
+                               --simulator).
+  -o, --output-file-path FILE  Write the configuration to this file instead of
+                               printing it; without a value, to the default
+                               configuration file.
+  -y, --yes                    Write the output file even if it already
+                               exists.
+  --help                       Show this message and exit.
 ```
 
 With `-o / --output-file-path`, the configuration is written to a file instead of being printed.
@@ -207,27 +210,28 @@ $ # the same, with the simulator selected (e.g., on a PC)
 $ mocassino --simulator configuration --default -o -y
 ```
 
-With `--orientation`, the configuration printed or written has that `display.orientation`,
-whatever the configuration file says; it also applies with `--default`.
+With the `--display-orientation` global option, the configuration printed or written
+has that `display.orientation`, whatever the configuration file says; it also applies with `--default`.
 Together with `-o`, it sets the orientation of the display for the next runs:
 
 ```bash
 $ # turn what is shown on the display upside down, keeping the rest of the configuration
-$ mocassino configuration --orientation 180 -o -y
+$ mocassino --display-orientation 180 configuration -o -y
 ```
 
-Likewise, with `--brightness`, the configuration printed or written has that `display.brightness`,
-a value between `0.0` and `1.0`, whatever the configuration file says;
-it also applies with `--default`, and it can be given together with `--orientation`:
+Likewise, with the `--display-brightness` global option, the configuration printed or written
+has that `display.brightness`, a value between `0.0` and `1.0`, whatever the configuration file says;
+it also applies with `--default`, and it can be given together with `--display-orientation`:
 
 ```bash
 $ # dim the display to 60% for the next runs, keeping the rest of the configuration
-$ mocassino configuration --brightness 0.6 -o -y
+$ mocassino --display-brightness 0.6 configuration -o -y
 ```
 
 With `--default`, it prints the default values instead,
 whatever the configuration file and the global options other than
-`-l / --library-directory-path` and `--simulator` say.
+`--display-brightness`, `--display-orientation`,
+`-l / --library-directory-path`, and `--simulator` say.
 It works even if the configuration file is not valid,
 and its output can be used as a starting point for a configuration file:
 
@@ -414,6 +418,8 @@ The command line options take precedence over the configuration file:
 | Option | Key |
 |---|---|
 | `--buttons-origin` | `buttons.origin` |
+| `--display-brightness` | `display.brightness` |
+| `--display-orientation` | `display.orientation` |
 | `--display-target` | `display.target` |
 | `-l / --library-directory-path` | `library.directory_path` |
 

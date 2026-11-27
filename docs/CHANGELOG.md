@@ -15,6 +15,12 @@ All notable changes to this project will be documented in this file.
 
 - The `version` command
 
+### Changed
+
+- Renamed the `--brightness` and `--orientation` options
+  of the `configuration` command as the global options
+  `--display-brightness` and `--display-orientation`
+
 
 ## [0.0.6] - 2026-11-27
 

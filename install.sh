@@ -181,8 +181,8 @@ echo "[INFO] ALSA configuration file:   '$ASOUNDRC_FILE_PATH'"
 echo "[INFO] Configuration directory:   '$CONFIG_DIRECTORY_PATH'"
 echo "[INFO] Configuration file:        '$CONFIGURATION_FILE_PATH'"
 echo "[INFO] Configuration arguments:"
+echo "[INFO]      --display-orientation '$DISPLAY_ORIENTATION'"
 echo "[INFO]   --library-directory-path '$LIBRARY_DIRECTORY_PATH'"
-echo "[INFO]              --orientation '$DISPLAY_ORIENTATION'"
 
 # Check the script is run as root
 if [[ $EUID -ne 0 ]]; then
@@ -240,10 +240,10 @@ fi
 if [[ $WRITE_CONFIGURATION -eq 1 ]]; then
     echo "[INFO] Writing configuarion ..."
     $EXECUTABLE_FILE_PATH \
+        --display-orientation "$DISPLAY_ORIENTATION" \
         --library-directory-path "$LIBRARY_DIRECTORY_PATH" \
         configuration \
             --default \
-            --orientation "$DISPLAY_ORIENTATION" \
             --yes \
             --output-file-path "$CONFIGURATION_FILE_PATH"
 
