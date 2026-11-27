@@ -1,0 +1,71 @@
+buttons:
+  button_map:
+    menu:
+      A: menu_back
+      B: menu_select
+      X: menu_up
+      X_long: menu_select
+      Y: menu_down
+      Y_long: menu_select
+    playback:
+      A: play_pause
+      A_long: open_menu
+      B: next
+      B_long: previous
+      X: volume_up
+      X_hold: seek_forward
+      Y: volume_down
+      Y_hold: seek_backward
+  long_press_time: 0.6
+  origin: pirateaudio
+  repeat_hold_time: 0.3
+display:
+  brightness: 1.0
+  colors:
+    accented: limegreen
+    background: black
+    muted: silver
+    normal: white
+    track: dimgray
+  font_file_path: null
+  orientation: 180
+  target: pirateaudio
+  timeout: 60
+  ui_elements:
+    right_timer_value: end_time
+    show_playlist_bar: true
+    show_progress_bar: true
+    show_side_icons: true
+    show_timers: true
+    show_volume_bar: true
+library:
+  directory_path: /music
+playback:
+  seek_step: 10
+  volume_default: 50
+  volume_step: 5
+run:
+  moc_state_on_exit: do_nothing
+  mode: background
+  refresh_delay: 0.5
+  save_state:
+    on_exit: true
+    on_refresh: false
+    on_startup: true
+    on_state_change: true
+    on_track_change: true
+    on_volume_change: true
+startup:
+  playlist: use_saved
+  state: use_saved
+  volume: use_saved
+system:
+  mocp_file_path: mocp
+  reboot_command:
+  - sudo
+  - reboot
+  shutdown_command:
+  - sudo
+  - shutdown
+  - -h
+  - now

@@ -1,0 +1,6 @@
+playback:
+  directory_path: /music/Francesco_De_Gregori/Titanic
+  file_path: /music/Francesco_De_Gregori/Titanic/001___Belli_capelli.flac
+  seek: 6
+  state: paused
+  volume: 50
