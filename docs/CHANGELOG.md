@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- The `Information` menu in the top level menu
+- The `About mocassino` menu in the top level menu
 - The `version` command
 
 ### Changed

@@ -377,7 +377,7 @@ class TestBuildInformationMenu:
 
     def test_items(self, system):
         assert build_information_menu(system) == Menu(
-            title="Information",
+            title="About mocassino",
             items=(
                 MenuItem(label="Name: pirate"),
                 MenuItem(label="IP: 192.168.1.20"),
@@ -494,11 +494,11 @@ class TestBuildRootMenu:
         menu = build_root_menu(library, system, Settings())
         assert menu.title == "Menu"
         labels = [item.label for item in menu.items]
-        assert labels == ["Library", "Settings", "System", "Information"]
+        assert labels == ["Library", "Settings", "System", "About mocassino"]
         assert menu.items[0].submenu().title == "Library"
         assert menu.items[1].submenu().title == "Settings"
         assert menu.items[2].submenu().title == "System"
-        assert menu.items[3].submenu().title == "Information"
+        assert menu.items[3].submenu().title == "About mocassino"
 
     def test_settings_menu_shows_the_current_values(self, library, system):
         settings = Settings()

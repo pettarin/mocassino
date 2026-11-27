@@ -446,7 +446,7 @@ def build_display_ui_elements_menu(settings: Settings) -> Menu:
 def build_information_menu(system: System) -> Menu:
     """Build the menu showing the name and the IP address of the host, and the version."""
     return Menu(
-        title="Information",
+        title="About mocassino",
         items=(
             MenuItem(label=f"Name: {system.hostname()}"),
             MenuItem(label=f"IP: {system.ip_address() or 'not available'}"),
@@ -582,7 +582,7 @@ def build_root_menu(library: Library, system: System, settings: Settings) -> Men
             MenuItem(label="Library", submenu=partial(build_library_menu, library)),
             MenuItem(label="Settings", submenu=partial(build_settings_menu, settings)),
             MenuItem(label="System", submenu=partial(build_system_menu, system)),
-            MenuItem(label="Information", submenu=partial(build_information_menu, system)),
+            MenuItem(label="About mocassino", submenu=partial(build_information_menu, system)),
         ),
     )
 

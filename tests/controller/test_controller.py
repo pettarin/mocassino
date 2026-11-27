@@ -134,7 +134,7 @@ class TestController:
         controller.handle(X)
         assert menu.selected.label == "Library"
         controller.handle(X)
-        assert menu.selected.label == "Information"
+        assert menu.selected.label == "About mocassino"
         controller.handle(X)
         assert menu.selected.label == "System"
 
@@ -358,7 +358,7 @@ class TestController:
     def test_menu_select_information_menu(self, controller, state, moc, system):
         for event in (A_LONG, X, B):
             controller.handle(event)
-        assert state.current_menu.title == "Information"
+        assert state.current_menu.title == "About mocassino"
         assert [item.label for item in state.current_menu.items] == [
             "Name: pirate",
             "IP: 192.168.1.20",
@@ -366,7 +366,7 @@ class TestController:
         ]
         # Its items only show information: selecting one does nothing
         controller.handle(B)
-        assert [menu.title for menu in state.menus] == ["Menu", "Information"]
+        assert [menu.title for menu in state.menus] == ["Menu", "About mocassino"]
         assert moc.mock_calls == []
         system.reboot.assert_not_called()
         system.restart_service.assert_not_called()
