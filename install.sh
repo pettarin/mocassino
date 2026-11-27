@@ -13,6 +13,7 @@ SERVICE_NAME="mocassino"
 PYPI_PACKAGE_NAME="$SERVICE_NAME"
 
 # Library directory on target
+DEFAULT_ALSA_CARD_NUMBER="0"
 DEFAULT_DISPLAY_ORIENTATION="0"
 DEFAULT_LIBRARY_DIRECTORY_PATH="/"
 DEFAULT_RUN_AS_GROUP="audio"
@@ -27,6 +28,7 @@ SCRIPT_DIRECTORY_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIRECTORY_PATH="$SCRIPT_DIRECTORY_PATH"
 
 # File and directory names
+ASOUNDRC_FILE_NAME=".asoundrc"
 VENV_NAME="venv"
 EXECUTABLE_FILE_NAME="mocassino"
 CONFIGURATION_FILE_NAME="configuration.yaml"
@@ -35,6 +37,7 @@ SERVICE_SYSTEMD_UNIT_FILE_NAME="$SERVICE_NAME.service"
 # Absolute paths
 INSTALLATION_DIRECTORY_PATH="/opt/$SERVICE_NAME"
 RUN_DIRECTORY_PATH="$INSTALLATION_DIRECTORY_PATH/run"
+ASOUNDRC_FILE_PATH="$RUN_DIRECTORY_PATH/$ASOUNDRC_FILE_NAME"
 XDG_CONFIG_DIRECTORY_PATH="$RUN_DIRECTORY_PATH/.config"
 CONFIG_DIRECTORY_PATH="$XDG_CONFIG_DIRECTORY_PATH/$SERVICE_NAME"
 CONFIGURATION_FILE_PATH="$CONFIG_DIRECTORY_PATH/$CONFIGURATION_FILE_NAME"
@@ -43,6 +46,7 @@ EXECUTABLE_FILE_PATH="$VENV_DIRECTORY_PATH/bin/$EXECUTABLE_FILE_NAME"
 SERVICE_SYSTEMD_UNIT_DESTINATION_FILE_PATH="/lib/systemd/system/$SERVICE_SYSTEMD_UNIT_FILE_NAME"
 
 # Script logic starts here
+ALSA_CARD_NUMBER="$DEFAULT_ALSA_CARD_NUMBER"
 INSTALL_SYSTEMD=1
 INSTALL_VENV=1
 LIBRARY_DIRECTORY_PATH="$DEFAULT_LIBRARY_DIRECTORY_PATH"
@@ -52,11 +56,16 @@ RUN_AS_GROUP="$DEFAULT_RUN_AS_GROUP"
 RUN_AS_USER="$DEFAULT_RUN_AS_USER"
 UNINSTALL=1
 UNINSTALL_ONLY=0
+WRITE_ASOUNDRC=1
 WRITE_CONFIGURATION=1
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --alsa-card-number)
+            ALSA_CARD_NUMBER="$2"
+            shift 2
+            ;;
         --display-orientation)
             DISPLAY_ORIENTATION="$2"
             shift 2
@@ -75,6 +84,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-uninstall-first)
             UNINSTALL=0
+            shift
+            ;;
+        --no-write-asoundrc)
+            WRITE_ASOUNDRC=0
             shift
             ;;
         --no-write-configuration)
@@ -102,11 +115,13 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: bash $0 [options]"
             echo ""
             echo "Options:"
+            echo "  --alsa-card-number NUMBER             Use the ALSA card NUMBER for the software volume control (default: '$DEFAULT_ALSA_CARD_NUMBER')"
             echo "  --display-orientation [0|90|180|270]  Configure the specified display orientation (default: '$DEFAULT_DISPLAY_ORIENTATION')"
             echo "  --library-directory-path PATH         Configure the specified PATH as the root directory for the library (default: '$DEFAULT_LIBRARY_DIRECTORY_PATH')"
             echo "  --no-install-systemd                  Do not install the systemd service"
             echo "  --no-install-venv                     Do not install the virtual environment"
             echo "  --no-uninstall-first                  Do not remove a previous installation before installing"
+            echo "  --no-write-asoundrc                   Do not write the ALSA configuration (software volume control) to file"
             echo "  --no-write-configuration              Do not write the configuration to file"
             echo "  --run-arguments STRING                Use the provided STRING as argument to the ExecStart command line of the systemd service (default: '$RUN_ARGUMENTS')"
             echo "  --run-as-group STRING                 Use the provided STRING as group for the service (default: '$DEFAULT_RUN_AS_GROUP')"
@@ -123,6 +138,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Check the ALSA card number
+if [[ ! "$ALSA_CARD_NUMBER" =~ ^[0-9]+$ ]]; then
+    echo "[ERRO] The ALSA card number must be a non-negative integer: '$ALSA_CARD_NUMBER'"
+    exit 1
+fi
+
 # Print effective arguments
 echo "[INFO] Running installation as:   '$EUID' ($USER)"
 echo "[INFO] Systemd service to run as:"
@@ -132,6 +153,8 @@ echo "[INFO] Installation directory:    '$INSTALLATION_DIRECTORY_PATH'"
 echo "[INFO] Venv directory:            '$VENV_DIRECTORY_PATH'"
 echo "[INFO] Configuration directory:   '$CONFIG_DIRECTORY_PATH'"
 echo "[INFO] Configuration file:        '$CONFIGURATION_FILE_PATH'"
+echo "[INFO] ALSA configuration file:   '$ASOUNDRC_FILE_PATH'"
+echo "[INFO] ALSA card number:          '$ALSA_CARD_NUMBER'"
 echo "[INFO] Configuration arguments:"
 echo "[INFO]   --library-directory-path '$LIBRARY_DIRECTORY_PATH'"
 echo "[INFO]              --orientation '$DISPLAY_ORIENTATION'"
@@ -201,6 +224,41 @@ if [[ $WRITE_CONFIGURATION -eq 1 ]]; then
 
     chown "$RUN_AS_USER:$RUN_AS_GROUP" "$CONFIGURATION_FILE_PATH"
     echo "[INFO] Writing configuarion ... done"
+fi
+
+# Write the ALSA configuration file, defining a software volume control:
+# the DAC of the Pirate Audio hat has no hardware mixer
+if [[ $WRITE_ASOUNDRC -eq 1 ]]; then
+    echo "[INFO] Writing ALSA configuration ..."
+
+    mkdir -p "$RUN_DIRECTORY_PATH"
+    cat > "$ASOUNDRC_FILE_PATH" <<EOF
+# This file is part of the mocassino project
+
+pcm.!default {
+    type plug
+    slave.pcm "softvol"
+}
+
+pcm.softvol {
+    type softvol
+    slave {
+        pcm "hw:$ALSA_CARD_NUMBER,0"
+    }
+    control {
+        name "Master"
+        card $ALSA_CARD_NUMBER
+    }
+}
+
+ctl.!default {
+    type hw
+    card $ALSA_CARD_NUMBER
+}
+EOF
+
+    chown "$RUN_AS_USER:$RUN_AS_GROUP" "$RUN_DIRECTORY_PATH" "$ASOUNDRC_FILE_PATH"
+    echo "[INFO] Writing ALSA configuration ... done"
 fi
 
 # Install the systemd service
