@@ -9,11 +9,15 @@ All notable changes to this project will be documented in this file.
 > [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.0.5] - To be released
+## [0.0.5] - 2026-11-27
 
 ### Added
 
 - The `install.sh` script
+
+### Changed
+
+- Default reboot command to `sudo systemctl reboot`
 
 
 ## [0.0.4] - 2026-11-21
