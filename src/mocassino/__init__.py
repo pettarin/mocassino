@@ -12,6 +12,6 @@ import logging
 # the records go nowhere, silently
 logging.getLogger("mocassino").addHandler(logging.NullHandler())
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 __author__ = "Alberto Pettarin"
 __email__ = "alberto@albertopettarin.it"
