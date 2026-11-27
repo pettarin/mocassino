@@ -370,5 +370,12 @@ def run(options: GlobalOptions, background: bool | None) -> None:
         raise click.ClickException(f"Stopped by an error: {exc}") from exc
 
 
+@click.command()
+def version() -> None:
+    """Print the version and exit."""
+    click.echo(f"mocassino, version {__version__}")
+
+
 main.add_command(configuration)
 main.add_command(run)
+main.add_command(version)

@@ -31,6 +31,7 @@ Options:
 Commands:
   configuration  Print the effective configuration, in YAML format.
   run            Run the service.
+  version        Print the version and exit.
 ```
 
 The options above are global: they go before the command, and are shared by all the commands
@@ -309,6 +310,16 @@ system:
   - shutdown
   - -h
   - now
+```
+
+
+### `mocassino version`
+
+Print the version and exit, as the `-V / --version` global option does:
+
+```bash
+$ mocassino version
+mocassino, version 0.0.7
 ```
 
 

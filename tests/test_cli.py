@@ -522,6 +522,11 @@ class TestMain:
         assert result.exit_code == 0
         assert result.output == f"mocassino, version {mocassino.__version__}\n"
 
+    def test_version_command(self, runner):
+        result = runner.invoke(main, ["version"])
+        assert result.exit_code == 0
+        assert result.output == f"mocassino, version {mocassino.__version__}\n"
+
 
 class TestRunCommand:
     """Tests for the run command"""
