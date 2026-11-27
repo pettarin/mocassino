@@ -26,9 +26,7 @@ which it controls by running `mocp` commands.
   playback progress, volume, and the icons of the actions of the buttons
 - Menu to browse the music root directory
   and play a directory or a single FLAC, MP3, OGG, or WAV file
-- Menu showing the name and the IP address of the host,
-  and shutting it down
-- Menu to change the settings of the running service
+- Menu to change most of the settings of the running service
 - Settings stored in a YAML configuration file,
   including the action of each button
 - Simulator window replacing the buttons and the display,
@@ -37,10 +35,10 @@ which it controls by running `mocp` commands.
 
 ## Requirements
 
-- Python 3.13 or later
-- A package/virtual environment manager tool (e.g., `micromamba`, `conda`, `uv`, etc.)
 - A Raspberry Pi Zero 2 with a Pimoroni Pirate Audio hat,
   with MOC (music on console) installed
+- Python 3.13 or later
+- A package/virtual environment manager tool (e.g., `micromamba`, `conda`, `uv`, etc.)
 
 
 ## Installation
@@ -50,7 +48,24 @@ which it controls by running `mocp` commands.
 > to manage virtual environments; feel free to replace it
 > with your favorite tool (`conda`, `uv`, etc.).
 
-### From PyPI (Recommended)
+### Using The Installer Script (Recommended)
+
+```bash
+# print the help message listing all options
+bash install.sh --help
+
+# install the service with the default options
+sudo bash install.sh
+
+# install the service, with some custom options set
+# useful on a Raspberry Pi Zero 2 with DietPi OS
+sudo bash install.sh --display-orientation 180 --library-directory-path /music --run-as-group audio --run-as-user dietpi
+
+# uninstall the service and remove all files
+sudo bash install.sh --uninstall
+```
+
+### From PyPI
 
 `mocassino` is published on PyPI as the same-name package
 [mocassino](https://pypi.org/project/mocassino/)
@@ -80,7 +95,6 @@ $ micromamba activate mocassino_env
 
 (mocassino_env) $ pip install mocassino --upgrade
 ```
-
 
 ### From Source
 
@@ -122,33 +136,29 @@ The MOC server is started automatically, if it is not already running.
 
 > [!NOTE]
 > When it starts, the service sets the MOC volume to the one it saved
-> when it last ran or, the first time, to the `playback.volume_default` setting (50 by default).
+> when it last ran or, the first time,
+> to the `playback.volume_default` setting (50 by default).
 
-The buttons of the hat are
-`A` (top-left), `B` (bottom-left), `X` (top-right), and `Y` (bottom-right).
-By default they perform the following actions:
+The default actions for the four buttons of the hat are:
 
-| Button | Playback mode | Menu mode |
-|---|---|---|
-| `A` | Play/pause; hold: open the menu | Back, up one level |
-| `B` | Next track; hold: previous track | Select |
-| `X` | Volume up; hold: seek forward | Up; hold: select |
-| `Y` | Volume down; hold: seek backward | Down; hold: select |
+| Button | Location     | Playback mode                    | Menu mode          |
+|--------|--------------|----------------------------------|--------------------|
+| `A`    | top left     | Play/pause; hold: open the menu  | Back, up one level |
+| `B`    | bottom left  | Next track; hold: previous track | Select             |
+| `X`    | top right    | Volume up; hold: seek forward    | Up; hold: select   |
+| `Y`    | bottom right | Volume down; hold: seek backward | Down; hold: select |
 
 The permanent settings, including the action of each button,
-can be stored in the `~/.config/mocassino/configuration.yaml` file:
+are stored in the `~/.config/mocassino/configuration.yaml` file,
+an example of which is located at
+[res/configuration/configuration.yaml](https://github.com/pettarin/mocassino/blob/main/res/configuration/configuration.yaml).
 
-```yaml
-display:
-  font_file_path: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
-library:
-  directory_path: /home/pi/music
-```
+The state of the player is stored in the
+`~/.config/mocassino/state.yaml` file,
+an example of which is located at
+[res/configuration/state.yaml](https://github.com/pettarin/mocassino/blob/main/res/configuration/state.yaml).
 
 To stop the service, send it the `SIGTERM` signal (e.g., `kill 15875`).
-
-> [!NOTE]
-> Installing the service as a systemd unit is not available yet.
 
 To try the service on a PC without the hardware,
 run it in foreground with the simulator window:

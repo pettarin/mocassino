@@ -366,7 +366,7 @@ is still reported as an error, and so is any file for `mocassino configuration`.
 | `startup.state` | `use_saved` | What playback state the service sets when it starts: `pause`, `play`, `stop`, or `use_saved` (see below); it can be changed from the `Settings` menu |
 | `startup.volume` | `use_saved` | What volume the service sets when it starts: `use_default` (the one in `playback.volume_default`) or `use_saved` (the one saved in the state file); it can be changed from the `Settings` menu |
 | `system.mocp_file_path` | `mocp` | The `mocp` executable |
-| `system.reboot_command` | `sudo reboot` | The command rebooting the host, as a string or as a list; it is never run when the simulator is used |
+| `system.reboot_command` | `sudo systemctl reboot` | The command rebooting the host, as a string or as a list; it is never run when the simulator is used |
 | `system.shutdown_command` | `sudo shutdown -h now` | The command shutting down the host, as a string or as a list; it is never run when the simulator is used |
 
 > [!NOTE]
