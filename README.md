@@ -7,7 +7,7 @@ for Raspberry Pi Zero 2 devices with Pimoroni Pirate Audio hats
 ## Overview
 
 `mocassino` is a background service
-turning a Raspberry Pi Zero 2 with a Pimoroni Pirate Audio hat
+turning a Raspberry Pi device with a Pimoroni Pirate Audio hat
 into a small standalone audio player.
 
 The service handles the four buttons of the hat,
@@ -19,23 +19,22 @@ which it controls by running `mocp` commands.
 ## Features
 
 - Playback control with the buttons of the hat:
-  play/pause, next track, previous track, seek backward and forward,
-  volume up, volume down
+  play/pause, previous/next track,
+  seek backward/forward, volume down/up
 - Playback information on the display of the hat:
   artist, title, and album of the current track,
   playback progress, volume, and the icons of the actions of the buttons
 - Menu to browse the music root directory
   and play a directory or a single FLAC, MP3, OGG, or WAV file
 - Menu to change most of the settings of the running service
-- Settings stored in a YAML configuration file,
-  including the action of each button
+- Settings stored in a YAML configuration file
 - Simulator window replacing the buttons and the display,
   to run the service on a PC without the hardware
 
 
 ## Requirements
 
-- A Raspberry Pi Zero 2 with a Pimoroni Pirate Audio hat,
+- A Raspberry Pi device with a Pimoroni Pirate Audio hat,
   with MOC (music on console) installed
 - Python 3.13 or later
 - A package/virtual environment manager tool (e.g., `micromamba`, `conda`, `uv`, etc.)
@@ -43,129 +42,119 @@ which it controls by running `mocp` commands.
 
 ## Installation
 
-> [!NOTE]
-> The examples in the documentation use `micromamba`
-> to manage virtual environments; feel free to replace it
-> with your favorite tool (`conda`, `uv`, etc.).
-
 ### Using The Installer Script (Recommended)
 
-```bash
-# print the help message listing all options
-bash install.sh --help
+First, download the install script:
 
+```bash
+cd /tmp
+curl -kO https://raw.githubusercontent.com/pettarin/mocassino/refs/heads/main/install.sh
+```
+
+Inspect all the available options with `--help`:
+
+```bash
+bash install.sh --help
+```
+
+Then install the service, adding the relevant options as needed.
+This requires privilege elevation, for instace with `sudo`:
+
+```bash
 # install the service with the default options
 sudo bash install.sh
 
 # install the service, with some custom options set
 # useful on a Raspberry Pi Zero 2 with DietPi OS
 sudo bash install.sh --display-orientation 180 --library-directory-path /music --run-as-group audio --run-as-user dietpi
+```
 
-# uninstall the service and remove all files
+The installation script starts the service,
+you should be seeing its interface drawn
+on the display of the hat.
+
+To uninstall the service and remove all files created by it:
+
+```bash
 sudo bash install.sh --uninstall
 ```
 
-### From PyPI
+### Developers And Advanced Users
 
 `mocassino` is published on PyPI as the same-name package
-[mocassino](https://pypi.org/project/mocassino/)
-, and this is the recommended way of installing it for most users.
+[mocassino](https://pypi.org/project/mocassino/).
 
-Only the first time: create a virtual environment,
-activate it, and install the latest release of `mocassino`
-available on PyPI with `pip`:
-
-```bash
-$ micromamba create -n mocassino_env python=3.13
-$ micromamba activate mocassino_env
-
-(mocassino_env) $ pip install mocassino
-```
-
-You should be able to run the CLI tool `mocassino`:
-
-```bash
-(mocassino_env) $ mocassino --version
-```
-
-To update `mocassino`, use the `-U / --upgrade` option:
-
-```bash
-$ micromamba activate mocassino_env
-
-(mocassino_env) $ pip install mocassino --upgrade
-```
-
-### From Source
-
-Clone this repository and install from source
-in a virtual environment:
-
-```bash
-$ git clone https://github.com/pettarin/mocassino
-$ cd mocassino
-
-$ micromamba create -n mocassino_env python=3.13
-$ micromamba activate mocassino_env
-
-(mocassino_env) $ pip install -e .
-(mocassino_env) $ # or
-(mocassino_env) $ make install-e-this
-```
-
-You should be able to run the CLI tool `mocassino`:
-
-```bash
-(mocassino_env) $ mocassino --version
-```
+Developers and advanced users might want to setup a development environment
+instead of relying on the installation script described above. See the
+[DEVELOPMENT](https://github.com/pettarin/mocassino/blob/main/docs/DEVELOPMENT.md)
+documentation for the details.
 
 
 ## Usage
 
-### Service Usage
-
-Run the service with the `mocassino run` command.
-By default it runs in background, detached from the terminal:
-
-```bash
-$ mocassino --library-directory-path /home/pi/music run
-mocassino is running in background (PID 15875)
-```
+The installation script installs `mocassino`
+to be run in background via a `systemd` service,
+which is started automatically when the device boots up
+and after the installation.
 
 The MOC server is started automatically, if it is not already running.
 
-> [!NOTE]
-> When it starts, the service sets the MOC volume to the one it saved
-> when it last ran or, the first time,
-> to the `playback.volume_default` setting (50 by default).
+By default, `mocassino` restores both the playback and volume state
+that were saved the last time the service ran.
+It is possible to change this behavior in the Settings menu
+(see below).
+
+### Buttons
+
+TODO add a picture of the board here
+
+| Button | Location     |
+|--------|--------------|
+| `A`    | Top Left     |
+| `B`    | Bottom Left  |
+| `X`    | Top Right    |
+| `Y`    | Bottom Right |
+
+### Playback Mode
+
+TODO add screenshots here
 
 The default actions for the four buttons of the hat are:
 
-| Button | Location     | Playback mode                    | Menu mode          |
-|--------|--------------|----------------------------------|--------------------|
-| `A`    | top left     | Play/pause; hold: open the menu  | Back, up one level |
-| `B`    | bottom left  | Next track; hold: previous track | Select             |
-| `X`    | top right    | Volume up; hold: seek forward    | Up; hold: select   |
-| `Y`    | bottom right | Volume down; hold: seek backward | Down; hold: select |
+| Button | Short Click  | Long/Hold Click |
+|--------|--------------------------------|
+| `A`    | Play/pause   | Open the menu   |
+| `B`    | Next track   | Previous track  |
+| `X`    | Volume up    | Seek forward    |
+| `Y`    | Volume down  | Seek backward   |
+
+### Menu Mode
+
+TODO add screenshots here
+
+The default actions for the four buttons of the hat are:
+
+| Button | Short Click    | Long/Hold Click |
+|--------|----------------|-----------------|
+| `A`    | Back one level | (None)          |
+| `B`    | Select         | (None)          |
+| `X`    | Up             | Select          |
+| `Y`    | Down           | Select          |
+
+### Configuration Files
 
 The permanent settings, including the action of each button,
 are stored in the `~/.config/mocassino/configuration.yaml` file,
 an example of which is located at
 [res/configuration/configuration.yaml](https://github.com/pettarin/mocassino/blob/main/res/configuration/configuration.yaml).
+Most of the settings can be changed directly through the service menus,
+thus not requiring a local or SSH connection to the device running `mocassino`.
 
 The state of the player is stored in the
 `~/.config/mocassino/state.yaml` file,
 an example of which is located at
 [res/configuration/state.yaml](https://github.com/pettarin/mocassino/blob/main/res/configuration/state.yaml).
-
-To stop the service, send it the `SIGTERM` signal (e.g., `kill 15875`).
-
-To try the service on a PC without the hardware,
-run it in foreground with the simulator window:
-
-```bash
-$ mocassino --simulator --library-directory-path ~/music run --foreground
-```
+Regular users do not need to alter this file.
 
 ### CLI Usage
 
@@ -173,45 +162,6 @@ The
 [CLI Usage](https://github.com/pettarin/mocassino/blob/main/docs/cli/INDEX.md)
 guide describes all the commands, subcommands, and most of the options
 of the CLI tool `mocassino`.
-
-Some examples of the commands made available
-by the CLI tool `mocassino` in the virtual enviroment
-where it is installed:
-
-> [!NOTE]
-> For the sake of brevity, in the following examples:
-> - the `(mocassino_env) $` shell prompt is omitted;
-> - some commands are shown without their output or with truncated output;
-> - several commands and options are not illustrated.
-> Consult the
-> [CLI Usage](https://github.com/pettarin/mocassino/blob/main/docs/cli/INDEX.md)
-> for a comprehensive guide of the CLI tool `mocassino`.
-
-```bash
-$ # print the version
-$ mocassino --version
-
-$ # run the service in background (default)
-$ mocassino run
-
-$ # run the service in foreground, logging debug messages
-$ mocassino --verbose run --foreground
-
-$ # run the service with a given configuration file
-$ mocassino --configuration-file-path /path/to/configuration.yaml run
-
-$ # run the service with a given state file
-$ mocassino --state-file-path /path/to/state.yaml run
-
-$ # run the service on a PC, with the simulator window
-$ mocassino --simulator --library-directory-path ~/music run --foreground
-
-$ # run the service with the buttons of the hat, but without drawing on its display
-$ mocassino --display-target none run
-
-$ # print the effective configuration
-$ mocassino configuration
-```
 
 
 ## Releases And Changelog
